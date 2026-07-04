@@ -258,6 +258,7 @@
     "copy-content": "Copy Content",
     "copy-link": "Copy Link",
     "count-memos-in-date": "{{count}} {{memos}} in {{date}}",
+    "toggle-sidebar": "Toggle sidebar",
     "count-memos-updated-in-date": "{{count}} {{memos}} updated on {{date}}",
     "delete-confirm": "Are you sure you want to delete this memo?",
     "delete-confirm-description": "This action is irreversible. Attachments, links, and references will also be removed.",
@@ -595,6 +596,8 @@
       "language-description": "Updates the interface language immediately and saves it to your account.",
       "memo-defaults-description": "Set the defaults used when composing new memos.",
       "memo-defaults-title": "Memo defaults",
+      "mini-menu": "Mini menu",
+      "mini-menu-description": "Shrinks sidebar icons and text for a more compact layout on this device.",
       "theme-description": "Applies the selected theme immediately on this device.",
       "theme": "Theme"
     },
@@ -854,6 +857,8 @@
     "upload-attachment": "Upload Attachment(s)"
   },
   "notebook": {
+    "collapse-sidebar": "Collapse sidebar",
+    "expand-sidebar": "Expand sidebar",
     "select-workspace": "Select workspace",
     "new-workspace": "New workspace",
     "rename-workspace": "Rename workspace",

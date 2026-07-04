@@ -62,7 +62,7 @@ export const EditorContent = forwardRef<EditorController, EditorContentProps>(({
   };
 
   return (
-    <div className="w-full flex flex-col flex-1" {...dragHandlers}>
+    <div className="w-full flex flex-col flex-1 min-h-0" {...dragHandlers}>
       <Editor
         ref={ref}
         className="memo-editor-content"

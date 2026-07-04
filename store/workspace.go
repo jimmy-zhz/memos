@@ -19,6 +19,7 @@ type FindWorkspace struct {
 	ID        *int32
 	UID       *string
 	CreatorID *int32
+	Title     *string
 }
 
 // UpdateWorkspace contains fields that can be updated for a workspace.

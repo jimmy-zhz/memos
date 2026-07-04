@@ -37,7 +37,7 @@ const Bookshelf = () => {
     <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 py-6">
       <h1 className="text-2xl font-medium mb-6">{t("bookshelf.title")}</h1>
       <div className="rounded-lg bg-gradient-to-b from-amber-950/5 to-amber-950/10 dark:from-black/20 dark:to-black/30 p-5 sm:p-8 pb-0">
-        <div className="flex flex-wrap items-end gap-2 sm:gap-3 pb-3">
+        <div className="flex flex-wrap items-end gap-2 sm:gap-3 pb-[0.45rem]">
           {workspaces.map((workspace, index) => (
             <button
               key={workspace.name}
@@ -91,8 +91,7 @@ const Bookshelf = () => {
         onOpenChange={setCreateOpen}
         title={t("bookshelf.new-workspace")}
         onConfirm={async (title) => {
-          const workspace = await createWorkspace.mutateAsync(title);
-          await openWorkspace(workspace.name);
+          await createWorkspace.mutateAsync(title);
         }}
       />
     </div>

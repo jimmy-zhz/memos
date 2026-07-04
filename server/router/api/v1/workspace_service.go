@@ -27,6 +27,14 @@ func (s *APIV1Service) CreateWorkspace(ctx context.Context, request *v1pb.Create
 		return nil, status.Errorf(codes.InvalidArgument, "workspace title is required")
 	}
 
+	existing, err := s.Store.GetWorkspace(ctx, &store.FindWorkspace{CreatorID: &user.ID, Title: &request.Workspace.Title})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to check workspace title: %v", err)
+	}
+	if existing != nil {
+		return nil, status.Errorf(codes.AlreadyExists, "workspace with this title already exists")
+	}
+
 	uid, err := ValidateAndGenerateUID("")
 	if err != nil {
 		return nil, err
@@ -87,6 +95,13 @@ func (s *APIV1Service) UpdateWorkspace(ctx context.Context, request *v1pb.Update
 		if field == "title" {
 			if strings.TrimSpace(request.Workspace.Title) == "" {
 				return nil, status.Errorf(codes.InvalidArgument, "workspace title cannot be empty")
+			}
+			existing, err := s.Store.GetWorkspace(ctx, &store.FindWorkspace{CreatorID: &user.ID, Title: &request.Workspace.Title})
+			if err != nil {
+				return nil, status.Errorf(codes.Internal, "failed to check workspace title: %v", err)
+			}
+			if existing != nil && existing.ID != workspace.ID {
+				return nil, status.Errorf(codes.AlreadyExists, "workspace with this title already exists")
 			}
 			update.Title = &request.Workspace.Title
 		}
@@ -240,19 +255,27 @@ func (s *APIV1Service) resolveOrCreateDefaultWorkspace(ctx context.Context, user
 }
 
 // resolveWorkspaceForMemo resolves the target workspace for a create/update memo
-// request: uses the given resource name if set, otherwise falls back to (creating,
-// if necessary) the user's default workspace.
+// request. The given value may be either a resource name ("workspaces/{uid}")
+// or, since callers don't necessarily know a workspace's UID, its display
+// title (unique per user). Falls back to (creating, if necessary) the user's
+// default workspace when empty.
 func (s *APIV1Service) resolveWorkspaceForMemo(ctx context.Context, userID int32, workspaceName string) (*store.Workspace, error) {
 	if strings.TrimSpace(workspaceName) == "" {
 		return s.resolveOrCreateDefaultWorkspace(ctx, userID)
 	}
-	uid, err := ExtractWorkspaceUIDFromName(workspaceName)
-	if err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid workspace name: %v", err)
-	}
-	workspace, err := s.Store.GetWorkspace(ctx, &store.FindWorkspace{UID: &uid})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get workspace: %v", err)
+
+	var workspace *store.Workspace
+	if uid, err := ExtractWorkspaceUIDFromName(workspaceName); err == nil {
+		workspace, err = s.Store.GetWorkspace(ctx, &store.FindWorkspace{UID: &uid})
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to get workspace: %v", err)
+		}
+	} else {
+		var err error
+		workspace, err = s.Store.GetWorkspace(ctx, &store.FindWorkspace{CreatorID: &userID, Title: &workspaceName})
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to get workspace: %v", err)
+		}
 	}
 	if workspace == nil {
 		return nil, status.Errorf(codes.NotFound, "workspace not found")

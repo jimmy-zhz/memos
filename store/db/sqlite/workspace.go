@@ -31,6 +31,9 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 	if v := find.CreatorID; v != nil {
 		where, args = append(where, "creator_id = ?"), append(args, *v)
 	}
+	if v := find.Title; v != nil {
+		where, args = append(where, "title = ?"), append(args, *v)
+	}
 
 	rows, err := d.db.QueryContext(ctx, `
 		SELECT id, uid, creator_id, title, created_ts, updated_ts

@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Textarea } from "@/components/ui/textarea";
 import { useInstance } from "@/contexts/InstanceContext";
+import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
@@ -76,7 +77,7 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
 
   return (
     <div className="w-full h-full flex flex-col min-w-0">
-      <div className="shrink-0 flex items-center gap-2 border-b border-border px-4 py-2.5">
+      <div className="shrink-0 flex items-center gap-2 border-b border-border px-4 py-1.5">
         <input
           className="flex-1 min-w-0 bg-transparent text-lg font-medium outline-0 truncate"
           value={titleDraft}
@@ -90,7 +91,7 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
             <Button
               variant={mode === "preview" ? "secondary" : "ghost"}
               size="sm"
-              className="rounded-none h-8"
+              className="rounded-none h-6 px-2 text-xs"
               onClick={() => setMode("preview")}
             >
               {t("notebook.preview")}
@@ -98,10 +99,10 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
             <Button
               variant={mode === "edit" ? "secondary" : "ghost"}
               size="sm"
-              className="rounded-none h-8"
+              className="rounded-none h-6 px-2 text-xs"
               onClick={() => setMode("edit")}
             >
-              <PencilIcon className="w-3.5 h-3.5 mr-1" />
+              <PencilIcon className="w-3 h-3 mr-1" />
               {t("notebook.edit")}
             </Button>
           </div>
@@ -163,7 +164,7 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
       />
 
       <div className="flex-1 min-h-0 flex">
-        <div className="flex-1 min-w-0 overflow-y-auto" ref={previewRef}>
+        <div className={cn("flex-1 min-w-0", mode === "edit" ? "overflow-hidden" : "overflow-y-auto")} ref={previewRef}>
           {isHtml ? (
             mode === "preview" ? (
               <iframe

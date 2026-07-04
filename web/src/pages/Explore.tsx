@@ -25,12 +25,12 @@ const Explore = () => {
   }, [removeFiltersByFactor]);
 
   // Determine visibility filter based on authentication status
-  // - Logged-in users: Can see PUBLIC and PROTECTED memos
+  // - Logged-in users: Can see PUBLIC, PROTECTED, and their own PRIVATE memos
   // - Visitors: Can only see PUBLIC memos
   // Note: The backend is responsible for filtering stats based on visibility permissions.
   // This is only the *default*; the Secondary Sidebar's visibility multi-select
   // (see ExploreVisibilityAndArchivedFilters) can override it via useMemoFilters.
-  const visibilities = currentUser ? [Visibility.PUBLIC, Visibility.PROTECTED] : [Visibility.PUBLIC];
+  const visibilities = currentUser ? [Visibility.PUBLIC, Visibility.PROTECTED, Visibility.PRIVATE] : [Visibility.PUBLIC];
 
   // Build filter using unified hook (no creator scoping for Explore). This also
   // folds in the workspace and visibility selections from the Secondary Sidebar.
@@ -52,7 +52,7 @@ const Explore = () => {
   return (
     <PagedMemoList
       renderer={(memo: Memo) => (
-        <MemoView key={`${memo.name}-${memo.updateTime}`} memo={memo} showCreator showVisibility compact={compactMode} />
+        <MemoView key={`${memo.name}-${memo.updateTime}`} memo={memo} showCreator showVisibility compact={compactMode} autoFold />
       )}
       listSort={listSort}
       orderBy={orderBy}

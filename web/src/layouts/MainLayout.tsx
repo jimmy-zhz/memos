@@ -86,7 +86,7 @@ const MainLayout = () => {
       {!md && <MobileHeader>{showMemoExplorer && <MemoExplorerDrawer {...memoExplorerProps} />}</MobileHeader>}
       {md && showMemoExplorer && (
         <div className={DESKTOP_EXPLORER_CLASS_NAME}>
-          <MemoExplorer className="px-3 py-6" {...memoExplorerProps} />
+          <MemoExplorer className="px-3 py-3" {...memoExplorerProps} />
         </div>
       )}
       <div className={MAIN_CONTENT_CLASS_NAME}>

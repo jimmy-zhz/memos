@@ -36,6 +36,8 @@ export interface EditorToolbarProps {
   /** Whether the formatting toolbar is shown in normal mode (persisted preference). */
   isFormattingToolbarVisible: boolean;
   onToggleFormattingToolbar: () => void;
+  /** Tighter vertical spacing for the sticky bottom bar in expand mode. */
+  compact?: boolean;
 }
 
 export interface EditorMetadataProps {

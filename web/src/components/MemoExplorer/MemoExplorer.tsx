@@ -71,22 +71,28 @@ const MemoExplorer = (props: Props) => {
   return (
     <aside
       className={cn(
-        "relative w-full h-full overflow-auto flex flex-col justify-start items-start bg-background text-sidebar-foreground",
+        "relative w-full h-full flex flex-col justify-start items-start bg-background text-sidebar-foreground",
         className,
       )}
     >
+      <div className="w-full flex-1 min-h-0 overflow-auto flex flex-col">
+        {context === "explore" && (
+          <div className="w-full mb-2">
+            <ExploreWorkspaceSelect />
+          </div>
+        )}
+        {features.search && <SearchBar />}
+        <div className="mt-1 px-1 w-full">
+          {features.statistics && <StatisticsView statisticsData={statisticsData} />}
+          {features.shortcuts && currentUser && <ShortcutsSection />}
+          {features.tags && <TagsSection readonly={context === "explore"} tagCount={tagCount} />}
+        </div>
+      </div>
       {context === "explore" && (
-        <div className="w-full mb-2">
-          <ExploreWorkspaceSelect />
+        <div className="shrink-0 w-full px-1 flex flex-col gap-2">
+          <ExploreVisibilityAndArchivedFilters />
         </div>
       )}
-      {features.search && <SearchBar />}
-      {context === "explore" && <ExploreVisibilityAndArchivedFilters />}
-      <div className="mt-1 px-1 w-full">
-        {features.statistics && <StatisticsView statisticsData={statisticsData} />}
-        {features.shortcuts && currentUser && <ShortcutsSection />}
-        {features.tags && <TagsSection readonly={context === "explore"} tagCount={tagCount} />}
-      </div>
     </aside>
   );
 };

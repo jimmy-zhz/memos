@@ -88,36 +88,38 @@ export const ExploreVisibilityAndArchivedFilters = () => {
         .join(", ");
 
   return (
-    <div className="w-full flex flex-col gap-2 mt-1">
-      <div className="flex flex-col gap-1">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("explore.filter-by-visibility")}</span>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="w-full justify-between font-normal">
-              <span className="truncate">{summaryLabel}</span>
-              <ChevronDownIcon className="w-4 h-4 shrink-0 opacity-60" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-(--radix-dropdown-menu-trigger-width)">
-            {VISIBILITY_OPTIONS.map((value) => (
-              <DropdownMenuCheckboxItem
-                key={value}
-                checked={isAllImplicit || selectedVisibilities.has(value)}
-                onSelect={(e) => e.preventDefault()}
-                onCheckedChange={(checked) => toggleVisibility(value, Boolean(checked))}
-              >
-                {t(`memo.visibility.${value.toLowerCase() as "private" | "protected" | "public"}`)}
-              </DropdownMenuCheckboxItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+    <>
+      <div className="shrink-0 w-full border-t border-border pt-2">
+        <div className="flex flex-col gap-1">
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("explore.filter-by-visibility")}</span>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="w-full justify-between font-normal">
+                <span className="truncate">{summaryLabel}</span>
+                <ChevronDownIcon className="w-4 h-4 shrink-0 opacity-60" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-(--radix-dropdown-menu-trigger-width)">
+              {VISIBILITY_OPTIONS.map((value) => (
+                <DropdownMenuCheckboxItem
+                  key={value}
+                  checked={isAllImplicit || selectedVisibilities.has(value)}
+                  onSelect={(e) => e.preventDefault()}
+                  onCheckedChange={(checked) => toggleVisibility(value, Boolean(checked))}
+                >
+                  {t(`memo.visibility.${value.toLowerCase() as "private" | "protected" | "public"}`)}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="shrink-0 w-full border-t border-border pt-2 flex items-center gap-2">
         <Checkbox id="explore-archived" checked={archived} onCheckedChange={(v) => toggleArchived(Boolean(v))} />
         <Label htmlFor="explore-archived" className={cn("text-sm cursor-pointer", archived && "text-primary")}>
           {t("explore.show-archived-only")}
         </Label>
       </div>
-    </div>
+    </>
   );
 };

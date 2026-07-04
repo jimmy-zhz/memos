@@ -78,9 +78,8 @@ export const useMemoFilters = (options: UseMemoFiltersOptions = {}): string | un
       } else if (filter.factor === "property.hasCode") {
         conditions.push(`has_code`);
       } else if (filter.factor === "displayTime") {
-        const filterDate = new Date(filter.value);
-        const filterUtcTimestamp = filterDate.getTime() + filterDate.getTimezoneOffset() * 60 * 1000;
-        const startTimestamp = Math.floor(filterUtcTimestamp / 1000);
+        const [year, month, day] = filter.value.split("-").map(Number);
+        const startTimestamp = Math.floor(new Date(year, month - 1, day).getTime() / 1000);
         const endTimestamp = startTimestamp + 60 * 60 * 24;
 
         conditions.push(`created_ts >= timestamp(${startTimestamp}) && created_ts < timestamp(${endTimestamp})`);

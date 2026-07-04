@@ -9,6 +9,7 @@ import PromptDialog from "@/components/Notebook/PromptDialog";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { useLastOpened } from "@/hooks/useLastOpened";
 import { useCreateMemo, useDeleteMemo, useMemo as useMemoDetail, useUpdateMemo } from "@/hooks/useMemoQueries";
+import useNotebookSidebarCollapsed from "@/hooks/useNotebookSidebarCollapsed";
 import {
   useCreateWorkspaceFolder,
   useDeleteWorkspaceFolder,
@@ -55,6 +56,7 @@ const Notebook = () => {
   const queryClient = useQueryClient();
   const location = useLocation();
   const { data: workspaces = [] } = useWorkspaces();
+  const sidebarCollapsed = useNotebookSidebarCollapsed();
   const { getLastOpened, setLastOpened } = useLastOpened(currentUser?.name);
   const requestedWorkspace = (location.state as { workspace?: string } | null)?.workspace;
 
@@ -267,7 +269,7 @@ const Notebook = () => {
       if (!memo) return;
       await updateMemo.mutateAsync({
         update: { name: memo.name, workspace, folderPath },
-        updateMask: ["workspace", "folderPath"],
+        updateMask: ["workspace", "folder_path"],
       });
       invalidateTree();
       if (workspace !== workspaceName) {
@@ -282,23 +284,25 @@ const Notebook = () => {
 
   return (
     <div className="w-full h-svh flex flex-row">
-      <div className="w-72 shrink-0 h-full border-r border-border">
-        <NotebookSidebar
-          workspaces={workspaces}
-          workspaceName={workspaceName}
-          onWorkspaceChange={handleWorkspaceChange}
-          tree={tree}
-          selectedMemo={selectedMemo}
-          onSelectDocument={setSelectedMemo}
-          archived={archived}
-          onArchivedChange={setArchived}
-          onNewDocument={(folderPath) => setNewDocDialog({ folderPath })}
-          onNewFolder={(folderPath) => setNewFolderDialog({ folderPath })}
-          onUpload={handleUpload}
-          onRenameFolder={(path) => setRenameFolderDialog({ path })}
-          onDeleteFolder={handleDeleteFolder}
-        />
-      </div>
+      {!sidebarCollapsed && (
+        <div className="w-72 shrink-0 h-full border-r border-border">
+          <NotebookSidebar
+            workspaces={workspaces}
+            workspaceName={workspaceName}
+            onWorkspaceChange={handleWorkspaceChange}
+            tree={tree}
+            selectedMemo={selectedMemo}
+            onSelectDocument={setSelectedMemo}
+            archived={archived}
+            onArchivedChange={setArchived}
+            onNewDocument={(folderPath) => setNewDocDialog({ folderPath })}
+            onNewFolder={(folderPath) => setNewFolderDialog({ folderPath })}
+            onUpload={handleUpload}
+            onRenameFolder={(path) => setRenameFolderDialog({ path })}
+            onDeleteFolder={handleDeleteFolder}
+          />
+        </div>
+      )}
       <div className="flex-1 min-w-0 h-full">
         {memo ? (
           <DocumentView

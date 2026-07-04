@@ -76,13 +76,17 @@ const Editor = forwardRef(function Editor(props: EditorProps, ref: React.Forward
     <div
       className={cn(
         "flex flex-col justify-start items-start relative w-full bg-inherit",
-        isFocusMode || expand ? "flex-1" : `h-auto ${EDITOR_HEIGHT.normal}`,
+        isFocusMode || expand ? "flex-1 min-h-0" : `h-auto ${EDITOR_HEIGHT.normal}`,
         className,
       )}
     >
       <div
         ref={hostRef}
-        className={cn("w-full text-base overflow-y-auto", isFocusMode || expand ? "flex-1 h-0" : "h-full")}
+        className={cn(
+          "w-full text-base overflow-y-auto",
+          isFocusMode || expand ? "flex-1 h-0" : "h-full",
+          expand && !isFocusMode && "pb-16",
+        )}
         onPaste={onPaste}
       />
     </div>
