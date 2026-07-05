@@ -62,7 +62,9 @@ CREATE TABLE `workspace` (
   `creator_id` INT NOT NULL,
   `title` VARCHAR(256) NOT NULL,
   `created_ts` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `updated_ts` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  `updated_ts` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `sort_field` VARCHAR(64) NOT NULL DEFAULT 'createTime',
+  `sort_order` VARCHAR(16) NOT NULL DEFAULT 'desc'
 );
 
 -- workspace_folder

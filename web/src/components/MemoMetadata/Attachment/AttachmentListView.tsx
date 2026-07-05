@@ -1,16 +1,17 @@
-import { DownloadIcon, FileIcon, PaperclipIcon, PlayIcon } from "lucide-react";
+import { DownloadIcon, ExternalLinkIcon, FileIcon, PaperclipIcon, PlayIcon } from "lucide-react";
 import type { PropsWithChildren } from "react";
 import { useMemo } from "react";
 import MetadataSection from "@/components/MemoMetadata/MetadataSection";
 import MotionPhotoPreview from "@/components/MotionPhotoPreview";
 import VideoPoster from "@/components/VideoPoster";
+import { extractAttachmentUidFromName } from "@/helpers/resource-names";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { getAttachmentUrl } from "@/utils/attachment";
 import type { AttachmentVisualItem, PreviewMediaItem } from "@/utils/media-item";
 import { buildAttachmentVisualItems } from "@/utils/media-item";
 import AudioAttachmentItem from "./AudioAttachmentItem";
-import { getAttachmentMetadata, isAudioAttachment, separateAttachments } from "./attachmentHelpers";
+import { getAttachmentMetadata, isAudioAttachment, isPreviewableAttachment, separateAttachments } from "./attachmentHelpers";
 import {
   COLLAGE_VIDEO_PLAY_BADGE_CLASS,
   COVER_MEDIA_CLASS,
@@ -48,6 +49,9 @@ const AttachmentMeta = ({ attachment }: { attachment: Attachment }) => {
 };
 
 const DocumentItem = ({ attachment }: { attachment: Attachment }) => {
+  const previewable = isPreviewableAttachment(attachment);
+  const ActionIcon = previewable ? ExternalLinkIcon : DownloadIcon;
+
   return (
     <div className="group flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-background/65 px-3 py-2.5 transition-colors hover:bg-accent/20">
       <div className="flex min-w-0 items-center gap-3">
@@ -61,7 +65,7 @@ const DocumentItem = ({ attachment }: { attachment: Attachment }) => {
           <AttachmentMeta attachment={attachment} />
         </div>
       </div>
-      <DownloadIcon className="h-4 w-4 shrink-0 text-muted-foreground/60 transition-colors group-hover:text-foreground/70" />
+      <ActionIcon className="h-4 w-4 shrink-0 text-muted-foreground/60 transition-colors group-hover:text-foreground/70" />
     </div>
   );
 };
@@ -228,11 +232,23 @@ const AudioList = ({ attachments, compact = false }: { attachments: Attachment[]
 
 const DocsList = ({ attachments }: { attachments: Attachment[] }) => (
   <div className="flex flex-col gap-2">
-    {attachments.map((attachment) => (
-      <a key={attachment.name} href={getAttachmentUrl(attachment)} download title={`Download ${attachment.filename}`}>
-        <DocumentItem attachment={attachment} />
-      </a>
-    ))}
+    {attachments.map((attachment) =>
+      isPreviewableAttachment(attachment) ? (
+        <a
+          key={attachment.name}
+          href={`/attachments/${extractAttachmentUidFromName(attachment.name)}/preview`}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={`Preview ${attachment.filename}`}
+        >
+          <DocumentItem attachment={attachment} />
+        </a>
+      ) : (
+        <a key={attachment.name} href={getAttachmentUrl(attachment)} download title={`Download ${attachment.filename}`}>
+          <DocumentItem attachment={attachment} />
+        </a>
+      ),
+    )}
   </div>
 );
 

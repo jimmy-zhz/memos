@@ -13,8 +13,8 @@ func (d *DB) CreateWorkspace(ctx context.Context, create *store.Workspace) (*sto
 	placeholders := []string{"?", "?", "?"}
 	args := []any{create.UID, create.CreatorID, create.Title}
 
-	stmt := "INSERT INTO `workspace` (" + strings.Join(fields, ", ") + ") VALUES (" + strings.Join(placeholders, ", ") + ") RETURNING `id`, `created_ts`, `updated_ts`"
-	if err := d.db.QueryRowContext(ctx, stmt, args...).Scan(&create.ID, &create.CreatedTs, &create.UpdatedTs); err != nil {
+	stmt := "INSERT INTO `workspace` (" + strings.Join(fields, ", ") + ") VALUES (" + strings.Join(placeholders, ", ") + ") RETURNING `id`, `created_ts`, `updated_ts`, `sort_field`, `sort_order`"
+	if err := d.db.QueryRowContext(ctx, stmt, args...).Scan(&create.ID, &create.CreatedTs, &create.UpdatedTs, &create.SortField, &create.SortOrder); err != nil {
 		return nil, err
 	}
 	return create, nil
@@ -36,7 +36,7 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 	}
 
 	rows, err := d.db.QueryContext(ctx, `
-		SELECT id, uid, creator_id, title, created_ts, updated_ts
+		SELECT id, uid, creator_id, title, created_ts, updated_ts, sort_field, sort_order
 		FROM workspace
 		WHERE `+strings.Join(where, " AND ")+` ORDER BY created_ts ASC`,
 		args...,
@@ -49,7 +49,7 @@ func (d *DB) ListWorkspaces(ctx context.Context, find *store.FindWorkspace) ([]*
 	var list []*store.Workspace
 	for rows.Next() {
 		w := &store.Workspace{}
-		if err := rows.Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs); err != nil {
+		if err := rows.Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs, &w.SortField, &w.SortOrder); err != nil {
 			return nil, err
 		}
 		list = append(list, w)
@@ -65,6 +65,12 @@ func (d *DB) UpdateWorkspace(ctx context.Context, update *store.UpdateWorkspace)
 	if v := update.Title; v != nil {
 		set, args = append(set, "title = ?"), append(args, *v)
 	}
+	if v := update.SortField; v != nil {
+		set, args = append(set, "sort_field = ?"), append(args, *v)
+	}
+	if v := update.SortOrder; v != nil {
+		set, args = append(set, "sort_order = ?"), append(args, *v)
+	}
 	set = append(set, "updated_ts = (strftime('%s', 'now'))")
 	args = append(args, update.ID)
 
@@ -72,10 +78,10 @@ func (d *DB) UpdateWorkspace(ctx context.Context, update *store.UpdateWorkspace)
 		UPDATE workspace
 		SET ` + strings.Join(set, ", ") + `
 		WHERE id = ?
-		RETURNING id, uid, creator_id, title, created_ts, updated_ts
+		RETURNING id, uid, creator_id, title, created_ts, updated_ts, sort_field, sort_order
 	`
 	w := &store.Workspace{}
-	if err := d.db.QueryRowContext(ctx, stmt, args...).Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs); err != nil {
+	if err := d.db.QueryRowContext(ctx, stmt, args...).Scan(&w.ID, &w.UID, &w.CreatorID, &w.Title, &w.CreatedTs, &w.UpdatedTs, &w.SortField, &w.SortOrder); err != nil {
 		return nil, err
 	}
 	return w, nil

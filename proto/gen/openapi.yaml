@@ -4508,6 +4508,16 @@ components:
                     type: string
                     description: Output only. The last update timestamp.
                     format: date-time
+                sortField:
+                    type: string
+                    description: |-
+                        The field used to sort the workspace's document tree.
+                         One of "createTime", "updateTime", "alphabetical". Defaults to "createTime".
+                sortOrder:
+                    type: string
+                    description: |-
+                        The order used to sort the workspace's document tree.
+                         One of "asc", "desc". Defaults to "desc".
         WorkspaceFolder:
             required:
                 - path
@@ -4555,6 +4565,10 @@ components:
                     items:
                         $ref: '#/components/schemas/WorkspaceTreeNode'
                     description: Children of this node, populated only for FOLDER nodes.
+                updateTime:
+                    type: string
+                    description: Set only when type == DOCUMENT.
+                    format: date-time
             description: A single node (folder or document) in a workspace's hierarchy.
 tags:
     - name: AIService

@@ -104,6 +104,16 @@ func (s *APIV1Service) UpdateWorkspace(ctx context.Context, request *v1pb.Update
 				return nil, status.Errorf(codes.AlreadyExists, "workspace with this title already exists")
 			}
 			update.Title = &request.Workspace.Title
+		} else if field == "sort_field" {
+			if !isValidWorkspaceSortField(request.Workspace.SortField) {
+				return nil, status.Errorf(codes.InvalidArgument, "invalid sort_field: %s", request.Workspace.SortField)
+			}
+			update.SortField = &request.Workspace.SortField
+		} else if field == "sort_order" {
+			if !isValidWorkspaceSortOrder(request.Workspace.SortOrder) {
+				return nil, status.Errorf(codes.InvalidArgument, "invalid sort_order: %s", request.Workspace.SortOrder)
+			}
+			update.SortOrder = &request.Workspace.SortOrder
 		}
 	}
 
@@ -313,6 +323,24 @@ func (s *APIV1Service) getWorkspaceAndCheckOwnership(ctx context.Context, name s
 	return workspace, user, nil
 }
 
+func isValidWorkspaceSortField(field string) bool {
+	switch field {
+	case "createTime", "updateTime", "alphabetical":
+		return true
+	default:
+		return false
+	}
+}
+
+func isValidWorkspaceSortOrder(order string) bool {
+	switch order {
+	case "asc", "desc":
+		return true
+	default:
+		return false
+	}
+}
+
 func convertWorkspaceFromStore(workspace *store.Workspace, creatorUsername string) *v1pb.Workspace {
 	return &v1pb.Workspace{
 		Name:       WorkspaceNamePrefix + workspace.UID,
@@ -320,6 +348,8 @@ func convertWorkspaceFromStore(workspace *store.Workspace, creatorUsername strin
 		Creator:    BuildUserName(creatorUsername),
 		CreateTime: timestamppb.New(time.Unix(workspace.CreatedTs, 0)),
 		UpdateTime: timestamppb.New(time.Unix(workspace.UpdatedTs, 0)),
+		SortField:  workspace.SortField,
+		SortOrder:  workspace.SortOrder,
 	}
 }
 
@@ -378,14 +408,19 @@ func (d *treeDir) toNodes(prefix string) []*v1pb.WorkspaceTreeNode {
 
 	sort.Slice(d.docs, func(i, j int) bool { return d.docs[i].CreatedTs < d.docs[j].CreatedTs })
 	for _, m := range d.docs {
+		docPath := m.UID
+		if prefix != "" {
+			docPath = prefix + "/" + m.UID
+		}
 		nodes = append(nodes, &v1pb.WorkspaceTreeNode{
 			Type:       v1pb.WorkspaceTreeNode_DOCUMENT,
 			Name:       m.Title,
-			Path:       prefix,
+			Path:       docPath,
 			Memo:       MemoNamePrefix + m.UID,
 			Archived:   m.RowStatus == store.Archived,
 			DocType:    m.DocType,
 			CreateTime: timestamppb.New(time.Unix(m.CreatedTs, 0)),
+			UpdateTime: timestamppb.New(time.Unix(m.UpdatedTs, 0)),
 		})
 	}
 	return nodes

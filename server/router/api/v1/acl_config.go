@@ -38,6 +38,10 @@ var PublicMethods = map[string]struct{}{
 
 	// Memo sharing - share-token endpoints require no authentication
 	"/memos.api.v1.MemoService/GetMemoByShare": {},
+
+	// Attachment Service - metadata for attachments linked to public memos; actual
+	// access is still gated in the handler by the linked memo's visibility.
+	"/memos.api.v1.AttachmentService/GetAttachment": {},
 }
 
 // IsPublicMethod checks if a procedure path is public (no authentication required).

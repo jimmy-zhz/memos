@@ -802,6 +802,9 @@
     "connecting": "正在连接",
     "disconnected": "已断开"
   },
+  "attachment-preview": {
+    "unavailable": "该附件无法预览。"
+  },
   "attachment-library": {
     "actions": {
       "open": "打开",
@@ -863,7 +866,15 @@
     "move": "移动",
     "destination-workspace": "目标知识库",
     "destination-folder": "目标文件夹",
-    "workspace-root": "（知识库根目录）"
+    "workspace-root": "（知识库根目录）",
+    "sort-by": "排序方式",
+    "sort-order": "排序方向",
+    "sort-field": "排序依据",
+    "sort-desc": "降序",
+    "sort-asc": "升序",
+    "sort-create-time": "创建时间",
+    "sort-update-time": "更新时间",
+    "sort-alphabetical": "按字母顺序"
   },
   "bookshelf": {
     "title": "书架",

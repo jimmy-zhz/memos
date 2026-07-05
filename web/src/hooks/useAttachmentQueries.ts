@@ -17,6 +17,15 @@ export const attachmentKeys = {
   detail: (name: string) => [...attachmentKeys.details(), name] as const,
 };
 
+// Hook to fetch a single attachment by resource name (e.g. "attachments/{uid}")
+export function useAttachment(name: string, options?: { enabled?: boolean }) {
+  return useQuery({
+    queryKey: attachmentKeys.detail(name),
+    queryFn: async () => attachmentServiceClient.getAttachment({ name }),
+    enabled: (options?.enabled ?? true) && !!name,
+  });
+}
+
 // Hook to fetch attachments
 export function useAttachments() {
   return useQuery({

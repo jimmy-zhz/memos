@@ -12,6 +12,8 @@ type Workspace struct {
 	Title     string
 	CreatedTs int64
 	UpdatedTs int64
+	SortField string
+	SortOrder string
 }
 
 // FindWorkspace specifies filter criteria for querying workspaces.
@@ -24,8 +26,10 @@ type FindWorkspace struct {
 
 // UpdateWorkspace contains fields that can be updated for a workspace.
 type UpdateWorkspace struct {
-	ID    int32
-	Title *string
+	ID        int32
+	Title     *string
+	SortField *string
+	SortOrder *string
 }
 
 // DeleteWorkspace specifies which workspace to delete.
