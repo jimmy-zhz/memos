@@ -30,6 +30,8 @@ func TestPublicMethodsArePublic(t *testing.T) {
 		"/memos.api.v1.MemoService/ListMemos",
 		"/memos.api.v1.MemoService/GetLinkMetadata",
 		"/memos.api.v1.MemoService/BatchGetLinkMetadata",
+		// Attachment Service
+		"/memos.api.v1.AttachmentService/GetAttachment",
 	}
 
 	for _, method := range publicMethods {

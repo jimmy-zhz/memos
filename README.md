@@ -32,8 +32,14 @@ docker run -d \
   -v ~/.memos:/var/opt/memos \
   neosmemo/memos:stable
 ```
-
 Open `http://localhost:5230` and start writing!
+
+#### DEV Start
+
+```bash
+go run ./cmd/memos --port 8081
+pnpm dev
+```
 
 ### Native Binary
 

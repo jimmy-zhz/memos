@@ -95,6 +95,14 @@ message Workspace {
 
   // Output only. The last update timestamp.
   google.protobuf.Timestamp update_time = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The field used to sort the workspace's document tree.
+  // One of "createTime", "updateTime", "alphabetical". Defaults to "createTime".
+  string sort_field = 6;
+
+  // The order used to sort the workspace's document tree.
+  // One of "asc", "desc". Defaults to "desc".
+  string sort_order = 7;
 }
 
 message WorkspaceFolder {
@@ -135,6 +143,9 @@ message WorkspaceTreeNode {
 
   // Children of this node, populated only for FOLDER nodes.
   repeated WorkspaceTreeNode children = 8;
+
+  // Set only when type == DOCUMENT.
+  google.protobuf.Timestamp update_time = 9;
 }
 
 message CreateWorkspaceRequest {

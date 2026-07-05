@@ -1,4 +1,4 @@
-import { LibraryBigIcon, PlusIcon, SettingsIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, LibraryBigIcon, SettingsIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -6,13 +6,20 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCreateWorkspace, useDeleteWorkspace, useUpdateWorkspace } from "@/hooks/useWorkspaceQueries";
 import type { Workspace } from "@/types/proto/api/v1/workspace_service_pb";
 import { useTranslate } from "@/utils/i18n";
+import { normalizeSortField, normalizeSortOrder } from "./notebookSort";
 import PromptDialog from "./PromptDialog";
 
 interface Props {
@@ -31,6 +38,8 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onCreated }: Props) =>
   const [renameOpen, setRenameOpen] = useState(false);
 
   const current = workspaces.find((w) => w.name === value);
+  const sortField = normalizeSortField(current?.sortField);
+  const sortOrder = normalizeSortOrder(current?.sortOrder);
 
   return (
     <div className="w-full flex flex-row items-center gap-1">
@@ -56,10 +65,7 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onCreated }: Props) =>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setCreateOpen(true)}>
-            <PlusIcon className="w-4 h-4 mr-2" />
-            {t("notebook.new-workspace")}
-          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setCreateOpen(true)}>{t("notebook.new-workspace")}</DropdownMenuItem>
           {current && <DropdownMenuItem onClick={() => setRenameOpen(true)}>{t("notebook.rename-workspace")}</DropdownMenuItem>}
           {current && workspaces.length > 1 && (
             <DropdownMenuItem
@@ -73,6 +79,50 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onCreated }: Props) =>
             >
               {t("common.delete")}
             </DropdownMenuItem>
+          )}
+          {current && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>{t("notebook.sort-by")}</DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuLabel>{t("notebook.sort-order")}</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={sortOrder}
+                    onValueChange={(v) =>
+                      updateWorkspace.mutateAsync({
+                        workspace: { ...current, sortOrder: v },
+                        updateMask: ["sort_order"],
+                      })
+                    }
+                  >
+                    <DropdownMenuRadioItem value="desc">
+                      <ArrowDownIcon className="w-3.5 h-3.5 mr-2" />
+                      {t("notebook.sort-desc")}
+                    </DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="asc">
+                      <ArrowUpIcon className="w-3.5 h-3.5 mr-2" />
+                      {t("notebook.sort-asc")}
+                    </DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel>{t("notebook.sort-field")}</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup
+                    value={sortField}
+                    onValueChange={(v) =>
+                      updateWorkspace.mutateAsync({
+                        workspace: { ...current, sortField: v },
+                        updateMask: ["sort_field"],
+                      })
+                    }
+                  >
+                    <DropdownMenuRadioItem value="createTime">{t("notebook.sort-create-time")}</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="updateTime">{t("notebook.sort-update-time")}</DropdownMenuRadioItem>
+                    <DropdownMenuRadioItem value="alphabetical">{t("notebook.sort-alphabetical")}</DropdownMenuRadioItem>
+                  </DropdownMenuRadioGroup>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            </>
           )}
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>

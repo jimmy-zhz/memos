@@ -16,6 +16,9 @@ export interface AttachmentMetadata {
 export const isImageAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "image/*";
 export const isVideoAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "video/*";
 export const isAudioAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "audio/*";
+export const isPdfAttachment = (attachment: Attachment): boolean => getAttachmentType(attachment) === "application/pdf";
+export const isHtmlAttachment = (attachment: Attachment): boolean => attachment.type === "text/html";
+export const isPreviewableAttachment = (attachment: Attachment): boolean => isPdfAttachment(attachment) || isHtmlAttachment(attachment);
 
 export const separateAttachments = (attachments: Attachment[]): AttachmentGroups => {
   return attachments.reduce<AttachmentGroups>(

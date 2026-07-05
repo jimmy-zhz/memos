@@ -87,7 +87,13 @@ type Workspace struct {
 	// Output only. The creation timestamp.
 	CreateTime *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
 	// Output only. The last update timestamp.
-	UpdateTime    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	UpdateTime *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
+	// The field used to sort the workspace's document tree.
+	// One of "createTime", "updateTime", "alphabetical". Defaults to "createTime".
+	SortField string `protobuf:"bytes,6,opt,name=sort_field,json=sortField,proto3" json:"sort_field,omitempty"`
+	// The order used to sort the workspace's document tree.
+	// One of "asc", "desc". Defaults to "desc".
+	SortOrder     string `protobuf:"bytes,7,opt,name=sort_order,json=sortOrder,proto3" json:"sort_order,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -155,6 +161,20 @@ func (x *Workspace) GetUpdateTime() *timestamppb.Timestamp {
 		return x.UpdateTime
 	}
 	return nil
+}
+
+func (x *Workspace) GetSortField() string {
+	if x != nil {
+		return x.SortField
+	}
+	return ""
+}
+
+func (x *Workspace) GetSortOrder() string {
+	if x != nil {
+		return x.SortOrder
+	}
+	return ""
 }
 
 type WorkspaceFolder struct {
@@ -229,7 +249,9 @@ type WorkspaceTreeNode struct {
 	// Set only when type == DOCUMENT.
 	CreateTime *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=create_time,json=createTime,proto3" json:"create_time,omitempty"`
 	// Children of this node, populated only for FOLDER nodes.
-	Children      []*WorkspaceTreeNode `protobuf:"bytes,8,rep,name=children,proto3" json:"children,omitempty"`
+	Children []*WorkspaceTreeNode `protobuf:"bytes,8,rep,name=children,proto3" json:"children,omitempty"`
+	// Set only when type == DOCUMENT.
+	UpdateTime    *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=update_time,json=updateTime,proto3" json:"update_time,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -316,6 +338,13 @@ func (x *WorkspaceTreeNode) GetCreateTime() *timestamppb.Timestamp {
 func (x *WorkspaceTreeNode) GetChildren() []*WorkspaceTreeNode {
 	if x != nil {
 		return x.Children
+	}
+	return nil
+}
+
+func (x *WorkspaceTreeNode) GetUpdateTime() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdateTime
 	}
 	return nil
 }
@@ -863,7 +892,7 @@ var File_api_v1_workspace_service_proto protoreflect.FileDescriptor
 
 const file_api_v1_workspace_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1eapi/v1/workspace_service.proto\x12\fmemos.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb4\x02\n" +
+	"\x1eapi/v1/workspace_service.proto\x12\fmemos.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf2\x02\n" +
 	"\tWorkspace\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12\x19\n" +
 	"\x05title\x18\x02 \x01(\tB\x03\xe0A\x02R\x05title\x12\x1d\n" +
@@ -871,12 +900,16 @@ const file_api_v1_workspace_service_proto_rawDesc = "" +
 	"\vcreate_time\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
 	"createTime\x12@\n" +
 	"\vupdate_time\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampB\x03\xe0A\x03R\n" +
-	"updateTime:P\xeaAM\n" +
+	"updateTime\x12\x1d\n" +
+	"\n" +
+	"sort_field\x18\x06 \x01(\tR\tsortField\x12\x1d\n" +
+	"\n" +
+	"sort_order\x18\a \x01(\tR\tsortOrder:P\xeaAM\n" +
 	"\x16memos.api.v1/Workspace\x12\x16workspaces/{workspace}\x1a\x04name*\n" +
 	"workspaces2\tworkspace\"C\n" +
 	"\x0fWorkspaceFolder\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12\x17\n" +
-	"\x04path\x18\x02 \x01(\tB\x03\xe0A\x02R\x04path\"\xff\x02\n" +
+	"\x04path\x18\x02 \x01(\tB\x03\xe0A\x02R\x04path\"\xbc\x03\n" +
 	"\x11WorkspaceTreeNode\x12<\n" +
 	"\x04type\x18\x01 \x01(\x0e2(.memos.api.v1.WorkspaceTreeNode.NodeTypeR\x04type\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x12\n" +
@@ -886,7 +919,9 @@ const file_api_v1_workspace_service_proto_rawDesc = "" +
 	"\bdoc_type\x18\x06 \x01(\tR\adocType\x12;\n" +
 	"\vcreate_time\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"createTime\x12;\n" +
-	"\bchildren\x18\b \x03(\v2\x1f.memos.api.v1.WorkspaceTreeNodeR\bchildren\"?\n" +
+	"\bchildren\x18\b \x03(\v2\x1f.memos.api.v1.WorkspaceTreeNodeR\bchildren\x12;\n" +
+	"\vupdate_time\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"updateTime\"?\n" +
 	"\bNodeType\x12\x19\n" +
 	"\x15NODE_TYPE_UNSPECIFIED\x10\x00\x12\n" +
 	"\n" +
@@ -978,35 +1013,36 @@ var file_api_v1_workspace_service_proto_depIdxs = []int32{
 	0,  // 2: memos.api.v1.WorkspaceTreeNode.type:type_name -> memos.api.v1.WorkspaceTreeNode.NodeType
 	15, // 3: memos.api.v1.WorkspaceTreeNode.create_time:type_name -> google.protobuf.Timestamp
 	3,  // 4: memos.api.v1.WorkspaceTreeNode.children:type_name -> memos.api.v1.WorkspaceTreeNode
-	1,  // 5: memos.api.v1.CreateWorkspaceRequest.workspace:type_name -> memos.api.v1.Workspace
-	1,  // 6: memos.api.v1.ListWorkspacesResponse.workspaces:type_name -> memos.api.v1.Workspace
-	1,  // 7: memos.api.v1.UpdateWorkspaceRequest.workspace:type_name -> memos.api.v1.Workspace
-	16, // 8: memos.api.v1.UpdateWorkspaceRequest.update_mask:type_name -> google.protobuf.FieldMask
-	3,  // 9: memos.api.v1.GetWorkspaceTreeResponse.nodes:type_name -> memos.api.v1.WorkspaceTreeNode
-	2,  // 10: memos.api.v1.CreateWorkspaceFolderRequest.folder:type_name -> memos.api.v1.WorkspaceFolder
-	4,  // 11: memos.api.v1.WorkspaceService.CreateWorkspace:input_type -> memos.api.v1.CreateWorkspaceRequest
-	5,  // 12: memos.api.v1.WorkspaceService.ListWorkspaces:input_type -> memos.api.v1.ListWorkspacesRequest
-	7,  // 13: memos.api.v1.WorkspaceService.GetWorkspace:input_type -> memos.api.v1.GetWorkspaceRequest
-	8,  // 14: memos.api.v1.WorkspaceService.UpdateWorkspace:input_type -> memos.api.v1.UpdateWorkspaceRequest
-	9,  // 15: memos.api.v1.WorkspaceService.DeleteWorkspace:input_type -> memos.api.v1.DeleteWorkspaceRequest
-	10, // 16: memos.api.v1.WorkspaceService.GetWorkspaceTree:input_type -> memos.api.v1.GetWorkspaceTreeRequest
-	12, // 17: memos.api.v1.WorkspaceService.CreateWorkspaceFolder:input_type -> memos.api.v1.CreateWorkspaceFolderRequest
-	13, // 18: memos.api.v1.WorkspaceService.RenameWorkspaceFolder:input_type -> memos.api.v1.RenameWorkspaceFolderRequest
-	14, // 19: memos.api.v1.WorkspaceService.DeleteWorkspaceFolder:input_type -> memos.api.v1.DeleteWorkspaceFolderRequest
-	1,  // 20: memos.api.v1.WorkspaceService.CreateWorkspace:output_type -> memos.api.v1.Workspace
-	6,  // 21: memos.api.v1.WorkspaceService.ListWorkspaces:output_type -> memos.api.v1.ListWorkspacesResponse
-	1,  // 22: memos.api.v1.WorkspaceService.GetWorkspace:output_type -> memos.api.v1.Workspace
-	1,  // 23: memos.api.v1.WorkspaceService.UpdateWorkspace:output_type -> memos.api.v1.Workspace
-	17, // 24: memos.api.v1.WorkspaceService.DeleteWorkspace:output_type -> google.protobuf.Empty
-	11, // 25: memos.api.v1.WorkspaceService.GetWorkspaceTree:output_type -> memos.api.v1.GetWorkspaceTreeResponse
-	2,  // 26: memos.api.v1.WorkspaceService.CreateWorkspaceFolder:output_type -> memos.api.v1.WorkspaceFolder
-	17, // 27: memos.api.v1.WorkspaceService.RenameWorkspaceFolder:output_type -> google.protobuf.Empty
-	17, // 28: memos.api.v1.WorkspaceService.DeleteWorkspaceFolder:output_type -> google.protobuf.Empty
-	20, // [20:29] is the sub-list for method output_type
-	11, // [11:20] is the sub-list for method input_type
-	11, // [11:11] is the sub-list for extension type_name
-	11, // [11:11] is the sub-list for extension extendee
-	0,  // [0:11] is the sub-list for field type_name
+	15, // 5: memos.api.v1.WorkspaceTreeNode.update_time:type_name -> google.protobuf.Timestamp
+	1,  // 6: memos.api.v1.CreateWorkspaceRequest.workspace:type_name -> memos.api.v1.Workspace
+	1,  // 7: memos.api.v1.ListWorkspacesResponse.workspaces:type_name -> memos.api.v1.Workspace
+	1,  // 8: memos.api.v1.UpdateWorkspaceRequest.workspace:type_name -> memos.api.v1.Workspace
+	16, // 9: memos.api.v1.UpdateWorkspaceRequest.update_mask:type_name -> google.protobuf.FieldMask
+	3,  // 10: memos.api.v1.GetWorkspaceTreeResponse.nodes:type_name -> memos.api.v1.WorkspaceTreeNode
+	2,  // 11: memos.api.v1.CreateWorkspaceFolderRequest.folder:type_name -> memos.api.v1.WorkspaceFolder
+	4,  // 12: memos.api.v1.WorkspaceService.CreateWorkspace:input_type -> memos.api.v1.CreateWorkspaceRequest
+	5,  // 13: memos.api.v1.WorkspaceService.ListWorkspaces:input_type -> memos.api.v1.ListWorkspacesRequest
+	7,  // 14: memos.api.v1.WorkspaceService.GetWorkspace:input_type -> memos.api.v1.GetWorkspaceRequest
+	8,  // 15: memos.api.v1.WorkspaceService.UpdateWorkspace:input_type -> memos.api.v1.UpdateWorkspaceRequest
+	9,  // 16: memos.api.v1.WorkspaceService.DeleteWorkspace:input_type -> memos.api.v1.DeleteWorkspaceRequest
+	10, // 17: memos.api.v1.WorkspaceService.GetWorkspaceTree:input_type -> memos.api.v1.GetWorkspaceTreeRequest
+	12, // 18: memos.api.v1.WorkspaceService.CreateWorkspaceFolder:input_type -> memos.api.v1.CreateWorkspaceFolderRequest
+	13, // 19: memos.api.v1.WorkspaceService.RenameWorkspaceFolder:input_type -> memos.api.v1.RenameWorkspaceFolderRequest
+	14, // 20: memos.api.v1.WorkspaceService.DeleteWorkspaceFolder:input_type -> memos.api.v1.DeleteWorkspaceFolderRequest
+	1,  // 21: memos.api.v1.WorkspaceService.CreateWorkspace:output_type -> memos.api.v1.Workspace
+	6,  // 22: memos.api.v1.WorkspaceService.ListWorkspaces:output_type -> memos.api.v1.ListWorkspacesResponse
+	1,  // 23: memos.api.v1.WorkspaceService.GetWorkspace:output_type -> memos.api.v1.Workspace
+	1,  // 24: memos.api.v1.WorkspaceService.UpdateWorkspace:output_type -> memos.api.v1.Workspace
+	17, // 25: memos.api.v1.WorkspaceService.DeleteWorkspace:output_type -> google.protobuf.Empty
+	11, // 26: memos.api.v1.WorkspaceService.GetWorkspaceTree:output_type -> memos.api.v1.GetWorkspaceTreeResponse
+	2,  // 27: memos.api.v1.WorkspaceService.CreateWorkspaceFolder:output_type -> memos.api.v1.WorkspaceFolder
+	17, // 28: memos.api.v1.WorkspaceService.RenameWorkspaceFolder:output_type -> google.protobuf.Empty
+	17, // 29: memos.api.v1.WorkspaceService.DeleteWorkspaceFolder:output_type -> google.protobuf.Empty
+	21, // [21:30] is the sub-list for method output_type
+	12, // [12:21] is the sub-list for method input_type
+	12, // [12:12] is the sub-list for extension type_name
+	12, // [12:12] is the sub-list for extension extendee
+	0,  // [0:12] is the sub-list for field type_name
 }
 
 func init() { file_api_v1_workspace_service_proto_init() }

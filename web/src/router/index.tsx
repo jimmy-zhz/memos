@@ -33,6 +33,7 @@ const Explore = lazyWithReload(() => import("@/pages/Explore"));
 const Notebook = lazyWithReload(() => import("@/pages/Notebook"));
 const Inboxes = lazyWithReload(() => import("@/pages/Inboxes"));
 const MemoDetail = lazyWithReload(() => import("@/pages/MemoDetail"));
+const AttachmentPreview = lazyWithReload(() => import("@/pages/AttachmentPreview"));
 const NotFound = lazyWithReload(() => import("@/pages/NotFound"));
 const PermissionDenied = lazyWithReload(() => import("@/pages/PermissionDenied"));
 const Attachments = lazyWithReload(() => import("@/pages/Attachments"));
@@ -76,6 +77,8 @@ export const routeConfig: RouteObject[] = [
       },
       // Backward compatibility: the old `/home` URL now lives at `/`.
       { path: "home", element: <Navigate to={Routes.HOME} replace /> },
+      // Bare page (no sidebar/app chrome) opened in its own tab to preview an attachment.
+      { path: "attachments/:uid/preview", element: <AttachmentPreview /> },
       {
         element: <RootLayout />,
         children: [

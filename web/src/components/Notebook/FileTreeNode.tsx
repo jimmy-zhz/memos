@@ -138,7 +138,7 @@ const FileTreeNode = ({
         <div className="w-full">
           {node.children.map((child) => (
             <FileTreeNode
-              key={`${child.type}-${child.path}`}
+              key={child.memo ? `document-${child.memo}` : `${child.type}-${child.path}`}
               node={child}
               depth={depth + 1}
               selectedMemo={selectedMemo}

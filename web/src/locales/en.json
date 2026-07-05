@@ -27,6 +27,9 @@
     "banner-title": "Memos demo",
     "deploy-link": "Deploy your Memos"
   },
+  "attachment-preview": {
+    "unavailable": "This attachment can't be previewed."
+  },
   "attachment-library": {
     "actions": {
       "open": "Open",
@@ -907,7 +910,15 @@
     "move": "Move",
     "destination-workspace": "Destination workspace",
     "destination-folder": "Destination folder",
-    "workspace-root": "(workspace root)"
+    "workspace-root": "(workspace root)",
+    "sort-by": "Sort by",
+    "sort-order": "Order",
+    "sort-field": "Sort by",
+    "sort-desc": "Descending",
+    "sort-asc": "Ascending",
+    "sort-create-time": "Create time",
+    "sort-update-time": "Update time",
+    "sort-alphabetical": "Alphabetical"
   },
   "pdf": {
     "loading": "Loading…",

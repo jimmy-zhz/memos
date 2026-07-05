@@ -12,6 +12,7 @@ import type { Workspace, WorkspaceTreeNode } from "@/types/proto/api/v1/workspac
 import { WorkspaceTreeNode_NodeType } from "@/types/proto/api/v1/workspace_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import FileTreeNode from "./FileTreeNode";
+import { normalizeSortField, normalizeSortOrder, sortTree } from "./notebookSort";
 import WorkspaceSelector from "./WorkspaceSelector";
 
 interface Props {
@@ -96,6 +97,10 @@ const NotebookSidebar = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
 
+  const currentWorkspace = workspaces.find((w) => w.name === workspaceName);
+  const sortField = normalizeSortField(currentWorkspace?.sortField);
+  const sortOrder = normalizeSortOrder(currentWorkspace?.sortOrder);
+
   const docDates = useMemo(() => {
     const acc = new Map<string, number>();
     collectDocDates(tree, acc);
@@ -107,8 +112,8 @@ const NotebookSidebar = ({
   const visibleTree = useMemo(() => {
     let nodes = filterTree(tree, query);
     if (dateFilter) nodes = filterTreeByDate(nodes, dateFilter);
-    return nodes;
-  }, [tree, query, dateFilter]);
+    return sortTree(nodes, sortField, sortOrder);
+  }, [tree, query, dateFilter, sortField, sortOrder]);
 
   return (
     <div className="w-full h-full flex flex-col gap-2 px-3 py-4">
@@ -179,7 +184,7 @@ const NotebookSidebar = ({
         ) : (
           visibleTree.map((node) => (
             <FileTreeNode
-              key={`${node.type}-${node.path}`}
+              key={node.memo ? `document-${node.memo}` : `${node.type}-${node.path}`}
               node={node}
               depth={0}
               selectedMemo={selectedMemo}

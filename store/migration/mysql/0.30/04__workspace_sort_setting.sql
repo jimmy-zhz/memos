@@ -1,0 +1,2 @@
+ALTER TABLE workspace ADD COLUMN sort_field VARCHAR(64) NOT NULL DEFAULT 'createTime';
+ALTER TABLE workspace ADD COLUMN sort_order VARCHAR(16) NOT NULL DEFAULT 'desc';
