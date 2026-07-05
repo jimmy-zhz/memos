@@ -52,13 +52,12 @@ iframe 嵌入反而是被支持的,但仅限硬编码的可信来源白名单(Yo
     - 在Attachment storage区域上方添加 一块新区域：Storage Configuration 把当前Attachment storage下方的内容称动上去 这块只负责配置存储源的签名和配置信息，信息一旦配置就会持久化（考虑加入删除按钮 用户有权决定从服务器移除这些授权信息）
     - Attachment storage区域此时是空白，只添加一个下拉选，用于实际决定到底用户到底用哪个系统作为文件存储，一旦选中，生效，下次再修改需要弹窗提醒后果（数据分散在不同地方，文档迁移难度大），用户确认后，才再给修改。
     - Attachment storage 下方添加一个新的区域 用于同步db（当项目数据使用sqlite而不是postgre时），将数据备份到S3
-      - 这是同步计划 [user-data-backup-plan.md](user-data-backup-plan.md)
+      - 这是同步计划 [s3-storage-proxy-plan.md](s3-storage-proxy-plan.md)
       - 指定bucket路径，然后把数据库备份文件打包推到S3，S3 bucket里仅保留最近3个月有效期，更早期的版本可以清理（这应当是S3的底层支持 我们只管对bucket设置开启版本，控制版本有效期）
       - 支持手动备份，点击立即备份
       - 支持自动备份，服务端每周自动备份一次
       - 注意：仅备份sqlite数据库 不包括mysql pgsql作为数据源， 不包括附件的备份
       - 仅支持备份到S3 compatible
-      - 注意：备份功能是用户级别的，S3也是用户级别的配置，memos服务本身不提供s3，也就是说 用记只应该备份自己的数据 千万不能把整个sqlite都推过去备份
 
 #### 项目现状
 memos 不会把图片转成 http://memos域名/imageuri 这种形式对外提供，而是直接把 MinIO 生成的预签名 URL 交给浏览器，浏览器会直接连到 MinIO 的地址（比如 http://minio-host:9000/bucket/key?X-Amz-Signature=...），完全绕开 memos 域名。

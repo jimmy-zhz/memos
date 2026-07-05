@@ -1,3 +1,4 @@
+import dayjs from "dayjs";
 import { useEffect } from "react";
 import MemoView from "@/components/MemoView";
 import PagedMemoList from "@/components/PagedMemoList";
@@ -11,16 +12,26 @@ import { Memo, Visibility } from "@/types/proto/api/v1/memo_service_pb";
 const Explore = () => {
   const currentUser = useCurrentUser();
   const { compactMode } = useView();
-  const { hasFilter, removeFiltersByFactor } = useMemoFilterContext();
+  const { hasFilter, getFiltersByFactor, addFilter, removeFiltersByFactor } = useMemoFilterContext();
 
-  // The workspace/visibility/archived filters are Explore-only; reset them on
-  // navigating away so they don't leak into Home's or Archived's filter (which
-  // share the same global MemoFilterContext).
+  // Default to showing only today's memos when entering Explore, unless a
+  // displayTime filter is already present (e.g. from a shared URL).
+  useEffect(() => {
+    if (getFiltersByFactor("displayTime").length === 0) {
+      addFilter({ factor: "displayTime", value: dayjs().format("YYYY-MM-DD") });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // The workspace/visibility/archived/displayTime filters are Explore-only;
+  // reset them on navigating away so they don't leak into Home's or
+  // Archived's filter (which share the same global MemoFilterContext).
   useEffect(() => {
     return () => {
       removeFiltersByFactor("workspace");
       removeFiltersByFactor("visibility");
       removeFiltersByFactor("archived");
+      removeFiltersByFactor("displayTime");
     };
   }, [removeFiltersByFactor]);
 
