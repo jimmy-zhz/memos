@@ -1,11 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
+import { ArrowUpIcon } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { PdfDocumentView } from "@/components/PdfViewer/PdfDocumentView";
 import { attachmentNamePrefix } from "@/helpers/resource-names";
 import { useAttachment } from "@/hooks/useAttachmentQueries";
 import { isHtmlAttachment, isPdfAttachment } from "@/components/MemoMetadata/Attachment/attachmentHelpers";
+import { cn } from "@/lib/utils";
 import { getAttachmentUrl } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
+
+// Header hides once the user has scrolled down past this many px from their last
+// direction change, and reappears as soon as they scroll back up.
+const HEADER_HIDE_THRESHOLD = 60;
+// The floating "back to top" button appears once scrolled past this many px.
+const BACK_TO_TOP_THRESHOLD = 300;
 
 // Standalone, unauthenticated-chrome page opened in a new tab to preview a PDF or
 // HTML attachment without forcing a download. HTML is rendered in a sandboxed
@@ -17,6 +25,11 @@ const AttachmentPreview = () => {
   const toolbarSlotRef = useCallback((node: HTMLDivElement | null) => setToolbarSlot(node), []);
   const [htmlContent, setHtmlContent] = useState<string | null>(null);
   const [htmlError, setHtmlError] = useState(false);
+  const [headerHidden, setHeaderHidden] = useState(false);
+  const [showBackToTop, setShowBackToTop] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const lastScrollTopRef = useRef(0);
+  const hideAnchorRef = useRef(0);
 
   const name = params.uid ? `${attachmentNamePrefix}${params.uid}` : "";
   const { data: attachment, isLoading, error } = useAttachment(name, { enabled: !!name });
@@ -45,6 +58,26 @@ const AttachmentPreview = () => {
     };
   }, [attachment, isHtml]);
 
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const scrollTop = el.scrollTop;
+    setShowBackToTop(scrollTop > BACK_TO_TOP_THRESHOLD);
+
+    if (scrollTop <= lastScrollTopRef.current) {
+      // Scrolling up (or at the top): reveal the header immediately.
+      setHeaderHidden(false);
+      hideAnchorRef.current = scrollTop;
+    } else if (scrollTop - hideAnchorRef.current > HEADER_HIDE_THRESHOLD) {
+      setHeaderHidden(true);
+    }
+    lastScrollTopRef.current = scrollTop;
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
+
   if (isLoading) {
     return <div className="flex h-screen w-screen items-center justify-center text-sm text-muted-foreground">{t("pdf.loading")}</div>;
   }
@@ -56,14 +89,19 @@ const AttachmentPreview = () => {
   }
 
   return (
-    <div className="flex h-screen w-screen flex-col">
-      <div className="flex items-center justify-between gap-3 border-b border-border px-4 py-2">
+    <div className="relative h-screen w-screen overflow-hidden">
+      <div
+        className={cn(
+          "absolute inset-x-0 top-0 z-10 flex h-11 items-center justify-between gap-3 border-b border-border bg-background px-4 py-2 transition-transform duration-300",
+          headerHidden && "-translate-y-full",
+        )}
+      >
         <span className="truncate text-sm font-medium text-foreground" title={attachment.filename}>
           {attachment.filename}
         </span>
         <div ref={toolbarSlotRef} className="flex shrink-0 items-center gap-1" />
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="h-full overflow-y-auto pt-11">
         {isPdf && toolbarSlot && <PdfDocumentView url={getAttachmentUrl(attachment)} toolbarSlot={toolbarSlot} className="px-6 py-4" />}
         {isHtml &&
           (htmlError ? (
@@ -77,6 +115,17 @@ const AttachmentPreview = () => {
             />
           ))}
       </div>
+      <button
+        type="button"
+        onClick={scrollToTop}
+        aria-label={t("attachment-preview.back-to-top")}
+        className={cn(
+          "absolute bottom-6 right-6 z-10 flex h-10 w-10 items-center justify-center rounded-full border border-border bg-background text-foreground shadow-md transition-opacity duration-200 hover:bg-accent",
+          showBackToTop ? "opacity-100" : "pointer-events-none opacity-0",
+        )}
+      >
+        <ArrowUpIcon className="h-5 w-5" />
+      </button>
     </div>
   );
 };

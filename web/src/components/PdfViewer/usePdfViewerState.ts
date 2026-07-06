@@ -18,9 +18,13 @@ export function usePdfViewerState(url: string) {
   const [basePageWidth, setBasePageWidth] = useState(0); // page width in CSS px at scale=1
   const [containerWidth, setContainerWidth] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  // Tracks whether the user has manually picked an orientation, so the auto-detection below
+  // (landscape pages -> scroll mode, portrait pages -> paginated mode) doesn't override their choice.
+  const orientationTouchedRef = useRef(false);
 
   useEffect(() => {
     setPageNumber(1);
+    orientationTouchedRef.current = false;
   }, [url]);
 
   useEffect(() => {
@@ -29,7 +33,11 @@ export function usePdfViewerState(url: string) {
     (async () => {
       const page = await docRef.current?.getPage(1);
       if (cancelled || !page) return;
-      setBasePageWidth(page.getViewport({ scale: 1 }).width);
+      const viewport = page.getViewport({ scale: 1 });
+      setBasePageWidth(viewport.width);
+      if (!orientationTouchedRef.current) {
+        setOrientation(viewport.width > viewport.height ? "vertical" : "horizontal");
+      }
     })();
     return () => {
       cancelled = true;

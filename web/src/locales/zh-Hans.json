@@ -803,7 +803,8 @@
     "disconnected": "已断开"
   },
   "attachment-preview": {
-    "unavailable": "该附件无法预览。"
+    "unavailable": "该附件无法预览。",
+    "back-to-top": "回到顶部"
   },
   "attachment-library": {
     "actions": {

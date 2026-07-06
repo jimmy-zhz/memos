@@ -28,7 +28,8 @@
     "deploy-link": "Deploy your Memos"
   },
   "attachment-preview": {
-    "unavailable": "This attachment can't be previewed."
+    "unavailable": "This attachment can't be previewed.",
+    "back-to-top": "Back to top"
   },
   "attachment-library": {
     "actions": {
