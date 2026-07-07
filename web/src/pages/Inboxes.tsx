@@ -8,12 +8,14 @@ import MobileHeader from "@/components/MobileHeader";
 import Placeholder from "@/components/Placeholder";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import useMediaQuery from "@/hooks/useMediaQuery";
+import usePageTitle from "@/hooks/usePageTitle";
 import { useNotifications } from "@/hooks/useUserQueries";
 import { UserNotification, UserNotification_Status, UserNotification_Type } from "@/types/proto/api/v1/user_service_pb";
 import { useTranslate } from "@/utils/i18n";
 
 const Inboxes = () => {
   const t = useTranslate();
+  usePageTitle(t("common.inbox"));
   const md = useMediaQuery("md");
   const [filter, setFilter] = useState<"all" | "unread" | "archived">("all");
 

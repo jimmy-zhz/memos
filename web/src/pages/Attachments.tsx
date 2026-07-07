@@ -22,6 +22,7 @@ import { type AttachmentLibraryStats, type AttachmentLibraryTab, useAttachmentLi
 import { useBatchDeleteAttachments } from "@/hooks/useAttachmentQueries";
 import useDialog from "@/hooks/useDialog";
 import useMediaQuery from "@/hooks/useMediaQuery";
+import usePageTitle from "@/hooks/usePageTitle";
 import i18n from "@/i18n";
 import { handleError } from "@/lib/error";
 import { ListAttachmentsRequestSchema } from "@/types/proto/api/v1/attachment_service_pb";
@@ -68,6 +69,7 @@ const listUnusedAttachmentNames = async () => {
 
 const Attachments = () => {
   const t = useTranslate();
+  usePageTitle(t("common.attachments"));
   const md = useMediaQuery("md");
   const deleteUnusedAttachmentsDialog = useDialog();
   const [activeTab, setActiveTab] = useState<AttachmentLibraryTab>("media");

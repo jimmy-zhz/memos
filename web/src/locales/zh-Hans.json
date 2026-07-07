@@ -842,6 +842,7 @@
     "select-workspace": "选择知识库",
     "new-workspace": "新建知识库",
     "rename-workspace": "重命名知识库",
+    "open-in-new-tab": "在新标签页打开",
     "delete-workspace-confirm": "确定删除该知识库吗？知识库必须为空。",
     "workspace-title-placeholder": "知识库名称",
     "go-to-bookshelf": "前往书架",

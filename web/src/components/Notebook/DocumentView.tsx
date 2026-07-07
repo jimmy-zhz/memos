@@ -27,8 +27,10 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { useInstance } from "@/contexts/InstanceContext";
+import useMediaQuery from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
@@ -50,12 +52,15 @@ interface Props {
 const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onSaveHtml, onMove }: Props) => {
   const t = useTranslate();
   const { profile } = useInstance();
+  const isDesktop = useMediaQuery("lg");
   const isHtml = memo.docType === Memo_DocType.HTML;
   const isPdf = memo.docType === Memo_DocType.PDF;
   const pdfAttachment = isPdf ? memo.attachments.find((a) => a.type === "application/pdf") : undefined;
   const remainingAttachments = partitionInlinedAttachments(memo.attachments, memo.content).rest;
   const [mode, setMode] = useState<"preview" | "edit">("preview");
-  const [outlineCollapsed, setOutlineCollapsed] = useState(false);
+  const [outlineCollapsed, setOutlineCollapsed] = useState(
+    () => typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches,
+  );
   const [htmlDraft, setHtmlDraft] = useState(memo.content);
   const [titleDraft, setTitleDraft] = useState(memo.title);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
@@ -213,13 +218,24 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
             </div>
           )}
         </div>
-        {!isHtml && !isPdf && !outlineCollapsed && (
-          <div className="w-56 shrink-0 border-l border-border overflow-y-auto px-2 py-3 hidden lg:block">
+        {!isHtml && !isPdf && !outlineCollapsed && isDesktop && (
+          <div className="w-56 shrink-0 border-l border-border overflow-y-auto px-2 py-3">
             <div className="text-xs font-medium text-muted-foreground px-2 pb-2 uppercase tracking-wide">{t("notebook.outline")}</div>
             <DocumentOutline content={memo.content} containerRef={previewRef} />
           </div>
         )}
       </div>
+
+      {!isHtml && !isPdf && !isDesktop && (
+        <Sheet open={!outlineCollapsed} onOpenChange={(open) => setOutlineCollapsed(!open)}>
+          <SheetContent side="right" className="w-[85%] max-w-full overflow-y-auto px-2 py-3 bg-background">
+            <SheetHeader>
+              <SheetTitle>{t("notebook.outline")}</SheetTitle>
+            </SheetHeader>
+            <DocumentOutline content={memo.content} containerRef={previewRef} />
+          </SheetContent>
+        </Sheet>
+      )}
     </div>
   );
 };

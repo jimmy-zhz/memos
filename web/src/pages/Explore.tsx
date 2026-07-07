@@ -7,10 +7,14 @@ import { parseFilterQuery, stringifyFilters, useMemoFilterContext } from "@/cont
 import { useView } from "@/contexts/ViewContext";
 import { useMemoFilters, useMemoSorting } from "@/hooks";
 import useCurrentUser from "@/hooks/useCurrentUser";
+import usePageTitle from "@/hooks/usePageTitle";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { Memo, Visibility } from "@/types/proto/api/v1/memo_service_pb";
+import { useTranslate } from "@/utils/i18n";
 
 const Explore = () => {
+  const t = useTranslate();
+  usePageTitle(t("common.explore"));
   const currentUser = useCurrentUser();
   const { compactMode } = useView();
   const { hasFilter, removeFiltersByFactor } = useMemoFilterContext();

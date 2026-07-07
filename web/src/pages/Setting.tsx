@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useInstance } from "@/contexts/InstanceContext";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import useMediaQuery from "@/hooks/useMediaQuery";
+import usePageTitle from "@/hooks/usePageTitle";
 import { User_Role } from "@/types/proto/api/v1/user_service_pb";
 import { useTranslate } from "@/utils/i18n";
 
@@ -22,6 +23,7 @@ const isCommitSha = (commit: string) => /^[0-9a-f]{7,40}$/i.test(commit);
 
 const Setting = () => {
   const t = useTranslate();
+  usePageTitle(t("common.settings"));
   const sm = useMediaQuery("sm");
   const location = useLocation();
   const user = useCurrentUser();

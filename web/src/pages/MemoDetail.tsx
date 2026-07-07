@@ -12,6 +12,7 @@ import useMediaQuery from "@/hooks/useMediaQuery";
 import useMemoDetailError from "@/hooks/useMemoDetailError";
 import { useInfiniteMemoComments, useMemo } from "@/hooks/useMemoQueries";
 import { useSharedMemo, withShareAttachmentLinks } from "@/hooks/useMemoShareQueries";
+import usePageTitle from "@/hooks/usePageTitle";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 
@@ -40,6 +41,8 @@ const MemoDetail = () => {
   const error = isShareMode ? shareError : directError;
   const isLoading = isShareMode ? shareLoading : directLoading;
   const memoName = memo?.name ?? memoNameFromParams;
+
+  usePageTitle(memo?.title || memo?.content?.slice(0, 50));
 
   useMemoDetailError({
     error: error as Error | null,

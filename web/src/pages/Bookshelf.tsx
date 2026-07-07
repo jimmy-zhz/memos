@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import PromptDialog from "@/components/Notebook/PromptDialog";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { useLastOpened } from "@/hooks/useLastOpened";
+import usePageTitle from "@/hooks/usePageTitle";
 import { useCreateWorkspace, useWorkspaces } from "@/hooks/useWorkspaceQueries";
 import { useTranslate } from "@/utils/i18n";
 
@@ -21,6 +22,7 @@ const SPINE_COLORS = [
 
 const Bookshelf = () => {
   const t = useTranslate();
+  usePageTitle(t("bookshelf.title"));
   const navigate = useNavigate();
   const currentUser = useCurrentUser();
   const { data: workspaces = [] } = useWorkspaces();
@@ -29,7 +31,7 @@ const Bookshelf = () => {
   const [createOpen, setCreateOpen] = useState(false);
 
   const openWorkspace = async (name: string) => {
-    navigate("/", { state: { workspace: name } });
+    navigate({ pathname: "/", search: `?ws=${encodeURIComponent(name)}` }, { state: { workspace: name } });
     setLastOpened(name, "");
   };
 

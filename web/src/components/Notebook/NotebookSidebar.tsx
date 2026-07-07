@@ -31,6 +31,7 @@ interface Props {
   onRenameFolder: (path: string) => void;
   onMoveFolder: (path: string) => void;
   onDeleteFolder: (path: string) => void;
+  onOpenInNewTab?: () => void;
 }
 
 function filterTree(nodes: WorkspaceTreeNode[], query: string): WorkspaceTreeNode[] {
@@ -90,6 +91,7 @@ const NotebookSidebar = ({
   onRenameFolder,
   onMoveFolder,
   onDeleteFolder,
+  onOpenInNewTab,
 }: Props) => {
   const t = useTranslate();
   const [query, setQuery] = useState("");
@@ -119,7 +121,13 @@ const NotebookSidebar = ({
 
   return (
     <div className="w-full h-full flex flex-col gap-2 px-3 py-4">
-      <WorkspaceSelector workspaces={workspaces} value={workspaceName} onChange={onWorkspaceChange} onCreated={onWorkspaceChange} />
+      <WorkspaceSelector
+        workspaces={workspaces}
+        value={workspaceName}
+        onChange={onWorkspaceChange}
+        onCreated={onWorkspaceChange}
+        onOpenInNewTab={onOpenInNewTab}
+      />
 
       <div className="w-full flex items-center gap-1">
         <div className="relative flex-1">

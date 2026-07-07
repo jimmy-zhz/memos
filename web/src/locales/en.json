@@ -887,6 +887,7 @@
     "select-workspace": "Select workspace",
     "new-workspace": "New workspace",
     "rename-workspace": "Rename workspace",
+    "open-in-new-tab": "Open in new tab",
     "delete-workspace-confirm": "Delete this workspace? It must be empty.",
     "workspace-title-placeholder": "Workspace name",
     "go-to-bookshelf": "Go to bookshelf",

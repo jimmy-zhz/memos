@@ -1,4 +1,4 @@
-import { ArrowDownIcon, ArrowUpIcon, LibraryBigIcon, SettingsIcon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, ExternalLinkIcon, LibraryBigIcon, SettingsIcon } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -28,9 +28,10 @@ interface Props {
   value?: string;
   onChange: (name: string) => void;
   onCreated?: (name: string) => void;
+  onOpenInNewTab?: () => void;
 }
 
-const WorkspaceSelector = ({ workspaces, value, onChange, onCreated }: Props) => {
+const WorkspaceSelector = ({ workspaces, value, onChange, onCreated, onOpenInNewTab }: Props) => {
   const t = useTranslate();
   const createWorkspace = useCreateWorkspace();
   const updateWorkspace = useUpdateWorkspace();
@@ -70,6 +71,12 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onCreated }: Props) =>
         <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={() => setCreateOpen(true)}>{t("notebook.new-workspace")}</DropdownMenuItem>
           {current && <DropdownMenuItem onClick={() => setRenameOpen(true)}>{t("notebook.rename-workspace")}</DropdownMenuItem>}
+          {current && onOpenInNewTab && (
+            <DropdownMenuItem onClick={onOpenInNewTab}>
+              <ExternalLinkIcon className="w-4 h-4 mr-2" />
+              {t("notebook.open-in-new-tab")}
+            </DropdownMenuItem>
+          )}
           {current && workspaces.length > 1 && (
             <DropdownMenuItem
               variant="destructive"

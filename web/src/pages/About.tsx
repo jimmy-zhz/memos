@@ -4,6 +4,8 @@ import { TILE_SPRITES, type TileSprite } from "@/components/Placeholder/tileSpri
 import SettingGroup from "@/components/Settings/SettingGroup";
 import SettingSection from "@/components/Settings/SettingSection";
 import { Button } from "@/components/ui/button";
+import usePageTitle from "@/hooks/usePageTitle";
+import { useTranslate } from "@/utils/i18n";
 
 const SPRITE_SCALE = 2;
 
@@ -27,6 +29,8 @@ const BirdSprite = ({ sprite }: { sprite: TileSprite }) => {
 };
 
 const About = () => {
+  const t = useTranslate();
+  usePageTitle(t("common.about"));
   return (
     <section className="mx-auto w-full max-w-5xl min-h-full flex flex-col justify-start items-start sm:pt-3 md:pt-6 pb-8">
       <div className="w-full">

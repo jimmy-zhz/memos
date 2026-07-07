@@ -1,24 +1,15 @@
-import { BellIcon, CalendarDaysIcon, InfoIcon, LibraryBigIcon, PaperclipIcon, UserCircleIcon } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import useNotebookSidebarCollapsed from "@/hooks/useNotebookSidebarCollapsed";
+import usePrimaryNavLinks from "@/hooks/usePrimaryNavLinks";
 import useSidebarMode from "@/hooks/useSidebarMode";
-import { useNotifications } from "@/hooks/useUserQueries";
 import { cn } from "@/lib/utils";
 import { Routes } from "@/router";
-import { UserNotification_Status } from "@/types/proto/api/v1/user_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { toggleNotebookSidebarCollapsed } from "@/utils/notebookSidebar";
 import MemosLogo from "./MemosLogo";
 import UserMenu from "./UserMenu";
-
-interface NavLinkItem {
-  id: string;
-  path: string;
-  title: string;
-  icon: React.ReactNode;
-}
 
 interface Props {
   collapsed?: boolean;
@@ -29,70 +20,13 @@ const Navigation = (props: Props) => {
   const { collapsed, className } = props;
   const t = useTranslate();
   const currentUser = useCurrentUser();
-  const { data: notifications = [] } = useNotifications();
   const location = useLocation();
   const isHome = location.pathname === Routes.HOME;
   const notebookSidebarCollapsed = useNotebookSidebarCollapsed();
   const sidebarMode = useSidebarMode();
   const isMini = sidebarMode === "mini";
   const iconSizeClass = isMini ? "w-4 h-auto shrink-0" : "w-6 h-auto shrink-0";
-
-  const shelfNavLink: NavLinkItem = {
-    id: "header-shelf",
-    path: Routes.SHELF,
-    title: t("bookshelf.title"),
-    icon: <LibraryBigIcon className={iconSizeClass} />,
-  };
-  const exploreNavLink: NavLinkItem = {
-    id: "header-explore",
-    path: Routes.EXPLORE,
-    title: t("common.explore"),
-    icon: <CalendarDaysIcon className={iconSizeClass} />,
-  };
-  const aboutNavLink: NavLinkItem = {
-    id: "header-about",
-    path: Routes.ABOUT,
-    title: t("common.about"),
-    icon: <InfoIcon className={iconSizeClass} />,
-  };
-  const attachmentsNavLink: NavLinkItem = {
-    id: "header-attachments",
-    path: Routes.ATTACHMENTS,
-    title: t("common.attachments"),
-    icon: <PaperclipIcon className={iconSizeClass} />,
-  };
-  const unreadCount = notifications.filter((n) => n.status === UserNotification_Status.UNREAD).length;
-  const inboxNavLink: NavLinkItem = {
-    id: "header-inbox",
-    path: Routes.INBOX,
-    title: t("common.inbox"),
-    icon: (
-      <div className="relative">
-        <BellIcon className={iconSizeClass} />
-        {unreadCount > 0 && (
-          <span
-            className={cn(
-              "absolute -top-1 -right-1 flex items-center justify-center bg-primary text-primary-foreground font-semibold rounded-full border-2 border-background",
-              isMini ? "min-w-[14px] h-[14px] px-0.5 text-[8px]" : "min-w-[18px] h-[18px] px-1 text-[10px]",
-            )}
-          >
-            {unreadCount > 99 ? "99+" : unreadCount}
-          </span>
-        )}
-      </div>
-    ),
-  };
-  const signInNavLink: NavLinkItem = {
-    id: "header-auth",
-    path: Routes.AUTH,
-    title: t("common.sign-in"),
-    icon: <UserCircleIcon className={iconSizeClass} />,
-  };
-
-  const primaryNavLinks: NavLinkItem[] = currentUser
-    ? [shelfNavLink, exploreNavLink, attachmentsNavLink, inboxNavLink]
-    : [exploreNavLink, aboutNavLink, signInNavLink];
-  const inboxAriaLabel = unreadCount > 0 ? `${t("common.inbox")}, ${unreadCount} unread` : t("common.inbox");
+  const { primaryNavLinks, inboxAriaLabel } = usePrimaryNavLinks(iconSizeClass, isMini);
 
   return (
     <header className={cn("w-full h-full overflow-auto flex flex-col justify-between items-start gap-4", className)}>

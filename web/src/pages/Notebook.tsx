@@ -2,7 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
-import { useLocation } from "react-router-dom";
+import { useLocation, useSearchParams } from "react-router-dom";
 import DocumentView from "@/components/Notebook/DocumentView";
 import MoveFolderDialog from "@/components/Notebook/MoveFolderDialog";
 import NotebookSidebar from "@/components/Notebook/NotebookSidebar";
@@ -12,6 +12,7 @@ import useCurrentUser from "@/hooks/useCurrentUser";
 import { useLastOpened } from "@/hooks/useLastOpened";
 import { useCreateMemo, useDeleteMemo, useMemo as useMemoDetail, useUpdateMemo } from "@/hooks/useMemoQueries";
 import useNotebookSidebarCollapsed from "@/hooks/useNotebookSidebarCollapsed";
+import usePageTitle from "@/hooks/usePageTitle";
 import {
   useCreateWorkspaceFolder,
   useDeleteWorkspaceFolder,
@@ -58,10 +59,12 @@ const Notebook = () => {
   const currentUser = useCurrentUser();
   const queryClient = useQueryClient();
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { data: workspaces = [] } = useWorkspaces();
   const sidebarCollapsed = useNotebookSidebarCollapsed();
   const { getLastOpened, setLastOpened } = useLastOpened(currentUser?.name);
-  const requestedWorkspace = (location.state as { workspace?: string } | null)?.workspace;
+  const requestedWorkspace = (location.state as { workspace?: string } | null)?.workspace ?? searchParams.get("ws") ?? undefined;
+  const requestedMemo = searchParams.get("docId") ?? undefined;
 
   const [workspaceName, setWorkspaceName] = useState<string | undefined>(undefined);
   const [selectedMemo, setSelectedMemo] = useState<string | undefined>(undefined);
@@ -86,6 +89,7 @@ const Notebook = () => {
   const { data: memo } = useMemoDetail(selectedMemo ?? "", {
     enabled: !!selectedMemo,
   });
+  usePageTitle(memo?.title);
 
   const createMemo = useCreateMemo();
   const updateMemo = useUpdateMemo();
@@ -116,6 +120,10 @@ const Notebook = () => {
   useEffect(() => {
     if (restoredMemo.current || !workspaceName || tree.length === 0) return;
     restoredMemo.current = true;
+    if (requestedMemo && containsMemo(tree, requestedMemo)) {
+      setSelectedMemo(requestedMemo);
+      return;
+    }
     (async () => {
       const lastOpened = await getLastOpened();
       if (lastOpened && lastOpened.workspace === workspaceName && lastOpened.memo && containsMemo(tree, lastOpened.memo)) {
@@ -124,7 +132,7 @@ const Notebook = () => {
         setSelectedMemo(findFirstDocument(tree));
       }
     })();
-  }, [workspaceName, tree, getLastOpened]);
+  }, [workspaceName, tree, getLastOpened, requestedMemo]);
 
   useEffect(() => {
     if (workspaceName && selectedMemo) {
@@ -132,11 +140,32 @@ const Notebook = () => {
     }
   }, [workspaceName, selectedMemo, setLastOpened]);
 
-  const handleWorkspaceChange = useCallback((name: string) => {
-    setWorkspaceName(name);
-    setSelectedMemo(undefined);
-    restoredMemo.current = true; // don't re-restore memo on manual workspace switch
-  }, []);
+  const handleWorkspaceChange = useCallback(
+    (name: string) => {
+      setWorkspaceName(name);
+      setSelectedMemo(undefined);
+      restoredMemo.current = true; // don't re-restore memo on manual workspace switch
+      setSearchParams({ ws: name }, { replace: true });
+    },
+    [setSearchParams],
+  );
+
+  const handleSelectDocument = useCallback(
+    (memoName: string) => {
+      setSelectedMemo(memoName);
+      if (workspaceName) {
+        setSearchParams({ ws: workspaceName, docId: memoName }, { replace: true });
+      }
+    },
+    [workspaceName, setSearchParams],
+  );
+
+  const handleOpenInNewTab = useCallback(() => {
+    if (!workspaceName) return;
+    const params = new URLSearchParams({ ws: workspaceName });
+    if (selectedMemo) params.set("docId", selectedMemo);
+    window.open(`${window.location.origin}/?${params.toString()}`, "_blank", "noopener,noreferrer");
+  }, [workspaceName, selectedMemo]);
 
   const invalidateTree = useCallback(() => {
     if (workspaceName) {
@@ -351,7 +380,8 @@ const Notebook = () => {
             onWorkspaceChange={handleWorkspaceChange}
             tree={tree}
             selectedMemo={selectedMemo}
-            onSelectDocument={setSelectedMemo}
+            onSelectDocument={handleSelectDocument}
+            onOpenInNewTab={handleOpenInNewTab}
             archived={archived}
             onArchivedChange={setArchived}
             onNewDocument={(folderPath) => setNewDocDialog({ folderPath })}

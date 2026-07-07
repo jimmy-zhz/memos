@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
-import NavigationDrawer from "./NavigationDrawer";
+import MobileNavBar from "./MobileNavBar";
+import UserMenu from "./UserMenu";
 
 interface Props {
   className?: string;
@@ -37,8 +38,11 @@ const MobileHeader = (props: Props) => {
         className,
       )}
     >
-      {!sm && <NavigationDrawer />}
-      <div className="w-full flex flex-row justify-end items-center">{children}</div>
+      {!sm && <MobileNavBar />}
+      <div className="w-full flex flex-row justify-end items-center gap-1">
+        {children}
+        {!sm && <UserMenu collapsed mini />}
+      </div>
     </div>
   );
 };
