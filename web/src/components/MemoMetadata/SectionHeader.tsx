@@ -1,4 +1,5 @@
 import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -15,9 +16,10 @@ interface SectionHeaderProps {
   title: string;
   count: number;
   tabs?: SectionHeaderTab[];
+  actions?: ReactNode;
 }
 
-const SectionHeader = ({ icon: Icon, title, count, tabs }: SectionHeaderProps) => {
+const SectionHeader = ({ icon: Icon, title, count, tabs, actions }: SectionHeaderProps) => {
   return (
     <div className="flex items-center gap-1.5 px-2 py-1 border-b border-border bg-muted/30">
       <Icon className="w-3.5 h-3.5 text-muted-foreground" />
@@ -46,6 +48,8 @@ const SectionHeader = ({ icon: Icon, title, count, tabs }: SectionHeaderProps) =
           {title} ({count})
         </span>
       )}
+
+      {actions && <div className="ml-auto flex items-center gap-0.5">{actions}</div>}
     </div>
   );
 };

@@ -70,7 +70,7 @@ const Bookshelf = () => {
                 <div className="relative flex-1 flex items-center justify-center px-2 min-h-0">
                   <div className="w-[65%] aspect-square translate-x-[6%] rounded-[2px] overflow-hidden">
                     {workspace.coverImage && (
-                      <img src={workspace.coverImage} alt="" className="w-full h-full object-cover" />
+                      <img src={workspace.coverImage} alt="" className="w-full h-full object-cover opacity-60" />
                     )}
                   </div>
                 </div>

@@ -1,4 +1,15 @@
-import { ChevronDownIcon, ChevronUpIcon, FileAudioIcon, FileIcon, PaperclipIcon, PauseIcon, PlayIcon, XIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  ChevronUpIcon,
+  EyeIcon,
+  EyeOffIcon,
+  FileAudioIcon,
+  FileIcon,
+  PaperclipIcon,
+  PauseIcon,
+  PlayIcon,
+  XIcon,
+} from "lucide-react";
 import { type FC, type MouseEvent, useMemo, useRef, useState } from "react";
 import type { AttachmentItem, LocalFile } from "@/components/MemoEditor/types/attachment";
 import { getAudioRecordingTimeLabel, toAttachmentItems } from "@/components/MemoEditor/types/attachment";
@@ -18,6 +29,12 @@ interface AttachmentListEditorProps {
   onAttachmentsChange?: (attachments: Attachment[]) => void;
   onLocalFilesChange?: (localFiles: LocalFile[]) => void;
   onRemoveLocalFile?: (previewUrl: string) => void;
+  // Count of attachments referenced inline in the memo content (hidden from `attachments`
+  // unless `showInlineAttachments` is on). Lets the section header surface a toggle even
+  // when there are no other attachments to show.
+  hiddenInlineCount?: number;
+  showInlineAttachments?: boolean;
+  onToggleShowInlineAttachments?: () => void;
 }
 
 const AttachmentItemActions: FC<{
@@ -223,6 +240,9 @@ const AttachmentListEditor: FC<AttachmentListEditorProps> = ({
   onAttachmentsChange,
   onLocalFilesChange,
   onRemoveLocalFile,
+  hiddenInlineCount = 0,
+  showInlineAttachments = false,
+  onToggleShowInlineAttachments,
 }) => {
   const [previewState, setPreviewState] = useState<{ open: boolean; initialIndex: number }>({ open: false, initialIndex: 0 });
   const items = toAttachmentItems(attachments, localFiles);
@@ -311,13 +331,35 @@ const AttachmentListEditor: FC<AttachmentListEditorProps> = ({
     setPreviewState({ open: true, initialIndex: previewIndex });
   };
 
-  if (items.length === 0) {
+  if (items.length === 0 && hiddenInlineCount === 0) {
     return null;
   }
 
+  const toggleButton = onToggleShowInlineAttachments && hiddenInlineCount > 0 && (
+    <Button
+      variant="ghost"
+      size="icon-sm"
+      onClick={onToggleShowInlineAttachments}
+      title={showInlineAttachments ? "Hide inline attachments" : "Show inline attachments"}
+      aria-label={showInlineAttachments ? "Hide inline attachments" : "Show inline attachments"}
+    >
+      {showInlineAttachments ? (
+        <EyeOffIcon className="h-3.5 w-3.5 text-muted-foreground" />
+      ) : (
+        <EyeIcon className="h-3.5 w-3.5 text-muted-foreground" />
+      )}
+    </Button>
+  );
+
   return (
     <>
-      <MetadataSection icon={PaperclipIcon} title="Attachments" count={items.length} contentClassName="flex flex-col gap-1 p-1 sm:p-1.5">
+      <MetadataSection
+        icon={PaperclipIcon}
+        title="Attachments"
+        count={items.length}
+        actions={toggleButton}
+        contentClassName="flex flex-col gap-1 p-1 sm:p-1.5"
+      >
         {items.map((item) => {
           const itemList = item.isLocal ? localItems : attachmentItems;
           const itemIndex = itemList.findIndex((entry) => entry.id === item.id);

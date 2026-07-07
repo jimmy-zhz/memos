@@ -1,4 +1,4 @@
-import type { FC } from "react";
+import { type FC, useState } from "react";
 import { AttachmentListEditor, LocationDisplayEditor, RelationListEditor } from "@/components/MemoMetadata";
 import { partitionInlinedAttachments } from "@/utils/attachment";
 import { useEditorContext, useEditorSelector } from "../state";
@@ -11,19 +11,27 @@ export const EditorMetadata: FC<EditorMetadataProps> = ({ memoName }) => {
   const localFiles = useEditorSelector((s) => s.localFiles);
   const relations = useEditorSelector((s) => s.metadata.relations);
   const location = useEditorSelector((s) => s.metadata.location);
+  const [showInlineAttachments, setShowInlineAttachments] = useState(false);
 
   // Attachments already referenced inline in content (pasted/dropped media) render as part of
-  // the markdown itself, so they're hidden here — only "real" attachments are editable/removable.
+  // the markdown itself, so they're hidden here by default — only "real" attachments are
+  // editable/removable. The eye toggle below reveals them so an inline-referenced attachment
+  // that's no longer wanted can still be deleted.
   const { inlined, rest: visibleAttachments } = partitionInlinedAttachments(attachments, content);
 
   return (
     <div className="w-full flex flex-col gap-2">
       <AttachmentListEditor
-        attachments={visibleAttachments}
+        attachments={showInlineAttachments ? attachments : visibleAttachments}
         localFiles={localFiles}
-        onAttachmentsChange={(next) => dispatch(actions.setMetadata({ attachments: [...next, ...inlined] }))}
+        onAttachmentsChange={(next) =>
+          dispatch(actions.setMetadata({ attachments: showInlineAttachments ? next : [...next, ...inlined] }))
+        }
         onLocalFilesChange={(next) => dispatch(actions.setLocalFiles(next))}
         onRemoveLocalFile={(previewUrl) => dispatch(actions.removeLocalFile(previewUrl))}
+        hiddenInlineCount={inlined.length}
+        showInlineAttachments={showInlineAttachments}
+        onToggleShowInlineAttachments={() => setShowInlineAttachments((prev) => !prev)}
       />
 
       <RelationListEditor
