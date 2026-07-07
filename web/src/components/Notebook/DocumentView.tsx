@@ -36,7 +36,7 @@ import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
-import DocumentOutline from "./DocumentOutline";
+import DocumentOutline, { ATTACHMENTS_ANCHOR_ID } from "./DocumentOutline";
 import MoveDocumentDialog from "./MoveDocumentDialog";
 
 interface Props {
@@ -197,7 +197,7 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
             <div className="px-6 py-4">
               <MemoContent content={memo.content} memoName={memo.name} />
               {remainingAttachments.length > 0 && (
-                <div className="mt-6 border-t border-border pt-4">
+                <div id={ATTACHMENTS_ANCHOR_ID} className="mt-6 border-t border-border pt-4">
                   <AttachmentListView attachments={remainingAttachments} />
                 </div>
               )}
@@ -219,9 +219,9 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
           )}
         </div>
         {!isHtml && !isPdf && !outlineCollapsed && isDesktop && (
-          <div className="w-56 shrink-0 border-l border-border overflow-y-auto px-2 py-3">
+          <div className="w-56 shrink-0 min-h-0 border-l border-border flex flex-col px-2 py-3">
             <div className="text-xs font-medium text-muted-foreground px-2 pb-2 uppercase tracking-wide">{t("notebook.outline")}</div>
-            <DocumentOutline content={memo.content} containerRef={previewRef} />
+            <DocumentOutline content={memo.content} containerRef={previewRef} hasAttachments={remainingAttachments.length > 0} />
           </div>
         )}
       </div>
@@ -232,7 +232,7 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
             <SheetHeader>
               <SheetTitle>{t("notebook.outline")}</SheetTitle>
             </SheetHeader>
-            <DocumentOutline content={memo.content} containerRef={previewRef} />
+            <DocumentOutline content={memo.content} containerRef={previewRef} hasAttachments={remainingAttachments.length > 0} />
           </SheetContent>
         </Sheet>
       )}

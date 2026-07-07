@@ -38,6 +38,17 @@ const AttachmentPreview = () => {
   const isPdf = attachment ? isPdfAttachment(attachment) : false;
 
   useEffect(() => {
+    if (!attachment) {
+      return;
+    }
+    const prevTitle = document.title;
+    document.title = attachment.filename;
+    return () => {
+      document.title = prevTitle;
+    };
+  }, [attachment]);
+
+  useEffect(() => {
     if (!attachment || !isHtml) {
       return;
     }
