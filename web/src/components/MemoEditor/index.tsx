@@ -34,6 +34,7 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
   cacheKey,
   memo,
   parentMemoName,
+  pdfAnnotation,
   autoFocus,
   placeholder,
   defaultCreateTime,
@@ -253,7 +254,7 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
     dispatch(actions.setLoading("saving", true));
 
     try {
-      const result = await memoService.save(state, { memoName, parentMemoName });
+      const result = await memoService.save(state, { memoName, parentMemoName, pdfAnnotation });
 
       if (!result.hasChanges) {
         toast.error(t("editor.no-changes-detected"));

@@ -3,6 +3,10 @@
 首页编辑框（`MemoEditor`）基于 CodeMirror 6 实现，提供 Notion / Obsidian 风格的格式化快捷键。`Mod` 在 macOS 上是 `Cmd`，在 Windows / Linux 上是 `Ctrl`。
 
 ## 已支持
+> 12ljlj
+
+>! ljlfa
+
 
 | 快捷键 | 功能 | 说明 |
 | --- | --- | --- |

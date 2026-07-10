@@ -1,10 +1,10 @@
 import { ArrowUpIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
+import { isHtmlAttachment, isPdfAttachment } from "@/components/MemoMetadata/Attachment/attachmentHelpers";
 import { PdfDocumentView } from "@/components/PdfViewer/PdfDocumentView";
 import { attachmentNamePrefix } from "@/helpers/resource-names";
 import { useAttachment } from "@/hooks/useAttachmentQueries";
-import { isHtmlAttachment, isPdfAttachment } from "@/components/MemoMetadata/Attachment/attachmentHelpers";
 import { cn } from "@/lib/utils";
 import { getAttachmentUrl } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
@@ -95,7 +95,9 @@ const AttachmentPreview = () => {
 
   if (error || !attachment || (!isPdf && !isHtml)) {
     return (
-      <div className="flex h-screen w-screen items-center justify-center text-sm text-destructive">{t("attachment-preview.unavailable")}</div>
+      <div className="flex h-screen w-screen items-center justify-center text-sm text-destructive">
+        {t("attachment-preview.unavailable")}
+      </div>
     );
   }
 
@@ -113,17 +115,20 @@ const AttachmentPreview = () => {
         <div ref={toolbarSlotRef} className="flex shrink-0 items-center gap-1" />
       </div>
       <div ref={scrollContainerRef} onScroll={handleScroll} className="h-full overflow-y-auto pt-11">
-        {isPdf && toolbarSlot && <PdfDocumentView url={getAttachmentUrl(attachment)} toolbarSlot={toolbarSlot} className="px-6 py-4" />}
+        {isPdf && toolbarSlot && (
+          <PdfDocumentView
+            url={getAttachmentUrl(attachment)}
+            toolbarSlot={toolbarSlot}
+            className="px-6 py-4"
+            parentMemoName={attachment.memo}
+            attachmentName={attachment.name}
+          />
+        )}
         {isHtml &&
           (htmlError ? (
             <div className="flex h-full items-center justify-center text-sm text-destructive">{t("attachment-preview.unavailable")}</div>
           ) : (
-            <iframe
-              title={attachment.filename}
-              srcDoc={htmlContent ?? ""}
-              sandbox="allow-same-origin"
-              className="h-full w-full border-0"
-            />
+            <iframe title={attachment.filename} srcDoc={htmlContent ?? ""} sandbox="allow-same-origin" className="h-full w-full border-0" />
           ))}
       </div>
       <button

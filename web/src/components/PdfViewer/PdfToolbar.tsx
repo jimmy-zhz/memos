@@ -1,4 +1,12 @@
-import { BookOpenIcon, ChevronLeftIcon, ChevronRightIcon, ScrollTextIcon, ZoomInIcon, ZoomOutIcon } from "lucide-react";
+import {
+  BookOpenIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  MessageSquarePlusIcon,
+  ScrollTextIcon,
+  ZoomInIcon,
+  ZoomOutIcon,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
@@ -21,6 +29,8 @@ interface Props {
   onZoomOut: () => void;
   onZoomIn: () => void;
   className?: string;
+  annotateMode?: boolean;
+  onToggleAnnotateMode?: () => void;
 }
 
 export const PdfToolbar = ({
@@ -40,6 +50,8 @@ export const PdfToolbar = ({
   onZoomOut,
   onZoomIn,
   className,
+  annotateMode,
+  onToggleAnnotateMode,
 }: Props) => {
   const t = useTranslate();
 
@@ -72,6 +84,11 @@ export const PdfToolbar = ({
       <Button variant="ghost" size="icon" disabled={!canZoomIn} onClick={onZoomIn}>
         <ZoomInIcon className="w-4 h-4" />
       </Button>
+      {onToggleAnnotateMode && (
+        <Button variant={annotateMode ? "secondary" : "ghost"} size="icon" onClick={onToggleAnnotateMode} title={t("pdf.add-annotation")}>
+          <MessageSquarePlusIcon className="w-4 h-4" />
+        </Button>
+      )}
     </div>
   );
 };

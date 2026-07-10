@@ -177,7 +177,15 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
         <div className={cn("flex-1 min-w-0", mode === "edit" ? "overflow-hidden" : "overflow-y-auto")} ref={previewRef}>
           {isPdf ? (
             pdfAttachment &&
-            pdfToolbarSlot && <PdfDocumentView url={getAttachmentUrl(pdfAttachment)} toolbarSlot={pdfToolbarSlot} className="px-6 py-4" />
+            pdfToolbarSlot && (
+              <PdfDocumentView
+                url={getAttachmentUrl(pdfAttachment)}
+                toolbarSlot={pdfToolbarSlot}
+                className="px-6 py-4"
+                parentMemoName={memo.name}
+                attachmentName={pdfAttachment.name}
+              />
+            )
           ) : isHtml ? (
             mode === "preview" ? (
               <iframe

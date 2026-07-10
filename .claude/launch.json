@@ -19,6 +19,27 @@
       "runtimeArgs": ["vite", "--port", "3012", "--strictPort"],
       "cwd": "web",
       "port": 3012
+    },
+    {
+      "name": "frontend-alert-verify",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "3099", "--strictPort"],
+      "cwd": "web",
+      "port": 3099
+    },
+    {
+      "name": "backend-verify2",
+      "runtimeExecutable": "go",
+      "runtimeArgs": ["run", "./cmd/memos", "--port", "8093"],
+      "port": 8093
+    },
+    {
+      "name": "frontend-verify3",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["vite", "--port", "3031", "--strictPort"],
+      "cwd": "web",
+      "port": 3031,
+      "env": { "DEV_PROXY_SERVER": "http://localhost:8093" }
     }
   ]
 }

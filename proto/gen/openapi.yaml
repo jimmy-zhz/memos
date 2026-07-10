@@ -3718,6 +3718,12 @@ components:
                     type: string
                     description: Optional. The document type. Defaults to MARKDOWN.
                     format: enum
+                pdfAnnotation:
+                    allOf:
+                        - $ref: '#/components/schemas/PdfAnnotation'
+                    description: |-
+                        Optional. Set when this memo is a comment anchored to a location within
+                         a PDF attachment.
         MemoRelation:
             required:
                 - memo
@@ -3859,6 +3865,41 @@ components:
                         type: string
                 fieldMapping:
                     $ref: '#/components/schemas/FieldMapping'
+        PdfAnnotation:
+            required:
+                - attachmentName
+                - page
+                - x
+                - y
+                - width
+                - height
+            type: object
+            properties:
+                attachmentName:
+                    type: string
+                    description: |-
+                        The name of the attachment this annotation is anchored to.
+                         Format: attachments/{uid}
+                page:
+                    type: integer
+                    description: 1-based page number.
+                    format: int32
+                x:
+                    type: number
+                    description: Normalized (0~1) rect relative to the unrotated page dimensions.
+                    format: double
+                y:
+                    type: number
+                    format: double
+                width:
+                    type: number
+                    format: double
+                height:
+                    type: number
+                    format: double
+                textSnippet:
+                    type: string
+                    description: Optional selected text snippet, used as a fallback anchor if the rect drifts.
         PersonalAccessToken:
             type: object
             properties:

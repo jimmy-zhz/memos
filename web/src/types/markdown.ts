@@ -88,3 +88,15 @@ export function isTaskListItemElement(node: HastElement): boolean {
   const type = node.properties?.type;
   return typeof type === "string" && type === "checkbox";
 }
+
+export function getAlertType(node: HastElement): string | undefined {
+  // hast camelCases unrecognized `data-*` hProperties keys (data-alert -> dataAlert);
+  // the "data-alert" form only reappears once this is serialized back to a DOM attribute.
+  const dataAlert = node.properties?.dataAlert;
+  return typeof dataAlert === "string" && dataAlert !== "" ? dataAlert : undefined;
+}
+
+export function getAlertIcon(node: HastElement): string | undefined {
+  const dataAlertIcon = node.properties?.dataAlertIcon;
+  return typeof dataAlertIcon === "string" && dataAlertIcon !== "" ? dataAlertIcon : undefined;
+}

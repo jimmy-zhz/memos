@@ -934,7 +934,11 @@
     "load-failed": "Failed to load PDF.",
     "view-details": "View details",
     "uploading": "Uploading…",
-    "toggle-orientation": "Toggle scroll/page view"
+    "toggle-orientation": "Toggle scroll/page view",
+    "add-annotation": "Add a note",
+    "annotations": "Notes",
+    "no-annotations": "No notes yet. Toggle \"Add a note\" and select some text to write one about it.",
+    "page-n": "Page {{page}}"
   },
   "bookshelf": {
     "title": "Bookshelf",

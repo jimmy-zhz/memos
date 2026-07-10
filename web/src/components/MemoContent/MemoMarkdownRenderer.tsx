@@ -8,8 +8,9 @@ import rehypeSanitize from "rehype-sanitize";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
-import { isMentionElement, isTagElement, isTaskListItemElement } from "@/types/markdown";
+import { getAlertIcon, getAlertType, isMentionElement, isTagElement, isTaskListItemElement } from "@/types/markdown";
 import { rehypeHeadingId } from "@/utils/rehype-plugins/rehype-heading-id";
+import { remarkAlert } from "@/utils/remark-plugins/remark-alert";
 import { remarkDisableSetext } from "@/utils/remark-plugins/remark-disable-setext";
 import { remarkMention } from "@/utils/remark-plugins/remark-mention";
 import { remarkPreserveType } from "@/utils/remark-plugins/remark-preserve-type";
@@ -19,7 +20,7 @@ import { CodeBlock } from "./CodeBlock";
 import { SANITIZE_SCHEMA } from "./constants";
 import { MarkdownRenderContext, rootMarkdownRenderContext } from "./MarkdownRenderContext";
 import { Mention } from "./Mention";
-import { AnchorLink, Blockquote, Heading, HorizontalRule, Image, InlineCode, Link, List, ListItem, Paragraph } from "./markdown";
+import { Alert, AnchorLink, Blockquote, Heading, HorizontalRule, Image, InlineCode, Link, List, ListItem, Paragraph } from "./markdown";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "./Table";
 import { Tag } from "./Tag";
 import { TaskListItem } from "./TaskListItem";
@@ -102,7 +103,21 @@ export const MemoMarkdownRenderer = ({ content, resolvedMentionUsernames, memoNa
       </Heading>
     ),
     p: ({ children, ...props }) => <Paragraph {...props}>{children}</Paragraph>,
-    blockquote: ({ children, ...props }) => <Blockquote {...props}>{children}</Blockquote>,
+    blockquote: ({ children, node, ...props }) => {
+      const alertType = node && getAlertType(node);
+      if (alertType) {
+        return (
+          <Alert {...props} node={node} alertType={alertType} alertIcon={getAlertIcon(node)}>
+            {children}
+          </Alert>
+        );
+      }
+      return (
+        <Blockquote {...props} node={node}>
+          {children}
+        </Blockquote>
+      );
+    },
     hr: (props) => <HorizontalRule {...props} />,
     ul: ({ children, ...props }) => <List {...props}>{children}</List>,
     ol: ({ children, ...props }) => (
@@ -150,6 +165,7 @@ export const MemoMarkdownRenderer = ({ content, resolvedMentionUsernames, memoNa
           remarkBreaks,
           remarkMention,
           remarkTag,
+          remarkAlert,
           remarkPreserveType,
         ]}
         rehypePlugins={[

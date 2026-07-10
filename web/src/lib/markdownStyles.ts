@@ -79,3 +79,17 @@ export const tagStyles = {
 export const mentionStyles = {
   base: "text-primary underline-offset-2",
 } as const;
+
+/**
+ * GitHub-style alert callout styling for the read-only memo view
+ * (MemoContent/markdown/Alert.tsx), keyed by alert type. Each entry pairs a
+ * default icon with border/background/text colors; `[!TYPE(icon)]` in the
+ * source overrides the icon only, colors stay tied to the type.
+ */
+export const alertStyles: Record<string, { icon: string; classes: string }> = {
+  note: { icon: "ℹ️", classes: "border-primary/40 bg-primary/10 text-foreground" },
+  tip: { icon: "💡", classes: "border-emerald-500/40 bg-emerald-500/10 text-foreground" },
+  important: { icon: "❗", classes: "border-violet-500/40 bg-violet-500/10 text-foreground" },
+  warning: { icon: "⚠️", classes: "border-amber-500/40 bg-amber-500/10 text-foreground" },
+  caution: { icon: "🚫", classes: "border-red-500/40 bg-red-500/10 text-foreground" },
+} as const;

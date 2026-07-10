@@ -1,7 +1,11 @@
+import { MessageSquarePlusIcon } from "lucide-react";
 import type * as PdfJs from "pdfjs-dist";
 import { AnnotationLayer, TextLayer } from "pdfjs-dist";
 import { useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { PdfAnnotationLayer, type PdfAnnotationRect } from "./PdfAnnotationLayer";
+import type { PdfAnnotationEntry } from "./usePdfAnnotations";
 import "pdfjs-dist/web/pdf_viewer.css";
 
 // Minimal IPDFLinkService: we only need external/URL links to open in a new tab.
@@ -30,14 +34,37 @@ interface Props {
   /** Defer rendering until the canvas scrolls near the viewport (used in continuous vertical scroll mode). */
   lazy?: boolean;
   className?: string;
+  annotations?: PdfAnnotationEntry[];
+  selectedAnnotationMemoName?: string;
+  /** When true, selecting text in this page's text layer surfaces an "add note" button. */
+  annotateMode?: boolean;
+  onAnnotationSelect?: (memoName: string) => void;
+  onAnnotationCreate?: (rect: PdfAnnotationRect, textSnippet: string) => void;
 }
 
-export const PdfPageCanvas = ({ doc, pageNumber, scale, lazy, className }: Props) => {
+interface PendingSelection {
+  rect: PdfAnnotationRect;
+  text: string;
+}
+
+export const PdfPageCanvas = ({
+  doc,
+  pageNumber,
+  scale,
+  lazy,
+  className,
+  annotations,
+  selectedAnnotationMemoName,
+  annotateMode,
+  onAnnotationSelect,
+  onAnnotationCreate,
+}: Props) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
   const annotationLayerRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [shouldRender, setShouldRender] = useState(!lazy);
+  const [pendingSelection, setPendingSelection] = useState<PendingSelection | null>(null);
 
   useEffect(() => {
     if (!lazy || shouldRender) return;
@@ -138,11 +165,80 @@ export const PdfPageCanvas = ({ doc, pageNumber, scale, lazy, className }: Props
     };
   }, [doc, pageNumber, scale, shouldRender]);
 
+  // Surfaces an "add note" button once the user finishes selecting text within this
+  // page's text layer, in annotate mode. The button's position/size (and the anchor
+  // rect passed to onAnnotationCreate) come from the selection Range's client rects,
+  // normalized against the page wrapper so they stay aligned across zoom/orientation.
+  useEffect(() => {
+    if (!annotateMode) {
+      setPendingSelection(null);
+      return;
+    }
+    const handleSelectionChange = () => {
+      const selection = window.getSelection();
+      const wrapper = wrapperRef.current;
+      const textLayerEl = textLayerRef.current;
+      if (!selection || selection.isCollapsed || selection.rangeCount === 0 || !wrapper || !textLayerEl) {
+        setPendingSelection(null);
+        return;
+      }
+      const range = selection.getRangeAt(0);
+      if (!textLayerEl.contains(range.commonAncestorContainer)) {
+        setPendingSelection(null);
+        return;
+      }
+      const text = selection.toString().trim();
+      const rects = Array.from(range.getClientRects());
+      if (!text || rects.length === 0) {
+        setPendingSelection(null);
+        return;
+      }
+      const wrapperRect = wrapper.getBoundingClientRect();
+      if (wrapperRect.width === 0 || wrapperRect.height === 0) return;
+      const left = Math.min(...rects.map((r) => r.left));
+      const top = Math.min(...rects.map((r) => r.top));
+      const right = Math.max(...rects.map((r) => r.right));
+      const bottom = Math.max(...rects.map((r) => r.bottom));
+      setPendingSelection({
+        rect: {
+          x: (left - wrapperRect.left) / wrapperRect.width,
+          y: (top - wrapperRect.top) / wrapperRect.height,
+          width: (right - left) / wrapperRect.width,
+          height: (bottom - top) / wrapperRect.height,
+        },
+        text,
+      });
+    };
+    document.addEventListener("selectionchange", handleSelectionChange);
+    return () => document.removeEventListener("selectionchange", handleSelectionChange);
+  }, [annotateMode]);
+
   return (
     <div ref={wrapperRef} className={cn("relative", className)}>
       <canvas ref={canvasRef} className="dark:brightness-90 dark:invert-[0.93] dark:hue-rotate-180" />
       <div ref={textLayerRef} className="textLayer absolute top-0 left-0" />
       <div ref={annotationLayerRef} className="annotationLayer absolute top-0 left-0" />
+      {(annotations?.length || pendingSelection) && (
+        <PdfAnnotationLayer annotations={annotations ?? []} selectedMemoName={selectedAnnotationMemoName} onSelect={onAnnotationSelect} />
+      )}
+      {pendingSelection && (
+        <Button
+          size="sm"
+          className="absolute -translate-y-full shadow-md"
+          style={{ left: `${pendingSelection.rect.x * 100}%`, top: `${pendingSelection.rect.y * 100}%` }}
+          onMouseDown={(e) => {
+            // Prevent the button click from collapsing the selection before onClick fires.
+            e.preventDefault();
+          }}
+          onClick={() => {
+            onAnnotationCreate?.(pendingSelection.rect, pendingSelection.text);
+            window.getSelection()?.removeAllRanges();
+            setPendingSelection(null);
+          }}
+        >
+          <MessageSquarePlusIcon className="w-3.5 h-3.5" />
+        </Button>
+      )}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import type { Location, Memo, Visibility } from "@/types/proto/api/v1/memo_service_pb";
+import type { Location, Memo, PdfAnnotation, Visibility } from "@/types/proto/api/v1/memo_service_pb";
 import type { AudioRecorderStatus } from "../hooks/useAudioRecorder";
 
 export interface MemoEditorProps {
@@ -8,6 +8,8 @@ export interface MemoEditorProps {
   /** Existing memo to edit. When provided, the editor initializes from it without fetching. */
   memo?: Memo;
   parentMemoName?: string;
+  /** Anchors the created comment to a location within a PDF attachment (create mode only). */
+  pdfAnnotation?: PdfAnnotation;
   autoFocus?: boolean;
   /**
    * Default `createTime` for a *new* memo (create mode only). When set, the

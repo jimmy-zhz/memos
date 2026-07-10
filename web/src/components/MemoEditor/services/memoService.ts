@@ -4,7 +4,7 @@ import { isEqual } from "lodash-es";
 import { memoServiceClient } from "@/connect";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { AttachmentSchema } from "@/types/proto/api/v1/attachment_service_pb";
-import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
+import type { Memo, PdfAnnotation } from "@/types/proto/api/v1/memo_service_pb";
 import { MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import type { EditorState } from "../state";
 import { uploadService } from "./uploadService";
@@ -79,6 +79,7 @@ export const memoService = {
     options: {
       memoName?: string;
       parentMemoName?: string;
+      pdfAnnotation?: PdfAnnotation;
     },
   ): Promise<{ memoName: string; hasChanges: boolean }> {
     // 1. Upload local files first
@@ -108,6 +109,7 @@ export const memoService = {
       attachments: toAttachmentReferences(allAttachments),
       relations: state.metadata.relations,
       location: state.metadata.location,
+      pdfAnnotation: options.pdfAnnotation,
       createTime: state.timestamps.createTime ? timestampFromDate(state.timestamps.createTime) : undefined,
       updateTime: state.timestamps.updateTime ? timestampFromDate(state.timestamps.updateTime) : undefined,
     });

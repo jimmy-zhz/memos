@@ -24,9 +24,7 @@ export const EditorMetadata: FC<EditorMetadataProps> = ({ memoName }) => {
       <AttachmentListEditor
         attachments={showInlineAttachments ? attachments : visibleAttachments}
         localFiles={localFiles}
-        onAttachmentsChange={(next) =>
-          dispatch(actions.setMetadata({ attachments: showInlineAttachments ? next : [...next, ...inlined] }))
-        }
+        onAttachmentsChange={(next) => dispatch(actions.setMetadata({ attachments: showInlineAttachments ? next : [...next, ...inlined] }))}
         onLocalFilesChange={(next) => dispatch(actions.setLocalFiles(next))}
         onRemoveLocalFile={(previewUrl) => dispatch(actions.removeLocalFile(previewUrl))}
         hiddenInlineCount={inlined.length}

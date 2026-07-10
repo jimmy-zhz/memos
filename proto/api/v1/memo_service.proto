@@ -284,6 +284,10 @@ message Memo {
   // Optional. The document type. Defaults to MARKDOWN.
   DocType doc_type = 22 [(google.api.field_behavior) = OPTIONAL];
 
+  // Optional. Set when this memo is a comment anchored to a location within
+  // a PDF attachment.
+  optional PdfAnnotation pdf_annotation = 23 [(google.api.field_behavior) = OPTIONAL];
+
   enum DocType {
     DOC_TYPE_UNSPECIFIED = 0;
     MARKDOWN = 1;
@@ -311,6 +315,24 @@ message Location {
 
   // The longitude of the location.
   double longitude = 3 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message PdfAnnotation {
+  // The name of the attachment this annotation is anchored to.
+  // Format: attachments/{uid}
+  string attachment_name = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // 1-based page number.
+  int32 page = 2 [(google.api.field_behavior) = REQUIRED];
+
+  // Normalized (0~1) rect relative to the unrotated page dimensions.
+  double x = 3 [(google.api.field_behavior) = REQUIRED];
+  double y = 4 [(google.api.field_behavior) = REQUIRED];
+  double width = 5 [(google.api.field_behavior) = REQUIRED];
+  double height = 6 [(google.api.field_behavior) = REQUIRED];
+
+  // Optional selected text snippet, used as a fallback anchor if the rect drifts.
+  string text_snippet = 7 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message CreateMemoRequest {

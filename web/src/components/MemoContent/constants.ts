@@ -69,6 +69,7 @@ export const SANITIZE_SCHEMA = {
     input: INPUT_ATTRIBUTES,
     code: [...(defaultSchema.attributes?.code || []), ["className", ...KATEX_INLINE_CLASS_NAMES, ...KATEX_BLOCK_CLASS_NAMES]],
     span: [...(defaultSchema.attributes?.span || []), ["className", ...SPAN_CLASS_NAMES], ["aria*"], ["data*"]],
+    blockquote: [...(defaultSchema.attributes?.blockquote || []), ["data*"]],
     iframe: [
       ["src", ...TRUSTED_IFRAME_SRC_PATTERNS],
       "width",

@@ -1,7 +1,9 @@
 import type * as PdfJs from "pdfjs-dist";
 import type { RefObject } from "react";
 import { cn } from "@/lib/utils";
+import type { PdfAnnotationRect } from "./PdfAnnotationLayer";
 import { PdfPageCanvas } from "./PdfPageCanvas";
+import type { PdfAnnotationEntry } from "./usePdfAnnotations";
 import type { PdfOrientation } from "./usePdfViewerState";
 
 interface Props {
@@ -13,16 +15,45 @@ interface Props {
   pagesPerView: number;
   containerRef: RefObject<HTMLDivElement | null>;
   className?: string;
+  annotationsByPage?: Map<number, PdfAnnotationEntry[]>;
+  selectedAnnotationMemoName?: string;
+  annotateMode?: boolean;
+  onAnnotationSelect?: (memoName: string) => void;
+  onAnnotationCreate?: (page: number, rect: PdfAnnotationRect, textSnippet: string) => void;
 }
 
-export const PdfPages = ({ doc, numPages, pageNumber, scale, orientation, pagesPerView, containerRef, className }: Props) => {
+export const PdfPages = ({
+  doc,
+  numPages,
+  pageNumber,
+  scale,
+  orientation,
+  pagesPerView,
+  containerRef,
+  className,
+  annotationsByPage,
+  selectedAnnotationMemoName,
+  annotateMode,
+  onAnnotationSelect,
+  onAnnotationCreate,
+}: Props) => {
   if (!doc) return <div ref={containerRef} className={className} />;
+
+  const pageProps = (n: number) => ({
+    annotations: annotationsByPage?.get(n),
+    selectedAnnotationMemoName,
+    annotateMode,
+    onAnnotationSelect,
+    onAnnotationCreate: onAnnotationCreate
+      ? (rect: PdfAnnotationRect, textSnippet: string) => onAnnotationCreate(n, rect, textSnippet)
+      : undefined,
+  });
 
   if (orientation === "vertical") {
     return (
       <div ref={containerRef} className={cn("w-full flex flex-col items-center gap-4 overflow-y-auto", className)}>
         {Array.from({ length: numPages }, (_, i) => i + 1).map((n) => (
-          <PdfPageCanvas key={n} doc={doc} pageNumber={n} scale={scale} lazy />
+          <PdfPageCanvas key={n} doc={doc} pageNumber={n} scale={scale} lazy {...pageProps(n)} />
         ))}
       </div>
     );
@@ -32,7 +63,7 @@ export const PdfPages = ({ doc, numPages, pageNumber, scale, orientation, pagesP
   return (
     <div ref={containerRef} className={cn("w-full flex items-start justify-center gap-4 overflow-x-auto", className)}>
       {pages.map((n) => (
-        <PdfPageCanvas key={n} doc={doc} pageNumber={n} scale={scale} />
+        <PdfPageCanvas key={n} doc={doc} pageNumber={n} scale={scale} {...pageProps(n)} />
       ))}
     </div>
   );

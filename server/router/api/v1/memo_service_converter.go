@@ -60,6 +60,7 @@ func (s *APIV1Service) convertMemoFromStoreWithCreators(ctx context.Context, mem
 		memoMessage.Tags = memo.Payload.Tags
 		memoMessage.Property = convertMemoPropertyFromStore(memo.Payload.Property)
 		memoMessage.Location = convertLocationFromStore(memo.Payload.Location)
+		memoMessage.PdfAnnotation = convertPdfAnnotationFromStore(memo.Payload.PdfAnnotation)
 	}
 
 	if memo.ParentUID != nil {
@@ -356,6 +357,36 @@ func convertLocationToStore(location *v1pb.Location) *storepb.MemoPayload_Locati
 		Placeholder: location.Placeholder,
 		Latitude:    location.Latitude,
 		Longitude:   location.Longitude,
+	}
+}
+
+func convertPdfAnnotationFromStore(annotation *storepb.MemoPayload_PdfAnnotation) *v1pb.PdfAnnotation {
+	if annotation == nil {
+		return nil
+	}
+	return &v1pb.PdfAnnotation{
+		AttachmentName: annotation.AttachmentName,
+		Page:           annotation.Page,
+		X:              annotation.X,
+		Y:              annotation.Y,
+		Width:          annotation.Width,
+		Height:         annotation.Height,
+		TextSnippet:    annotation.TextSnippet,
+	}
+}
+
+func convertPdfAnnotationToStore(annotation *v1pb.PdfAnnotation) *storepb.MemoPayload_PdfAnnotation {
+	if annotation == nil {
+		return nil
+	}
+	return &storepb.MemoPayload_PdfAnnotation{
+		AttachmentName: annotation.AttachmentName,
+		Page:           annotation.Page,
+		X:              annotation.X,
+		Y:              annotation.Y,
+		Width:          annotation.Width,
+		Height:         annotation.Height,
+		TextSnippet:    annotation.TextSnippet,
 	}
 }
 
