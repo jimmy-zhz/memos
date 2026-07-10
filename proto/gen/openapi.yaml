@@ -4350,7 +4350,14 @@ components:
                     description: 'The workspace resource name last opened. Format: workspaces/{workspace}'
                 memo:
                     type: string
-                    description: 'The memo resource name last opened. Format: memos/{memo}'
+                    description: |-
+                        The memo resource name last opened. Format: memos/{memo}
+                         Deprecated: superseded by workspace_memos, kept for backward compatibility.
+                workspaceMemos:
+                    type: object
+                    additionalProperties:
+                        type: string
+                    description: Map of workspace resource name to the memo resource name last opened within it.
             description: The last workspace/document the user had open in the Notebook home page.
         UserSetting_TagMetadata:
             type: object

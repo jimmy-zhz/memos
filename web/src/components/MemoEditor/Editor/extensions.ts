@@ -4,6 +4,7 @@ import { indentUnit } from "@codemirror/language";
 import { EditorState, type Extension } from "@codemirror/state";
 import { placeholder as cmPlaceholder, drawSelection, dropCursor, EditorView, type KeyBinding, keymap } from "@codemirror/view";
 import { GFM } from "@lezer/markdown";
+import { createFormattingKeymap } from "./formatting";
 import { headingDecorations } from "./headingDecorations";
 import { liftListItem, sinkListItem } from "./listIndent";
 import { tagAutocomplete } from "./tagAutocomplete";
@@ -56,7 +57,7 @@ export function buildEditorExtensions({ placeholder, onChange, onUpdate, getTags
     // tagAutocomplete must precede the editing keymap so the completion popup's
     // Enter/Tab/arrow bindings win while it is open.
     tagAutocomplete(getTags),
-    keymap.of([...editorKeys, indentWithTab, ...defaultKeymap, ...historyKeymap]),
+    keymap.of([...editorKeys, ...createFormattingKeymap(), indentWithTab, ...defaultKeymap, ...historyKeymap]),
     EditorView.updateListener.of((u) => {
       if (u.docChanged) onChange(u.state.doc.toString());
       // Toolbar active-state depends only on the doc and selection; skip the

@@ -1548,8 +1548,9 @@ func convertUserSettingFromStore(storeSetting *storepb.UserSetting, user *store.
 		lastOpened := storeSetting.GetLastOpened()
 		setting.Value = &v1pb.UserSetting_LastOpenedSetting_{
 			LastOpenedSetting: &v1pb.UserSetting_LastOpenedSetting{
-				Workspace: lastOpened.GetWorkspace(),
-				Memo:      lastOpened.GetMemo(),
+				Workspace:      lastOpened.GetWorkspace(),
+				Memo:           lastOpened.GetMemo(),
+				WorkspaceMemos: lastOpened.GetWorkspaceMemos(),
 			},
 		}
 	default:
@@ -1610,8 +1611,9 @@ func convertUserSettingToStore(apiSetting *v1pb.UserSetting, userID int32, key s
 		if lastOpened := apiSetting.GetLastOpenedSetting(); lastOpened != nil {
 			storeSetting.Value = &storepb.UserSetting_LastOpened{
 				LastOpened: &storepb.LastOpenedUserSetting{
-					Workspace: lastOpened.Workspace,
-					Memo:      lastOpened.Memo,
+					Workspace:      lastOpened.Workspace,
+					Memo:           lastOpened.Memo,
+					WorkspaceMemos: lastOpened.WorkspaceMemos,
 				},
 			}
 		} else {

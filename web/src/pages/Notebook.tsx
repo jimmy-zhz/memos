@@ -126,8 +126,9 @@ const Notebook = () => {
     }
     (async () => {
       const lastOpened = await getLastOpened();
-      if (lastOpened && lastOpened.workspace === workspaceName && lastOpened.memo && containsMemo(tree, lastOpened.memo)) {
-        setSelectedMemo(lastOpened.memo);
+      const lastMemo = lastOpened?.workspaceMemos[workspaceName];
+      if (lastMemo && containsMemo(tree, lastMemo)) {
+        setSelectedMemo(lastMemo);
       } else {
         setSelectedMemo(findFirstDocument(tree));
       }
@@ -144,7 +145,7 @@ const Notebook = () => {
     (name: string) => {
       setWorkspaceName(name);
       setSelectedMemo(undefined);
-      restoredMemo.current = true; // don't re-restore memo on manual workspace switch
+      restoredMemo.current = false; // auto-select the workspace's last-opened doc once its tree loads
       setSearchParams({ ws: name }, { replace: true });
     },
     [setSearchParams],

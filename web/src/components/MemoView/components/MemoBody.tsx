@@ -1,7 +1,8 @@
+import { useMemo } from "react";
 import { AttachmentListView, LocationDisplayView, RelationListView } from "@/components/MemoMetadata";
 import { cn } from "@/lib/utils";
 import { Memo_DocType, MemoRelation_Type } from "@/types/proto/api/v1/memo_service_pb";
-import { getAttachmentUrl } from "@/utils/attachment";
+import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
 import MemoContent from "../../MemoContent";
 import { MemoReactionListView } from "../../MemoReactionListView";
@@ -29,6 +30,10 @@ const MemoBody: React.FC<MemoBodyProps> = ({ compact, autoFold }) => {
   const referencedMemos = memo.relations.filter((relation) => relation.type === MemoRelation_Type.REFERENCE);
   const isPdf = memo.docType === Memo_DocType.PDF;
   const pdfAttachment = isPdf ? memo.attachments.find((a) => a.type === "application/pdf") : undefined;
+  const nonInlinedAttachments = useMemo(
+    () => partitionInlinedAttachments(memo.attachments, memo.content).rest,
+    [memo.attachments, memo.content],
+  );
 
   return (
     <>
@@ -54,7 +59,7 @@ const MemoBody: React.FC<MemoBodyProps> = ({ compact, autoFold }) => {
           autoFold={autoFold}
           alwaysExpanded={memo.pinned}
         />
-        {!isPdf && <AttachmentListView attachments={memo.attachments} onImagePreview={openPreview} />}
+        {!isPdf && <AttachmentListView attachments={nonInlinedAttachments} onImagePreview={openPreview} />}
         <RelationListView relations={referencedMemos} currentMemoName={memo.name} parentPage={parentPage} />
         {memo.location && <LocationDisplayView location={memo.location} />}
         <MemoReactionListView memo={memo} reactions={memo.reactions} />

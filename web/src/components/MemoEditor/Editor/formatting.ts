@@ -1,5 +1,5 @@
 import { syntaxTree } from "@codemirror/language";
-import type { EditorView } from "@codemirror/view";
+import type { EditorView, KeyBinding } from "@codemirror/view";
 import {
   type ActiveFormatState,
   type EditorCommandContext,
@@ -241,27 +241,61 @@ function unwrapLink(view: EditorView): boolean {
   return false;
 }
 
+/** Applies a formatting verb to `view`. Shared by the toolbar-facing
+ *  FormattingController and the editor's own keyboard shortcuts, so both
+ *  surfaces can never drift apart. */
+export function applyCommand(view: EditorView, command: EditorCommandId, ctx?: EditorCommandContext) {
+  if (isMarkCommand(command)) return toggleMark(view, command);
+  if (command === "bulletList" || command === "orderedList" || command === "taskList") {
+    return toggleListLine(view, command);
+  }
+  if (command === "heading1") return setHeading(view, 1);
+  if (command === "heading2") return setHeading(view, 2);
+  if (command === "heading3") return setHeading(view, 3);
+  if (command === "paragraph") return setHeading(view, 0);
+  if (command === "link") {
+    // Toggle: inside an existing link, unwrap it to its label.
+    if (unwrapLink(view)) return;
+    const { from, to } = view.state.selection.main;
+    const url = ctx?.url ?? "";
+    // Empty selection: the URL doubles as the label.
+    const label = view.state.sliceDoc(from, to) || url;
+    const insert = `[${label}](${url})`;
+    view.dispatch({ changes: { from, to, insert }, selection: { anchor: from + insert.length } });
+  }
+}
+
+/** Notion/Obsidian-style keyboard shortcuts for the formatting verbs above.
+ *  Scoped to commands the catalog (formatting/commands.ts) already supports —
+ *  see docs/keyboard-shortcuts.md for the full list and rationale. "Mod" is
+ *  CodeMirror's platform key: Cmd on macOS, Ctrl elsewhere. */
+export function createFormattingKeymap(): KeyBinding[] {
+  const bind = (key: string, command: EditorCommandId): KeyBinding => ({
+    key,
+    run: (view) => {
+      applyCommand(view, command);
+      return true;
+    },
+  });
+  return [
+    bind("Mod-b", "bold"),
+    bind("Mod-i", "italic"),
+    bind("Mod-e", "code"),
+    bind("Mod-k", "link"),
+    bind("Mod-Shift-7", "orderedList"),
+    bind("Mod-Shift-8", "bulletList"),
+    bind("Mod-Shift-9", "taskList"),
+    bind("Mod-Alt-0", "paragraph"),
+    bind("Mod-Alt-1", "heading1"),
+    bind("Mod-Alt-2", "heading2"),
+    bind("Mod-Alt-3", "heading3"),
+  ];
+}
+
 export function createFormattingController(view: EditorView, listeners: Set<() => void>): FormattingController {
   return {
     run(command: EditorCommandId, ctx?: EditorCommandContext) {
-      if (isMarkCommand(command)) return toggleMark(view, command);
-      if (command === "bulletList" || command === "orderedList" || command === "taskList") {
-        return toggleListLine(view, command);
-      }
-      if (command === "heading1") return setHeading(view, 1);
-      if (command === "heading2") return setHeading(view, 2);
-      if (command === "heading3") return setHeading(view, 3);
-      if (command === "paragraph") return setHeading(view, 0);
-      if (command === "link") {
-        // Toggle: inside an existing link, unwrap it to its label.
-        if (unwrapLink(view)) return;
-        const { from, to } = view.state.selection.main;
-        const url = ctx?.url ?? "";
-        // Empty selection: the URL doubles as the label.
-        const label = view.state.sliceDoc(from, to) || url;
-        const insert = `[${label}](${url})`;
-        view.dispatch({ changes: { from, to, insert }, selection: { anchor: from + insert.length } });
-      }
+      applyCommand(view, command, ctx);
     },
     getActiveFormats(): ActiveFormatState {
       const pos = view.state.selection.main.head;

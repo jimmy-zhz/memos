@@ -44,7 +44,10 @@ message LastOpenedUserSetting {
   // The workspace resource name last opened. Format: workspaces/{workspace}
   string workspace = 1;
   // The memo resource name last opened. Format: memos/{memo}
+  // Deprecated: superseded by workspace_memos, kept for backward compatibility.
   string memo = 2;
+  // Map of workspace resource name to the memo resource name last opened within it.
+  map<string, string> workspace_memos = 3;
 }
 
 message GeneralUserSetting {

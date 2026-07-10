@@ -5,10 +5,18 @@ import { userServiceClient } from "@/connect";
 import { buildUserSettingName } from "@/helpers/resource-names";
 import { UserSetting_Key, UserSettingSchema } from "@/types/proto/api/v1/user_service_pb";
 
-// Reads and writes the LAST_OPENED user setting (workspace + memo last viewed
-// in the Notebook page), so the page can restore the user's place on load.
+interface LastOpened {
+  // The last workspace opened, across all workspaces.
+  workspace: string;
+  // Map of workspace resource name to the last memo opened within it.
+  workspaceMemos: Record<string, string>;
+}
+
+// Reads and writes the LAST_OPENED user setting (last workspace opened, plus the
+// last memo opened within each workspace), so the page can restore the user's
+// place on load and jump to the right doc when switching workspaces.
 export function useLastOpened(currentUserName?: string) {
-  const getLastOpened = useCallback(async (): Promise<{ workspace: string; memo: string } | undefined> => {
+  const getLastOpened = useCallback(async (): Promise<LastOpened | undefined> => {
     if (!currentUserName) return undefined;
     try {
       const name = buildUserSettingName(currentUserName, UserSetting_Key.LAST_OPENED);
@@ -16,7 +24,7 @@ export function useLastOpened(currentUserName?: string) {
       if (setting.value.case === "lastOpenedSetting") {
         return {
           workspace: setting.value.value.workspace,
-          memo: setting.value.value.memo,
+          workspaceMemos: { ...setting.value.value.workspaceMemos },
         };
       }
       return undefined;
@@ -29,11 +37,19 @@ export function useLastOpened(currentUserName?: string) {
     async (workspace: string, memo: string) => {
       if (!currentUserName) return;
       const name = buildUserSettingName(currentUserName, UserSetting_Key.LAST_OPENED);
-      const setting = create(UserSettingSchema, {
-        name,
-        value: { case: "lastOpenedSetting", value: { workspace, memo } },
-      });
       try {
+        const existing = await getLastOpened();
+        const workspaceMemos = { ...existing?.workspaceMemos };
+        if (memo) {
+          workspaceMemos[workspace] = memo;
+        }
+        const setting = create(UserSettingSchema, {
+          name,
+          value: {
+            case: "lastOpenedSetting",
+            value: { workspace, memo, workspaceMemos },
+          },
+        });
         await userServiceClient.updateUserSetting({
           setting,
           updateMask: create(FieldMaskSchema, {
@@ -44,7 +60,7 @@ export function useLastOpened(currentUserName?: string) {
         // Best-effort; failing to persist the last-opened pointer shouldn't block the UI.
       }
     },
-    [currentUserName],
+    [currentUserName, getLastOpened],
   );
 
   return { getLastOpened, setLastOpened };
