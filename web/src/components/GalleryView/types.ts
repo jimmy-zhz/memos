@@ -22,9 +22,23 @@ export interface GalleryPropertyFilter {
 // equality conditions (ANDed together).
 export type GalleryScope = { type: "folder" } | { type: "tag"; tag: string } | { type: "property"; filters: GalleryPropertyFilter[] };
 
-export type GallerySort = "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "title_asc";
+export type GalleryBuiltinSort = "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "title_asc";
 
-export type GalleryCoverRule = "first_image" | "none";
+/**
+ * How a gallery block orders its cards. Either a built-in token, or a sort by a
+ * frontmatter property encoded as `prop_asc:<key>` / `prop_desc:<key>`. Documents
+ * missing the property sort to the end.
+ */
+export type GallerySort = GalleryBuiltinSort | (string & {});
+
+/**
+ * How a gallery card's cover image is chosen. `first_image` uses the document's
+ * first image attachment (or first inline markdown image); `none` shows no cover;
+ * `prop:<key>` uses a frontmatter property value as the image source (an
+ * `attachments/...` resource name is resolved to the attachment, anything else is
+ * used as a URL).
+ */
+export type GalleryCoverRule = "first_image" | "none" | (string & {});
 
 /**
  * A field shown on a gallery card. Built-in tokens cover the document's own
@@ -95,7 +109,24 @@ function normalizeCardField(raw: unknown, fallback: GalleryCardField): GalleryCa
   return fallback;
 }
 
-const SORTS: GallerySort[] = ["updated_desc", "updated_asc", "created_desc", "created_asc", "title_asc"];
+const BUILTIN_SORTS: GalleryBuiltinSort[] = ["updated_desc", "updated_asc", "created_desc", "created_asc", "title_asc"];
+
+// True for the `prop_asc:<key>` / `prop_desc:<key>` property-sort encoding.
+const PROP_SORT_RE = /^prop_(asc|desc):/;
+
+function normalizeSort(raw: unknown): GallerySort {
+  if (typeof raw === "string") {
+    if ((BUILTIN_SORTS as string[]).includes(raw)) return raw as GallerySort;
+    if (PROP_SORT_RE.test(raw)) return raw;
+  }
+  return DEFAULT_GALLERY_BLOCK.sort;
+}
+
+function normalizeCover(raw: unknown): GalleryCoverRule {
+  if (raw === "none") return "none";
+  if (typeof raw === "string" && raw.startsWith("prop:")) return raw;
+  return "first_image";
+}
 
 function parseBlock(raw: unknown): GalleryBlock {
   const b = (raw ?? {}) as {
@@ -108,8 +139,8 @@ function parseBlock(raw: unknown): GalleryBlock {
   return {
     description: typeof b.description === "string" && b.description.trim() ? b.description : undefined,
     scope: parseScope(b.scope),
-    sort: SORTS.includes(b.sort as GallerySort) ? (b.sort as GallerySort) : DEFAULT_GALLERY_BLOCK.sort,
-    cover: b.cover === "none" ? "none" : "first_image",
+    sort: normalizeSort(b.sort),
+    cover: normalizeCover(b.cover),
     cardFields: {
       primary: normalizeCardField(b.cardFields?.primary, DEFAULT_CARD_FIELDS.primary),
       secondary: normalizeCardField(b.cardFields?.secondary, DEFAULT_CARD_FIELDS.secondary),

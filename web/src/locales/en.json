@@ -983,9 +983,13 @@
     "sort-created-desc": "Newest first",
     "sort-created-asc": "Oldest first",
     "sort-title-asc": "Title (A–Z)",
+    "sort-property": "By property",
+    "sort-ascending": "Ascending",
+    "sort-descending": "Descending",
     "cover-label": "Card cover",
     "cover-first-image": "First image of the document",
     "cover-none": "No cover",
+    "cover-property": "From property",
     "not-configured": "This view has not been configured yet. Switch to edit mode to set it up.",
     "loading": "Loading…",
     "empty": "No documents in this scope yet."

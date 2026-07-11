@@ -921,9 +921,13 @@
     "sort-created-desc": "最新创建优先",
     "sort-created-asc": "最早创建优先",
     "sort-title-asc": "按标题（A–Z）",
+    "sort-property": "按属性",
+    "sort-ascending": "升序",
+    "sort-descending": "降序",
     "cover-label": "卡片封面",
     "cover-first-image": "取文档第一张图片",
     "cover-none": "不显示封面",
+    "cover-property": "取自属性",
     "not-configured": "该视图尚未配置，请切换到编辑模式进行设置。",
     "loading": "加载中…",
     "empty": "该范围内暂无文档。"

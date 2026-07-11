@@ -121,6 +121,18 @@ const GalleryBlockForm = ({
     onChange({ propertyFilters: draft.propertyFilters.map((f, j) => (j === i ? { ...f, ...patch } : f)) });
   };
 
+  // Split the serialized sort/cover values into their editable "kind" + property key.
+  const sortMatch = draft.sort.match(/^prop_(asc|desc):(.*)$/s);
+  const sortKind = sortMatch ? "property" : draft.sort;
+  const sortDir = sortMatch?.[1] ?? "desc";
+  const sortKey = sortMatch?.[2] ?? "";
+  const setSort = (kind: string) => onChange({ sort: kind === "property" ? `prop_${sortDir}:${sortKey}` : (kind as GallerySort) });
+
+  const coverIsProp = draft.cover.startsWith("prop:");
+  const coverKind = coverIsProp ? "property" : draft.cover;
+  const coverKey = coverIsProp ? draft.cover.slice(5) : "";
+  const setCover = (kind: string) => onChange({ cover: kind === "property" ? `prop:${coverKey}` : (kind as GalleryCoverRule) });
+
   const renderCardFieldRow = (label: string, state: CardFieldState, key: "primary" | "secondary", allowNone: boolean) => (
     <div className="flex flex-col gap-1.5">
       <Label>{label}</Label>
@@ -248,31 +260,63 @@ const GalleryBlockForm = ({
 
       <div className="flex flex-col gap-1.5">
         <Label>{t("gallery.sort-label")}</Label>
-        <Select value={draft.sort} onValueChange={(v) => onChange({ sort: v as GallerySort })}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="updated_desc">{t("gallery.sort-updated-desc")}</SelectItem>
-            <SelectItem value="updated_asc">{t("gallery.sort-updated-asc")}</SelectItem>
-            <SelectItem value="created_desc">{t("gallery.sort-created-desc")}</SelectItem>
-            <SelectItem value="created_asc">{t("gallery.sort-created-asc")}</SelectItem>
-            <SelectItem value="title_asc">{t("gallery.sort-title-asc")}</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={sortKind} onValueChange={setSort}>
+            <SelectTrigger className="flex-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="updated_desc">{t("gallery.sort-updated-desc")}</SelectItem>
+              <SelectItem value="updated_asc">{t("gallery.sort-updated-asc")}</SelectItem>
+              <SelectItem value="created_desc">{t("gallery.sort-created-desc")}</SelectItem>
+              <SelectItem value="created_asc">{t("gallery.sort-created-asc")}</SelectItem>
+              <SelectItem value="title_asc">{t("gallery.sort-title-asc")}</SelectItem>
+              <SelectItem value="property">{t("gallery.sort-property")}</SelectItem>
+            </SelectContent>
+          </Select>
+          {sortKind === "property" && (
+            <Select value={sortDir} onValueChange={(v) => onChange({ sort: `prop_${v}:${sortKey}` })}>
+              <SelectTrigger className="w-36">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="asc">{t("gallery.sort-ascending")}</SelectItem>
+                <SelectItem value="desc">{t("gallery.sort-descending")}</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+        {sortKind === "property" && (
+          <Input
+            placeholder={t("gallery.property-key-placeholder")}
+            value={sortKey}
+            onChange={(e) => onChange({ sort: `prop_${sortDir}:${e.target.value}` })}
+          />
+        )}
       </div>
 
       <div className="flex flex-col gap-1.5">
         <Label>{t("gallery.cover-label")}</Label>
-        <Select value={draft.cover} onValueChange={(v) => onChange({ cover: v as GalleryCoverRule })}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="first_image">{t("gallery.cover-first-image")}</SelectItem>
-            <SelectItem value="none">{t("gallery.cover-none")}</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={coverKind} onValueChange={setCover}>
+            <SelectTrigger className="flex-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="first_image">{t("gallery.cover-first-image")}</SelectItem>
+              <SelectItem value="none">{t("gallery.cover-none")}</SelectItem>
+              <SelectItem value="property">{t("gallery.cover-property")}</SelectItem>
+            </SelectContent>
+          </Select>
+          {coverKind === "property" && (
+            <Input
+              className="flex-1"
+              placeholder={t("gallery.property-key-placeholder")}
+              value={coverKey}
+              onChange={(e) => onChange({ cover: `prop:${e.target.value}` })}
+            />
+          )}
+        </div>
       </div>
 
       {renderCardFieldRow(t("gallery.card-primary-label"), draft.primary, "primary", false)}

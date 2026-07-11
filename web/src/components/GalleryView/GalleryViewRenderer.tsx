@@ -7,8 +7,9 @@ import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentThumbnailUrl, isImage } from "@/utils/attachment";
+import type { MemoProperty } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
-import { fieldValue, matchesPropertyFilters, propertyMap } from "./fields";
+import { fieldValue, matchesPropertyFilters, propertyMap, propertyValueToString } from "./fields";
 import { type GalleryBlock, parseGalleryViewConfig } from "./types";
 
 interface Props {
@@ -25,17 +26,58 @@ const firstMarkdownImage = (content: string): string | undefined => {
   return match?.[1];
 };
 
-const coverUrl = (doc: Memo, block: GalleryBlock): string | undefined => {
+// Resolves a `prop:<key>` cover value: an `attachments/...` resource name maps to
+// the matching attachment thumbnail, anything else is treated as a raw image URL.
+const propertyCoverUrl = (doc: Memo, props: Map<string, MemoProperty>, key: string): string | undefined => {
+  const prop = props.get(key);
+  const value = prop ? propertyValueToString(prop) : "";
+  if (!value) return undefined;
+  const attachment = doc.attachments.find((a) => a.name === value || a.filename === value);
+  return attachment ? getAttachmentThumbnailUrl(attachment) : value;
+};
+
+const coverUrl = (doc: Memo, props: Map<string, MemoProperty>, block: GalleryBlock): string | undefined => {
   if (block.cover === "none") return undefined;
+  if (block.cover.startsWith("prop:")) return propertyCoverUrl(doc, props, block.cover.slice(5));
   const imageAttachment = doc.attachments.find((a) => isImage(a.type));
   if (imageAttachment) return getAttachmentThumbnailUrl(imageAttachment);
   if (doc.docType === Memo_DocType.MARKDOWN) return firstMarkdownImage(doc.content);
   return undefined;
 };
 
+// Reads a document's value for a frontmatter property as a plain string ("" when
+// the property is absent or empty).
+const propertyValueOf = (doc: Memo, key: string): string => {
+  const prop = propertyMap(doc.content).get(key);
+  return prop ? propertyValueToString(prop) : "";
+};
+
+// Case-insensitive, numeric-aware comparison of two present property values.
+const comparePresentValues = (as: string, bs: string): number => {
+  const an = Number(as);
+  const bn = Number(bs);
+  if (!Number.isNaN(an) && !Number.isNaN(bn)) return an - bn;
+  return as.localeCompare(bs, undefined, { numeric: true, sensitivity: "base" });
+};
+
 const sortDocs = (docs: Memo[], block: GalleryBlock): Memo[] => {
   const ts = (t?: { seconds: bigint }) => Number(t?.seconds ?? 0n);
   const sorted = [...docs];
+  const propSort = block.sort.match(/^prop_(asc|desc):(.*)$/s);
+  if (propSort) {
+    const [, direction, key] = propSort;
+    const factor = direction === "asc" ? 1 : -1;
+    return sorted.sort((a, b) => {
+      const as = propertyValueOf(a, key);
+      const bs = propertyValueOf(b, key);
+      // Documents missing the property always sort last, regardless of direction.
+      if (as === "" || bs === "") {
+        if (as === bs) return 0;
+        return as === "" ? 1 : -1;
+      }
+      return factor * comparePresentValues(as, bs);
+    });
+  }
   switch (block.sort) {
     case "updated_asc":
       return sorted.sort((a, b) => ts(a.updateTime) - ts(b.updateTime));
@@ -90,8 +132,8 @@ const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
       ) : (
         <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(200px,1fr))]">
           {docs.map((doc) => {
-            const cover = coverUrl(doc, block);
             const props = propertyMap(doc.content);
+            const cover = coverUrl(doc, props, block);
             const primary = fieldValue(doc, props, block.cardFields.primary) || doc.title || doc.name;
             const secondary = fieldValue(doc, props, block.cardFields.secondary);
             return (

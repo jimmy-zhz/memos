@@ -13,7 +13,7 @@ export function propertyMap(content: string): Map<string, MemoProperty> {
 }
 
 // Renders a property's value to a plain string for display / equality checks.
-function propertyValueToString(prop: MemoProperty): string {
+export function propertyValueToString(prop: MemoProperty): string {
   if (prop.type === "list") return Array.isArray(prop.value) ? prop.value.join(", ") : "";
   if (prop.value === null) return "";
   return String(prop.value);
