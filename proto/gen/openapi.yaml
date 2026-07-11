@@ -4711,6 +4711,9 @@ components:
                 coverImage:
                     type: string
                     description: 'The cover image of the workspace. Format: attachments/{attachment}'
+                foldersFirst:
+                    type: boolean
+                    description: Whether folders are always sorted before documents at the same level.
         WorkspaceFolder:
             required:
                 - path

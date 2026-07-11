@@ -6,16 +6,17 @@ import (
 
 // Workspace represents a knowledge base that groups memos under a folder hierarchy.
 type Workspace struct {
-	ID         int32
-	UID        string
-	CreatorID  int32
-	Title      string
-	CreatedTs  int64
-	UpdatedTs  int64
-	SortField  string
-	SortOrder  string
-	CoverColor string
-	CoverImage string
+	ID           int32
+	UID          string
+	CreatorID    int32
+	Title        string
+	CreatedTs    int64
+	UpdatedTs    int64
+	SortField    string
+	SortOrder    string
+	CoverColor   string
+	CoverImage   string
+	FoldersFirst bool
 }
 
 // FindWorkspace specifies filter criteria for querying workspaces.
@@ -28,12 +29,13 @@ type FindWorkspace struct {
 
 // UpdateWorkspace contains fields that can be updated for a workspace.
 type UpdateWorkspace struct {
-	ID         int32
-	Title      *string
-	SortField  *string
-	SortOrder  *string
-	CoverColor *string
-	CoverImage *string
+	ID           int32
+	Title        *string
+	SortField    *string
+	SortOrder    *string
+	CoverColor   *string
+	CoverImage   *string
+	FoldersFirst *bool
 }
 
 // DeleteWorkspace specifies which workspace to delete.

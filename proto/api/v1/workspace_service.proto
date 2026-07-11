@@ -109,6 +109,9 @@ message Workspace {
 
   // The cover image of the workspace. Format: attachments/{attachment}
   string cover_image = 9;
+
+  // Whether folders are always sorted before documents at the same level.
+  bool folders_first = 10;
 }
 
 message WorkspaceFolder {

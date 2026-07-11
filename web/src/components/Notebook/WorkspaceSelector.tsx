@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -137,6 +138,18 @@ const WorkspaceSelector = ({ workspaces, value, onChange, onCreated, onOpenInNew
                     <DropdownMenuRadioItem value="updateTime">{t("notebook.sort-update-time")}</DropdownMenuRadioItem>
                     <DropdownMenuRadioItem value="alphabetical">{t("notebook.sort-alphabetical")}</DropdownMenuRadioItem>
                   </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuCheckboxItem
+                    checked={current.foldersFirst}
+                    onCheckedChange={(checked) =>
+                      updateWorkspace.mutateAsync({
+                        workspace: { ...current, foldersFirst: checked === true },
+                        updateMask: ["folders_first"],
+                      })
+                    }
+                  >
+                    {t("notebook.sort-folders-first")}
+                  </DropdownMenuCheckboxItem>
                 </DropdownMenuSubContent>
               </DropdownMenuSub>
             </>

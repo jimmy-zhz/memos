@@ -26,14 +26,26 @@ function compareNodes(a: WorkspaceTreeNode, b: WorkspaceTreeNode, field: Noteboo
   return aSeconds - bSeconds;
 }
 
-export function sortTree(nodes: WorkspaceTreeNode[], field: NotebookSortField, order: NotebookSortOrder): WorkspaceTreeNode[] {
+export function sortTree(
+  nodes: WorkspaceTreeNode[],
+  field: NotebookSortField,
+  order: NotebookSortOrder,
+  foldersFirst = false,
+): WorkspaceTreeNode[] {
   const sorted = [...nodes].sort((a, b) => {
+    if (foldersFirst) {
+      const aIsFolder = a.type === WorkspaceTreeNode_NodeType.FOLDER;
+      const bIsFolder = b.type === WorkspaceTreeNode_NodeType.FOLDER;
+      if (aIsFolder !== bIsFolder) {
+        return aIsFolder ? -1 : 1;
+      }
+    }
     const result = compareNodes(a, b, field);
     return order === "asc" ? result : -result;
   });
   return sorted.map((node) =>
     node.type === WorkspaceTreeNode_NodeType.FOLDER && node.children.length > 0
-      ? { ...node, children: sortTree(node.children, field, order) }
+      ? { ...node, children: sortTree(node.children, field, order, foldersFirst) }
       : node,
   );
 }

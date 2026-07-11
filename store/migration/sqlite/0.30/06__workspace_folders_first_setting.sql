@@ -1,0 +1,1 @@
+ALTER TABLE workspace ADD COLUMN folders_first INTEGER NOT NULL DEFAULT 0;

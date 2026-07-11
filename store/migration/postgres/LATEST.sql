@@ -66,7 +66,8 @@ CREATE TABLE workspace (
   sort_field TEXT NOT NULL DEFAULT 'createTime',
   sort_order TEXT NOT NULL DEFAULT 'desc',
   cover_color TEXT NOT NULL DEFAULT '',
-  cover_image TEXT NOT NULL DEFAULT ''
+  cover_image TEXT NOT NULL DEFAULT '',
+  folders_first BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 -- workspace_folder

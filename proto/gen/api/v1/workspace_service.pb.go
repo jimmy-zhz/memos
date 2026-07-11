@@ -97,7 +97,9 @@ type Workspace struct {
 	// The cover color of the workspace, as a CSS color value (e.g. "#3b82f6").
 	CoverColor string `protobuf:"bytes,8,opt,name=cover_color,json=coverColor,proto3" json:"cover_color,omitempty"`
 	// The cover image of the workspace. Format: attachments/{attachment}
-	CoverImage    string `protobuf:"bytes,9,opt,name=cover_image,json=coverImage,proto3" json:"cover_image,omitempty"`
+	CoverImage string `protobuf:"bytes,9,opt,name=cover_image,json=coverImage,proto3" json:"cover_image,omitempty"`
+	// Whether folders are always sorted before documents at the same level.
+	FoldersFirst  bool `protobuf:"varint,10,opt,name=folders_first,json=foldersFirst,proto3" json:"folders_first,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -193,6 +195,13 @@ func (x *Workspace) GetCoverImage() string {
 		return x.CoverImage
 	}
 	return ""
+}
+
+func (x *Workspace) GetFoldersFirst() bool {
+	if x != nil {
+		return x.FoldersFirst
+	}
+	return false
 }
 
 type WorkspaceFolder struct {
@@ -910,7 +919,7 @@ var File_api_v1_workspace_service_proto protoreflect.FileDescriptor
 
 const file_api_v1_workspace_service_proto_rawDesc = "" +
 	"\n" +
-	"\x1eapi/v1/workspace_service.proto\x12\fmemos.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb4\x03\n" +
+	"\x1eapi/v1/workspace_service.proto\x12\fmemos.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\x1a\x19google/api/resource.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a google/protobuf/field_mask.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd9\x03\n" +
 	"\tWorkspace\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12\x19\n" +
 	"\x05title\x18\x02 \x01(\tB\x03\xe0A\x02R\x05title\x12\x1d\n" +
@@ -926,7 +935,9 @@ const file_api_v1_workspace_service_proto_rawDesc = "" +
 	"\vcover_color\x18\b \x01(\tR\n" +
 	"coverColor\x12\x1f\n" +
 	"\vcover_image\x18\t \x01(\tR\n" +
-	"coverImage:P\xeaAM\n" +
+	"coverImage\x12#\n" +
+	"\rfolders_first\x18\n" +
+	" \x01(\bR\ffoldersFirst:P\xeaAM\n" +
 	"\x16memos.api.v1/Workspace\x12\x16workspaces/{workspace}\x1a\x04name*\n" +
 	"workspaces2\tworkspace\"C\n" +
 	"\x0fWorkspaceFolder\x12\x17\n" +

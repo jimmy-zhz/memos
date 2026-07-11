@@ -106,6 +106,7 @@ const NotebookSidebar = ({
   const currentWorkspace = workspaces.find((w) => w.name === workspaceName);
   const sortField = normalizeSortField(currentWorkspace?.sortField);
   const sortOrder = normalizeSortOrder(currentWorkspace?.sortOrder);
+  const foldersFirst = currentWorkspace?.foldersFirst ?? false;
 
   const docDates = useMemo(() => {
     const acc = new Map<string, number>();
@@ -118,8 +119,8 @@ const NotebookSidebar = ({
   const visibleTree = useMemo(() => {
     let nodes = filterTree(tree, query);
     if (dateFilter) nodes = filterTreeByDate(nodes, dateFilter);
-    return sortTree(nodes, sortField, sortOrder);
-  }, [tree, query, dateFilter, sortField, sortOrder]);
+    return sortTree(nodes, sortField, sortOrder, foldersFirst);
+  }, [tree, query, dateFilter, sortField, sortOrder, foldersFirst]);
 
   return (
     <div className="w-full h-full flex flex-col gap-2 px-3 py-4">

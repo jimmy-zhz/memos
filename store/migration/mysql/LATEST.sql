@@ -66,7 +66,8 @@ CREATE TABLE `workspace` (
   `sort_field` VARCHAR(64) NOT NULL DEFAULT 'createTime',
   `sort_order` VARCHAR(16) NOT NULL DEFAULT 'desc',
   `cover_color` VARCHAR(32) NOT NULL DEFAULT '',
-  `cover_image` VARCHAR(255) NOT NULL DEFAULT ''
+  `cover_image` VARCHAR(255) NOT NULL DEFAULT '',
+  `folders_first` TINYINT(1) NOT NULL DEFAULT 0
 );
 
 -- workspace_folder

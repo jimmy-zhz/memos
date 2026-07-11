@@ -118,6 +118,8 @@ func (s *APIV1Service) UpdateWorkspace(ctx context.Context, request *v1pb.Update
 			update.CoverColor = &request.Workspace.CoverColor
 		} else if field == "cover_image" {
 			update.CoverImage = &request.Workspace.CoverImage
+		} else if field == "folders_first" {
+			update.FoldersFirst = &request.Workspace.FoldersFirst
 		}
 	}
 
@@ -347,15 +349,16 @@ func isValidWorkspaceSortOrder(order string) bool {
 
 func convertWorkspaceFromStore(workspace *store.Workspace, creatorUsername string) *v1pb.Workspace {
 	return &v1pb.Workspace{
-		Name:       WorkspaceNamePrefix + workspace.UID,
-		Title:      workspace.Title,
-		Creator:    BuildUserName(creatorUsername),
-		CreateTime: timestamppb.New(time.Unix(workspace.CreatedTs, 0)),
-		UpdateTime: timestamppb.New(time.Unix(workspace.UpdatedTs, 0)),
-		SortField:  workspace.SortField,
-		SortOrder:  workspace.SortOrder,
-		CoverColor: workspace.CoverColor,
-		CoverImage: workspace.CoverImage,
+		Name:         WorkspaceNamePrefix + workspace.UID,
+		Title:        workspace.Title,
+		Creator:      BuildUserName(creatorUsername),
+		CreateTime:   timestamppb.New(time.Unix(workspace.CreatedTs, 0)),
+		UpdateTime:   timestamppb.New(time.Unix(workspace.UpdatedTs, 0)),
+		SortField:    workspace.SortField,
+		SortOrder:    workspace.SortOrder,
+		CoverColor:   workspace.CoverColor,
+		CoverImage:   workspace.CoverImage,
+		FoldersFirst: workspace.FoldersFirst,
 	}
 }
 
