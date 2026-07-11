@@ -1,6 +1,6 @@
 import { create } from "@bufbuild/protobuf";
 import { isEqual } from "lodash-es";
-import { MoreVerticalIcon, PlusIcon } from "lucide-react";
+import { MoreVerticalIcon, PlusIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -11,8 +11,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { instanceServiceClient } from "@/connect";
 import { useInstance } from "@/contexts/InstanceContext";
+import { handleError } from "@/lib/error";
 import {
+  InstanceSetting_AIModelConfig,
+  InstanceSetting_AIModelConfigSchema,
   InstanceSetting_AIProviderConfig,
   InstanceSetting_AIProviderConfigSchema,
   InstanceSetting_AIProviderType,
@@ -21,6 +25,7 @@ import {
   InstanceSetting_TranscriptionConfig,
   InstanceSetting_TranscriptionConfigSchema,
   InstanceSettingSchema,
+  TestAIProviderRequestSchema,
 } from "@/types/proto/api/v1/instance_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import SettingGroup from "./SettingGroup";
@@ -28,6 +33,11 @@ import { SettingPanel } from "./SettingList";
 import SettingSection from "./SettingSection";
 import SettingTable from "./SettingTable";
 import useInstanceSettingUpdater, { buildInstanceSettingName } from "./useInstanceSettingUpdater";
+
+type LocalAIModel = {
+  id: string;
+  name: string;
+};
 
 type LocalAIProvider = {
   id: string;
@@ -37,6 +47,7 @@ type LocalAIProvider = {
   apiKey: string;
   apiKeySet: boolean;
   apiKeyHint: string;
+  models: LocalAIModel[];
 };
 
 type LocalTranscription = {
@@ -61,6 +72,11 @@ const getProviderTypeLabel = (type: InstanceSetting_AIProviderType) => {
   return InstanceSetting_AIProviderType[type] ?? "UNKNOWN";
 };
 
+const toLocalModel = (model: InstanceSetting_AIModelConfig): LocalAIModel => ({
+  id: model.id,
+  name: model.name,
+});
+
 const toLocalProvider = (provider: InstanceSetting_AIProviderConfig): LocalAIProvider => ({
   id: provider.id,
   title: provider.title,
@@ -69,6 +85,7 @@ const toLocalProvider = (provider: InstanceSetting_AIProviderConfig): LocalAIPro
   apiKey: "",
   apiKeySet: provider.apiKeySet,
   apiKeyHint: provider.apiKeyHint,
+  models: provider.models.map(toLocalModel),
 });
 
 const toLocalTranscription = (config: InstanceSetting_TranscriptionConfig | undefined): LocalTranscription => ({
@@ -86,6 +103,7 @@ const newProvider = (): LocalAIProvider => ({
   apiKey: "",
   apiKeySet: false,
   apiKeyHint: "",
+  models: [],
 });
 
 const toProviderConfig = (provider: LocalAIProvider) =>
@@ -95,6 +113,9 @@ const toProviderConfig = (provider: LocalAIProvider) =>
     type: provider.type,
     endpoint: provider.endpoint.trim(),
     apiKey: provider.apiKey,
+    models: provider.models.map((model) =>
+      create(InstanceSetting_AIModelConfigSchema, { id: model.id.trim(), name: model.name.trim() }),
+    ),
   });
 
 const toTranscriptionConfig = (transcription: LocalTranscription) =>
@@ -111,12 +132,17 @@ const AISection = () => {
   const { aiSetting: originalSetting } = useInstance();
   const [providers, setProviders] = useState<LocalAIProvider[]>(() => originalSetting.providers.map(toLocalProvider));
   const [transcription, setTranscription] = useState<LocalTranscription>(() => toLocalTranscription(originalSetting.transcription));
+  const [defaultProviderId, setDefaultProviderId] = useState(originalSetting.defaultProviderId);
   const [editingProvider, setEditingProvider] = useState<LocalAIProvider | undefined>();
   const [deleteTarget, setDeleteTarget] = useState<LocalAIProvider | undefined>();
 
   useEffect(() => {
     setProviders(originalSetting.providers.map(toLocalProvider));
   }, [originalSetting.providers]);
+
+  useEffect(() => {
+    setDefaultProviderId(originalSetting.defaultProviderId);
+  }, [originalSetting.defaultProviderId]);
 
   // Only re-sync the transcription draft when the server-side content actually
   // changes — not on every originalSetting identity change. This prevents
@@ -146,6 +172,7 @@ const AISection = () => {
     nextProviders: LocalAIProvider[],
     nextTranscription: InstanceSetting_TranscriptionConfig | undefined,
     errorContext: string,
+    nextDefaultProviderId: string = defaultProviderId,
   ) => {
     return saveInstanceSetting({
       key: InstanceSetting_Key.AI,
@@ -156,6 +183,7 @@ const AISection = () => {
           value: create(InstanceSetting_AISettingSchema, {
             providers: nextProviders.map(toProviderConfig),
             transcription: nextTranscription,
+            defaultProviderId: nextDefaultProviderId,
           }),
         },
       }),
@@ -209,14 +237,22 @@ const AISection = () => {
       persistedTranscription && persistedTranscription.providerId === target.id
         ? create(InstanceSetting_TranscriptionConfigSchema, {})
         : persistedTranscription;
+    const nextDefaultProviderId = defaultProviderId === target.id ? "" : defaultProviderId;
 
-    const ok = await persistAISetting(nextProviders, nextTranscription, "Delete AI provider");
+    const ok = await persistAISetting(nextProviders, nextTranscription, "Delete AI provider", nextDefaultProviderId);
     if (!ok) return;
     setProviders(nextProviders);
     if (transcription.providerId === target.id) {
       setTranscription((prev) => ({ ...prev, providerId: "" }));
     }
+    setDefaultProviderId(nextDefaultProviderId);
     setDeleteTarget(undefined);
+  };
+
+  const handleSetDefaultProvider = async (provider: LocalAIProvider) => {
+    const ok = await persistAISetting(providers, originalSetting.transcription, "Set default AI provider", provider.id);
+    if (!ok) return;
+    setDefaultProviderId(provider.id);
   };
 
   const handleSaveTranscription = async () => {
@@ -265,7 +301,14 @@ const AISection = () => {
               header: t("common.name"),
               render: (_, provider: LocalAIProvider) => (
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-foreground">{provider.title}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-foreground">{provider.title}</span>
+                    {provider.id === defaultProviderId && (
+                      <span className="rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        {t("setting.ai.default-badge")}
+                      </span>
+                    )}
+                  </div>
                   <span className="font-mono text-xs text-muted-foreground">{provider.id}</span>
                 </div>
               ),
@@ -290,6 +333,11 @@ const AISection = () => {
               ),
             },
             {
+              key: "models",
+              header: t("setting.ai.models"),
+              render: (_, provider: LocalAIProvider) => <span>{provider.models.length}</span>,
+            },
+            {
               key: "actions",
               header: "",
               className: "text-right",
@@ -302,6 +350,11 @@ const AISection = () => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" sideOffset={2}>
                     <DropdownMenuItem onClick={() => handleEditProvider(provider)}>{t("common.edit")}</DropdownMenuItem>
+                    {provider.id !== defaultProviderId && (
+                      <DropdownMenuItem onClick={() => handleSetDefaultProvider(provider)}>
+                        {t("setting.ai.set-as-default")}
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={() => setDeleteTarget(provider)} className="text-destructive focus:text-destructive">
                       {t("common.delete")}
                     </DropdownMenuItem>
@@ -314,6 +367,7 @@ const AISection = () => {
           emptyMessage={t("setting.ai.no-providers")}
           getRowKey={(provider) => provider.id}
         />
+        <p className="text-xs text-muted-foreground">{t("setting.ai.default-provider-hint")}</p>
       </SettingGroup>
 
       <SettingGroup
@@ -451,10 +505,15 @@ interface AIProviderDialogProps {
 const AIProviderDialog = ({ provider, onOpenChange, onSave }: AIProviderDialogProps) => {
   const t = useTranslate();
   const [draft, setDraft] = useState<LocalAIProvider>(() => provider ?? newProvider());
+  const [newModelId, setNewModelId] = useState("");
+  const [testModelId, setTestModelId] = useState("");
+  const [testing, setTesting] = useState(false);
 
   useEffect(() => {
     const next = provider ?? newProvider();
     setDraft(next);
+    setNewModelId("");
+    setTestModelId(next.models[0]?.id ?? "");
   }, [provider]);
 
   const updateDraft = (partial: Partial<LocalAIProvider>) => {
@@ -463,6 +522,57 @@ const AIProviderDialog = ({ provider, onOpenChange, onSave }: AIProviderDialogPr
 
   const handleSave = () => {
     onSave(draft);
+  };
+
+  const handleAddModel = () => {
+    const id = newModelId.trim();
+    if (!id) return;
+    if (draft.models.some((model) => model.id === id)) {
+      toast.error(t("setting.ai.model-duplicate"));
+      return;
+    }
+    const nextModels = [...draft.models, { id, name: "" }];
+    updateDraft({ models: nextModels });
+    if (!testModelId) setTestModelId(id);
+    setNewModelId("");
+  };
+
+  const handleRemoveModel = (id: string) => {
+    updateDraft({ models: draft.models.filter((model) => model.id !== id) });
+    if (testModelId === id) setTestModelId("");
+  };
+
+  const handleTestConnection = async () => {
+    const model = testModelId.trim() || draft.models[0]?.id.trim() || "";
+    if (!model) {
+      toast.error(t("setting.ai.test-model-required"));
+      return;
+    }
+    if (!draft.apiKeySet && !draft.apiKey.trim()) {
+      toast.error(t("setting.ai.api-key-required"));
+      return;
+    }
+    setTesting(true);
+    try {
+      const response = await instanceServiceClient.testAIProvider(
+        create(TestAIProviderRequestSchema, {
+          providerId: draft.apiKeySet ? draft.id : "",
+          type: draft.type,
+          endpoint: draft.endpoint.trim(),
+          apiKey: draft.apiKey,
+          model,
+        }),
+      );
+      if (response.success) {
+        toast.success(response.message || t("setting.ai.test-success"));
+      } else {
+        toast.error(response.message || t("setting.ai.test-failed"));
+      }
+    } catch (error: unknown) {
+      await handleError(error, toast.error, { context: "Test AI provider" });
+    } finally {
+      setTesting(false);
+    }
   };
 
   return (
@@ -520,9 +630,48 @@ const AIProviderDialog = ({ provider, onOpenChange, onSave }: AIProviderDialogPr
               <p className="text-xs text-muted-foreground">{t("setting.ai.current-key", { key: draft.apiKeyHint || "-" })}</p>
             )}
           </div>
+
+          <div className="flex flex-col gap-1.5 sm:col-span-2">
+            <Label>{t("setting.ai.models")}</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {draft.models.length === 0 && <span className="text-xs text-muted-foreground">{t("setting.ai.no-models")}</span>}
+              {draft.models.map((model) => (
+                <span
+                  key={model.id}
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-xs font-mono"
+                >
+                  {model.id}
+                  <button type="button" onClick={() => handleRemoveModel(model.id)} aria-label={t("common.delete")}>
+                    <XIcon className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+                  </button>
+                </span>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Input
+                value={newModelId}
+                onChange={(e) => setNewModelId(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddModel();
+                  }
+                }}
+                placeholder={t("setting.ai.model-id-placeholder")}
+              />
+              <Button type="button" variant="outline" onClick={handleAddModel}>
+                <PlusIcon className="w-4 h-4 mr-1" />
+                {t("setting.ai.add-model")}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">{t("setting.ai.models-hint")}</p>
+          </div>
         </div>
 
         <DialogFooter>
+          <Button type="button" variant="outline" disabled={testing} onClick={handleTestConnection} className="sm:mr-auto">
+            {testing ? t("setting.ai.testing") : t("setting.ai.test-connection")}
+          </Button>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             {t("common.cancel")}
           </Button>

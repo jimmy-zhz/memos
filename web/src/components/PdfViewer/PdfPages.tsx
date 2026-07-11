@@ -20,6 +20,11 @@ interface Props {
   annotateMode?: boolean;
   onAnnotationSelect?: (memoName: string) => void;
   onAnnotationCreate?: (page: number, rect: PdfAnnotationRect, textSnippet: string) => void;
+  /** Page width/height in CSS px at scale=1, used to size not-yet-rendered pages so a
+   *  scroll-to-page jump lands close to correct before the real canvas has measured in. */
+  basePageWidth?: number;
+  basePageHeight?: number;
+  onWrapperRef?: (pageNumber: number, el: HTMLDivElement | null) => void;
 }
 
 export const PdfPages = ({
@@ -36,6 +41,9 @@ export const PdfPages = ({
   annotateMode,
   onAnnotationSelect,
   onAnnotationCreate,
+  basePageWidth,
+  basePageHeight,
+  onWrapperRef,
 }: Props) => {
   if (!doc) return <div ref={containerRef} className={className} />;
 
@@ -47,6 +55,9 @@ export const PdfPages = ({
     onAnnotationCreate: onAnnotationCreate
       ? (rect: PdfAnnotationRect, textSnippet: string) => onAnnotationCreate(n, rect, textSnippet)
       : undefined,
+    estimatedWidth: basePageWidth ? basePageWidth * scale : undefined,
+    estimatedHeight: basePageHeight ? basePageHeight * scale : undefined,
+    onWrapperRef,
   });
 
   if (orientation === "vertical") {

@@ -2,7 +2,9 @@ import {
   BookOpenIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  FileTextIcon,
   MessageSquarePlusIcon,
+  MessageSquareTextIcon,
   ScrollTextIcon,
   ZoomInIcon,
   ZoomOutIcon,
@@ -31,6 +33,10 @@ interface Props {
   className?: string;
   annotateMode?: boolean;
   onToggleAnnotateMode?: () => void;
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
+  /** URL of the plain-text view page, opened in a new tab. Omit to hide the button. */
+  textViewHref?: string;
 }
 
 export const PdfToolbar = ({
@@ -52,6 +58,9 @@ export const PdfToolbar = ({
   className,
   annotateMode,
   onToggleAnnotateMode,
+  sidebarOpen,
+  onToggleSidebar,
+  textViewHref,
 }: Props) => {
   const t = useTranslate();
 
@@ -87,6 +96,18 @@ export const PdfToolbar = ({
       {onToggleAnnotateMode && (
         <Button variant={annotateMode ? "secondary" : "ghost"} size="icon" onClick={onToggleAnnotateMode} title={t("pdf.add-annotation")}>
           <MessageSquarePlusIcon className="w-4 h-4" />
+        </Button>
+      )}
+      {onToggleSidebar && (
+        <Button variant={sidebarOpen ? "secondary" : "ghost"} size="icon" onClick={onToggleSidebar} title={t("pdf.annotations")}>
+          <MessageSquareTextIcon className="w-4 h-4" />
+        </Button>
+      )}
+      {textViewHref && (
+        <Button variant="ghost" size="icon" asChild title={t("pdf.view-plain-text")}>
+          <a href={textViewHref} target="_blank" rel="noopener noreferrer">
+            <FileTextIcon className="w-4 h-4" />
+          </a>
         </Button>
       )}
     </div>

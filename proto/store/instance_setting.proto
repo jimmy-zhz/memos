@@ -179,6 +179,11 @@ message InstanceAISetting {
   // transcription is the speech-to-text feature configuration.
   // When unset or transcription.provider_id is empty, transcription is disabled.
   TranscriptionConfig transcription = 2;
+
+  // default_provider_id references an entry in providers[].id. AI features that have
+  // no feature-specific provider configuration of their own fall back to this provider.
+  // Empty string means no default is set.
+  string default_provider_id = 3;
 }
 
 message AIProviderConfig {
@@ -188,6 +193,16 @@ message AIProviderConfig {
   string endpoint = 4;
   // api_key is write-only at the API layer and is required by the server to call providers.
   string api_key = 5;
+  // models is the list of manually-added model IDs available for this provider.
+  repeated AIModelConfig models = 6;
+}
+
+// AIModelConfig is a manually-added model entry under a provider.
+message AIModelConfig {
+  // id is the model identifier sent to the provider API (e.g. "deepseek-chat").
+  string id = 1;
+  // name is an optional display name. Falls back to id when empty.
+  string name = 2;
 }
 
 enum AIProviderType {

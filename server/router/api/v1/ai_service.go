@@ -179,6 +179,79 @@ func (*APIV1Service) transcribeViaAudioLLM(
 	return resp.Text, nil
 }
 
+const maxFormatMarkdownTextSizeBytes = 1 * MebiByte
+
+// FormatMarkdown restructures plain text into markdown using an instance AI provider,
+// preserving the original text content verbatim.
+func (s *APIV1Service) FormatMarkdown(ctx context.Context, request *v1pb.FormatMarkdownRequest) (*v1pb.FormatMarkdownResponse, error) {
+	user, err := s.fetchCurrentUser(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
+	}
+	if user == nil {
+		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
+	}
+
+	text := request.GetText()
+	if strings.TrimSpace(text) == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "text is required")
+	}
+	if len(text) > maxFormatMarkdownTextSizeBytes {
+		return nil, status.Errorf(codes.InvalidArgument, "text is too large; maximum size is 1 MiB")
+	}
+
+	aiSetting, err := s.Store.GetInstanceAISetting(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get AI setting: %v", err)
+	}
+	providerID := aiSetting.GetDefaultProviderId()
+	if providerID == "" {
+		return nil, status.Errorf(codes.FailedPrecondition, "no default AI provider is configured")
+	}
+	provider, model, err := s.resolveAIProviderWithModel(aiSetting, providerID)
+	if err != nil {
+		return nil, err
+	}
+
+	instructions := "Reformat the user's plain text into well-structured Markdown. " +
+		"The text was extracted from a PDF, so line breaks may be arbitrary. " +
+		"Preserve the original text content completely and verbatim: do not add, remove, summarize, translate, or rephrase anything. " +
+		"Only add Markdown structure: headings, lists, tables, emphasis, code blocks, and paragraph breaks where the original layout implies them. " +
+		"Keep the original language. Return only the Markdown, with no surrounding explanation or code fence."
+	if filename := strings.TrimSpace(request.GetFilename()); filename != "" {
+		instructions += "\n\nThe source file is named: " + filename
+	}
+
+	markdown, err := ai.GenerateText(ctx, provider, model, instructions, text)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to format text: %v", err)
+	}
+	return &v1pb.FormatMarkdownResponse{Markdown: markdown}, nil
+}
+
+// resolveAIProviderWithModel resolves a provider and picks a usable chat model for it:
+// the provider's first manually-configured model, or a built-in default for Gemini.
+func (s *APIV1Service) resolveAIProviderWithModel(setting *storepb.InstanceAISetting, providerID string) (ai.ProviderConfig, string, error) {
+	provider, err := s.resolveAIProvider(setting, providerID)
+	if err != nil {
+		return ai.ProviderConfig{}, "", err
+	}
+	for _, p := range setting.GetProviders() {
+		if p.GetId() != providerID {
+			continue
+		}
+		for _, m := range p.GetModels() {
+			if m.GetId() != "" {
+				return provider, m.GetId(), nil
+			}
+		}
+	}
+	if provider.Type == ai.ProviderGemini {
+		return provider, ai.DefaultGeminiTranscriptionModel, nil
+	}
+	return ai.ProviderConfig{}, "", status.Errorf(codes.FailedPrecondition, "no model is configured for the default AI provider")
+}
+
 func buildTranscriptionInstructions(prompt, language string) string {
 	parts := []string{
 		"Transcribe the audio accurately. Return only the transcript text. " +

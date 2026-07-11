@@ -35,12 +35,18 @@ const (
 const (
 	// AIServiceTranscribeProcedure is the fully-qualified name of the AIService's Transcribe RPC.
 	AIServiceTranscribeProcedure = "/memos.api.v1.AIService/Transcribe"
+	// AIServiceFormatMarkdownProcedure is the fully-qualified name of the AIService's FormatMarkdown
+	// RPC.
+	AIServiceFormatMarkdownProcedure = "/memos.api.v1.AIService/FormatMarkdown"
 )
 
 // AIServiceClient is a client for the memos.api.v1.AIService service.
 type AIServiceClient interface {
 	// Transcribe transcribes an audio file using an instance AI provider.
 	Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error)
+	// FormatMarkdown restructures plain text into markdown using an instance AI provider,
+	// preserving the original text content verbatim.
+	FormatMarkdown(context.Context, *connect.Request[v1.FormatMarkdownRequest]) (*connect.Response[v1.FormatMarkdownResponse], error)
 }
 
 // NewAIServiceClient constructs a client for the memos.api.v1.AIService service. By default, it
@@ -60,12 +66,19 @@ func NewAIServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...c
 			connect.WithSchema(aIServiceMethods.ByName("Transcribe")),
 			connect.WithClientOptions(opts...),
 		),
+		formatMarkdown: connect.NewClient[v1.FormatMarkdownRequest, v1.FormatMarkdownResponse](
+			httpClient,
+			baseURL+AIServiceFormatMarkdownProcedure,
+			connect.WithSchema(aIServiceMethods.ByName("FormatMarkdown")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // aIServiceClient implements AIServiceClient.
 type aIServiceClient struct {
-	transcribe *connect.Client[v1.TranscribeRequest, v1.TranscribeResponse]
+	transcribe     *connect.Client[v1.TranscribeRequest, v1.TranscribeResponse]
+	formatMarkdown *connect.Client[v1.FormatMarkdownRequest, v1.FormatMarkdownResponse]
 }
 
 // Transcribe calls memos.api.v1.AIService.Transcribe.
@@ -73,10 +86,18 @@ func (c *aIServiceClient) Transcribe(ctx context.Context, req *connect.Request[v
 	return c.transcribe.CallUnary(ctx, req)
 }
 
+// FormatMarkdown calls memos.api.v1.AIService.FormatMarkdown.
+func (c *aIServiceClient) FormatMarkdown(ctx context.Context, req *connect.Request[v1.FormatMarkdownRequest]) (*connect.Response[v1.FormatMarkdownResponse], error) {
+	return c.formatMarkdown.CallUnary(ctx, req)
+}
+
 // AIServiceHandler is an implementation of the memos.api.v1.AIService service.
 type AIServiceHandler interface {
 	// Transcribe transcribes an audio file using an instance AI provider.
 	Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error)
+	// FormatMarkdown restructures plain text into markdown using an instance AI provider,
+	// preserving the original text content verbatim.
+	FormatMarkdown(context.Context, *connect.Request[v1.FormatMarkdownRequest]) (*connect.Response[v1.FormatMarkdownResponse], error)
 }
 
 // NewAIServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -92,10 +113,18 @@ func NewAIServiceHandler(svc AIServiceHandler, opts ...connect.HandlerOption) (s
 		connect.WithSchema(aIServiceMethods.ByName("Transcribe")),
 		connect.WithHandlerOptions(opts...),
 	)
+	aIServiceFormatMarkdownHandler := connect.NewUnaryHandler(
+		AIServiceFormatMarkdownProcedure,
+		svc.FormatMarkdown,
+		connect.WithSchema(aIServiceMethods.ByName("FormatMarkdown")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/memos.api.v1.AIService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AIServiceTranscribeProcedure:
 			aIServiceTranscribeHandler.ServeHTTP(w, r)
+		case AIServiceFormatMarkdownProcedure:
+			aIServiceFormatMarkdownHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -107,4 +136,8 @@ type UnimplementedAIServiceHandler struct{}
 
 func (UnimplementedAIServiceHandler) Transcribe(context.Context, *connect.Request[v1.TranscribeRequest]) (*connect.Response[v1.TranscribeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AIService.Transcribe is not implemented"))
+}
+
+func (UnimplementedAIServiceHandler) FormatMarkdown(context.Context, *connect.Request[v1.FormatMarkdownRequest]) (*connect.Response[v1.FormatMarkdownResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AIService.FormatMarkdown is not implemented"))
 }

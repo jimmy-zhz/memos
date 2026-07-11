@@ -804,7 +804,8 @@
   },
   "attachment-preview": {
     "unavailable": "该附件无法预览。",
-    "back-to-top": "回到顶部"
+    "back-to-top": "回到顶部",
+    "ai-formatting": "AI 排版中…"
   },
   "attachment-library": {
     "actions": {

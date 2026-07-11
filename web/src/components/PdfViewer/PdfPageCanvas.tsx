@@ -40,6 +40,15 @@ interface Props {
   annotateMode?: boolean;
   onAnnotationSelect?: (memoName: string) => void;
   onAnnotationCreate?: (rect: PdfAnnotationRect, textSnippet: string) => void;
+  /** CSS px size to reserve before this page has actually rendered (see `lazy`), so
+   *  jumping to an off-screen page can compute an accurate scroll target instead of
+   *  landing on the browser's default zero/300x150 canvas box. Approximate is fine —
+   *  it's replaced by the real measured size once rendering completes. */
+  estimatedWidth?: number;
+  estimatedHeight?: number;
+  /** Reports this page's wrapper element so a scroll-to-page can find it without
+   *  waiting for the page to have rendered. */
+  onWrapperRef?: (pageNumber: number, el: HTMLDivElement | null) => void;
 }
 
 interface PendingSelection {
@@ -58,13 +67,23 @@ export const PdfPageCanvas = ({
   annotateMode,
   onAnnotationSelect,
   onAnnotationCreate,
+  estimatedWidth,
+  estimatedHeight,
+  onWrapperRef,
 }: Props) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const textLayerRef = useRef<HTMLDivElement>(null);
   const annotationLayerRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [shouldRender, setShouldRender] = useState(!lazy);
+  const [rendered, setRendered] = useState(false);
   const [pendingSelection, setPendingSelection] = useState<PendingSelection | null>(null);
+
+  useEffect(() => {
+    onWrapperRef?.(pageNumber, wrapperRef.current);
+    return () => onWrapperRef?.(pageNumber, null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pageNumber]);
 
   useEffect(() => {
     if (!lazy || shouldRender) return;
@@ -157,6 +176,7 @@ export const PdfPageCanvas = ({
           renderForms: false,
         });
       }
+      setRendered(true);
     })();
 
     return () => {
@@ -214,7 +234,11 @@ export const PdfPageCanvas = ({
   }, [annotateMode]);
 
   return (
-    <div ref={wrapperRef} className={cn("relative", className)}>
+    <div
+      ref={wrapperRef}
+      className={cn("relative", className)}
+      style={!rendered && estimatedWidth && estimatedHeight ? { width: estimatedWidth, height: estimatedHeight } : undefined}
+    >
       <canvas ref={canvasRef} className="dark:brightness-90 dark:invert-[0.93] dark:hue-rotate-180" />
       <div ref={textLayerRef} className="textLayer absolute top-0 left-0" />
       <div ref={annotationLayerRef} className="annotationLayer absolute top-0 left-0" />

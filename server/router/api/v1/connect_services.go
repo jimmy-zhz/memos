@@ -55,6 +55,14 @@ func (s *ConnectServiceHandler) TestInstanceEmailSetting(ctx context.Context, re
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) TestAIProvider(ctx context.Context, req *connect.Request[v1pb.TestAIProviderRequest]) (*connect.Response[v1pb.TestAIProviderResponse], error) {
+	resp, err := s.APIV1Service.TestAIProvider(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) GetInstanceStats(ctx context.Context, req *connect.Request[v1pb.GetInstanceStatsRequest]) (*connect.Response[v1pb.InstanceStats], error) {
 	resp, err := s.APIV1Service.GetInstanceStats(ctx, req.Msg)
 	if err != nil {
@@ -525,6 +533,14 @@ func (s *ConnectServiceHandler) BatchDeleteAttachments(ctx context.Context, req 
 
 func (s *ConnectServiceHandler) Transcribe(ctx context.Context, req *connect.Request[v1pb.TranscribeRequest]) (*connect.Response[v1pb.TranscribeResponse], error) {
 	resp, err := s.APIV1Service.Transcribe(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) FormatMarkdown(ctx context.Context, req *connect.Request[v1pb.FormatMarkdownRequest]) (*connect.Response[v1pb.FormatMarkdownResponse], error) {
+	resp, err := s.APIV1Service.FormatMarkdown(ctx, req.Msg)
 	if err != nil {
 		return nil, convertGRPCError(err)
 	}

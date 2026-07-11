@@ -6,6 +6,33 @@ info:
     title: ""
     version: 0.0.1
 paths:
+    /api/v1/ai:formatMarkdown:
+        post:
+            tags:
+                - AIService
+            description: |-
+                FormatMarkdown restructures plain text into markdown using an instance AI provider,
+                 preserving the original text content verbatim.
+            operationId: AIService_FormatMarkdown
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/FormatMarkdownRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/FormatMarkdownResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/ai:transcribe:
         post:
             tags:
@@ -470,6 +497,34 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/InstanceProfile'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/instance/settings/ai:testProvider:
+        post:
+            tags:
+                - InstanceService
+            description: |-
+                TestAIProvider verifies connectivity to an AI provider by making a minimal live API call.
+                 The provider connection may be given inline (for testing before save) or by provider_id
+                 (for testing an already-stored provider, optionally overriding its API key).
+            operationId: InstanceService_TestAIProvider
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/TestAIProviderRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/TestAIProviderResponse'
                 default:
                     description: Default error response
                     content:
@@ -3002,6 +3057,23 @@ components:
                     type: string
                 avatarUrl:
                     type: string
+        FormatMarkdownRequest:
+            required:
+                - text
+            type: object
+            properties:
+                text:
+                    type: string
+                    description: Required. The plain text to format.
+                filename:
+                    type: string
+                    description: Optional. The source filename, used as context for the model.
+        FormatMarkdownResponse:
+            type: object
+            properties:
+                markdown:
+                    type: string
+                    description: The markdown-formatted text.
         GeneralSetting_CustomProfile:
             type: object
             properties:
@@ -3127,6 +3199,16 @@ components:
                 backupSetting:
                     $ref: '#/components/schemas/InstanceSetting_BackupSetting'
             description: An instance setting resource.
+        InstanceSetting_AIModelConfig:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: id is the model identifier sent to the provider API (e.g. "deepseek-chat").
+                name:
+                    type: string
+                    description: name is an optional display name. Falls back to id when empty.
+            description: AIModelConfig is a manually-added model entry under a provider.
         InstanceSetting_AIProviderConfig:
             type: object
             properties:
@@ -3155,6 +3237,11 @@ components:
                     readOnly: true
                     type: string
                     description: api_key_hint is a masked hint for the stored API key.
+                models:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/InstanceSetting_AIModelConfig'
+                    description: models is the list of manually-added model IDs available for this provider.
             description: AIProviderConfig represents one callable AI provider connection.
         InstanceSetting_AISetting:
             type: object
@@ -3170,6 +3257,12 @@ components:
                     description: |-
                         transcription is the speech-to-text feature configuration.
                          When unset or transcription.provider_id is empty, transcription is disabled.
+                defaultProviderId:
+                    type: string
+                    description: |-
+                        default_provider_id references an entry in providers[].id. AI features that have
+                         no feature-specific provider configuration of their own fall back to this provider.
+                         Empty string means no default is set.
             description: AI provider configuration settings.
         InstanceSetting_BackupSetting:
             type: object
@@ -4146,6 +4239,43 @@ components:
             description: |-
                 S3 configuration for cloud storage backend.
                  Reference: https://developers.cloudflare.com/r2/examples/aws/aws-sdk-go/
+        TestAIProviderRequest:
+            type: object
+            properties:
+                providerId:
+                    type: string
+                    description: |-
+                        Optional. References an existing provider in the stored AI setting. When set and
+                         api_key is empty, the stored API key for this provider is used.
+                type:
+                    enum:
+                        - AI_PROVIDER_TYPE_UNSPECIFIED
+                        - OPENAI
+                        - GEMINI
+                    type: string
+                    description: The provider type to test.
+                    format: enum
+                endpoint:
+                    type: string
+                    description: Optional. The endpoint to test. Falls back to the provider's default endpoint when empty.
+                apiKey:
+                    writeOnly: true
+                    type: string
+                    description: The API key to test with. Required unless provider_id references a provider with a stored key.
+                model:
+                    type: string
+                    description: The model ID to use for the test call.
+            description: Request message for TestAIProvider.
+        TestAIProviderResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                    description: success indicates whether the live API call succeeded.
+                message:
+                    type: string
+                    description: 'message describes the result: a short success confirmation, or the error returned by the provider.'
+            description: Response message for TestAIProvider.
         TestInstanceEmailSettingRequest:
             type: object
             properties:

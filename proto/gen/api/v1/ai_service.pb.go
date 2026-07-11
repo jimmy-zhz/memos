@@ -22,6 +22,105 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+type FormatMarkdownRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The plain text to format.
+	Text string `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	// Optional. The source filename, used as context for the model.
+	Filename      string `protobuf:"bytes,2,opt,name=filename,proto3" json:"filename,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FormatMarkdownRequest) Reset() {
+	*x = FormatMarkdownRequest{}
+	mi := &file_api_v1_ai_service_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FormatMarkdownRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FormatMarkdownRequest) ProtoMessage() {}
+
+func (x *FormatMarkdownRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_ai_service_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FormatMarkdownRequest.ProtoReflect.Descriptor instead.
+func (*FormatMarkdownRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_ai_service_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *FormatMarkdownRequest) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *FormatMarkdownRequest) GetFilename() string {
+	if x != nil {
+		return x.Filename
+	}
+	return ""
+}
+
+type FormatMarkdownResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The markdown-formatted text.
+	Markdown      string `protobuf:"bytes,1,opt,name=markdown,proto3" json:"markdown,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FormatMarkdownResponse) Reset() {
+	*x = FormatMarkdownResponse{}
+	mi := &file_api_v1_ai_service_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FormatMarkdownResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FormatMarkdownResponse) ProtoMessage() {}
+
+func (x *FormatMarkdownResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_ai_service_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FormatMarkdownResponse.ProtoReflect.Descriptor instead.
+func (*FormatMarkdownResponse) Descriptor() ([]byte, []int) {
+	return file_api_v1_ai_service_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *FormatMarkdownResponse) GetMarkdown() string {
+	if x != nil {
+		return x.Markdown
+	}
+	return ""
+}
+
 type TranscribeRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Required. Audio input.
@@ -32,7 +131,7 @@ type TranscribeRequest struct {
 
 func (x *TranscribeRequest) Reset() {
 	*x = TranscribeRequest{}
-	mi := &file_api_v1_ai_service_proto_msgTypes[0]
+	mi := &file_api_v1_ai_service_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -44,7 +143,7 @@ func (x *TranscribeRequest) String() string {
 func (*TranscribeRequest) ProtoMessage() {}
 
 func (x *TranscribeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_ai_service_proto_msgTypes[0]
+	mi := &file_api_v1_ai_service_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -57,7 +156,7 @@ func (x *TranscribeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TranscribeRequest.ProtoReflect.Descriptor instead.
 func (*TranscribeRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_ai_service_proto_rawDescGZIP(), []int{0}
+	return file_api_v1_ai_service_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *TranscribeRequest) GetAudio() *TranscriptionAudio {
@@ -84,7 +183,7 @@ type TranscriptionAudio struct {
 
 func (x *TranscriptionAudio) Reset() {
 	*x = TranscriptionAudio{}
-	mi := &file_api_v1_ai_service_proto_msgTypes[1]
+	mi := &file_api_v1_ai_service_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -96,7 +195,7 @@ func (x *TranscriptionAudio) String() string {
 func (*TranscriptionAudio) ProtoMessage() {}
 
 func (x *TranscriptionAudio) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_ai_service_proto_msgTypes[1]
+	mi := &file_api_v1_ai_service_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -109,7 +208,7 @@ func (x *TranscriptionAudio) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TranscriptionAudio.ProtoReflect.Descriptor instead.
 func (*TranscriptionAudio) Descriptor() ([]byte, []int) {
-	return file_api_v1_ai_service_proto_rawDescGZIP(), []int{1}
+	return file_api_v1_ai_service_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *TranscriptionAudio) GetSource() isTranscriptionAudio_Source {
@@ -179,7 +278,7 @@ type TranscribeResponse struct {
 
 func (x *TranscribeResponse) Reset() {
 	*x = TranscribeResponse{}
-	mi := &file_api_v1_ai_service_proto_msgTypes[2]
+	mi := &file_api_v1_ai_service_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -191,7 +290,7 @@ func (x *TranscribeResponse) String() string {
 func (*TranscribeResponse) ProtoMessage() {}
 
 func (x *TranscribeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_ai_service_proto_msgTypes[2]
+	mi := &file_api_v1_ai_service_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -204,7 +303,7 @@ func (x *TranscribeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TranscribeResponse.ProtoReflect.Descriptor instead.
 func (*TranscribeResponse) Descriptor() ([]byte, []int) {
-	return file_api_v1_ai_service_proto_rawDescGZIP(), []int{2}
+	return file_api_v1_ai_service_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *TranscribeResponse) GetText() string {
@@ -218,7 +317,12 @@ var File_api_v1_ai_service_proto protoreflect.FileDescriptor
 
 const file_api_v1_ai_service_proto_rawDesc = "" +
 	"\n" +
-	"\x17api/v1/ai_service.proto\x12\fmemos.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\"P\n" +
+	"\x17api/v1/ai_service.proto\x12\fmemos.api.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x17google/api/client.proto\x1a\x1fgoogle/api/field_behavior.proto\"Q\n" +
+	"\x15FormatMarkdownRequest\x12\x17\n" +
+	"\x04text\x18\x01 \x01(\tB\x03\xe0A\x02R\x04text\x12\x1f\n" +
+	"\bfilename\x18\x02 \x01(\tB\x03\xe0A\x01R\bfilename\"4\n" +
+	"\x16FormatMarkdownResponse\x12\x1a\n" +
+	"\bmarkdown\x18\x01 \x01(\tR\bmarkdown\"P\n" +
 	"\x11TranscribeRequest\x12;\n" +
 	"\x05audio\x18\x01 \x01(\v2 .memos.api.v1.TranscriptionAudioB\x03\xe0A\x02R\x05audio\"\x9c\x01\n" +
 	"\x12TranscriptionAudio\x12\x1f\n" +
@@ -228,10 +332,11 @@ const file_api_v1_ai_service_proto_rawDesc = "" +
 	"\fcontent_type\x18\x04 \x01(\tB\x03\xe0A\x01R\vcontentTypeB\b\n" +
 	"\x06source\"(\n" +
 	"\x12TranscribeResponse\x12\x12\n" +
-	"\x04text\x18\x01 \x01(\tR\x04text2\x86\x01\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text2\x91\x02\n" +
 	"\tAIService\x12y\n" +
 	"\n" +
-	"Transcribe\x12\x1f.memos.api.v1.TranscribeRequest\x1a .memos.api.v1.TranscribeResponse\"(\xdaA\x05audio\x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/api/v1/ai:transcribeB\xa6\x01\n" +
+	"Transcribe\x12\x1f.memos.api.v1.TranscribeRequest\x1a .memos.api.v1.TranscribeResponse\"(\xdaA\x05audio\x82\xd3\xe4\x93\x02\x1a:\x01*\"\x15/api/v1/ai:transcribe\x12\x88\x01\n" +
+	"\x0eFormatMarkdown\x12#.memos.api.v1.FormatMarkdownRequest\x1a$.memos.api.v1.FormatMarkdownResponse\"+\xdaA\x04text\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/api/v1/ai:formatMarkdownB\xa6\x01\n" +
 	"\x10com.memos.api.v1B\x0eAiServiceProtoP\x01Z0github.com/usememos/memos/proto/gen/api/v1;apiv1\xa2\x02\x03MAX\xaa\x02\fMemos.Api.V1\xca\x02\fMemos\\Api\\V1\xe2\x02\x18Memos\\Api\\V1\\GPBMetadata\xea\x02\x0eMemos::Api::V1b\x06proto3"
 
 var (
@@ -246,18 +351,22 @@ func file_api_v1_ai_service_proto_rawDescGZIP() []byte {
 	return file_api_v1_ai_service_proto_rawDescData
 }
 
-var file_api_v1_ai_service_proto_msgTypes = make([]protoimpl.MessageInfo, 3)
+var file_api_v1_ai_service_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
 var file_api_v1_ai_service_proto_goTypes = []any{
-	(*TranscribeRequest)(nil),  // 0: memos.api.v1.TranscribeRequest
-	(*TranscriptionAudio)(nil), // 1: memos.api.v1.TranscriptionAudio
-	(*TranscribeResponse)(nil), // 2: memos.api.v1.TranscribeResponse
+	(*FormatMarkdownRequest)(nil),  // 0: memos.api.v1.FormatMarkdownRequest
+	(*FormatMarkdownResponse)(nil), // 1: memos.api.v1.FormatMarkdownResponse
+	(*TranscribeRequest)(nil),      // 2: memos.api.v1.TranscribeRequest
+	(*TranscriptionAudio)(nil),     // 3: memos.api.v1.TranscriptionAudio
+	(*TranscribeResponse)(nil),     // 4: memos.api.v1.TranscribeResponse
 }
 var file_api_v1_ai_service_proto_depIdxs = []int32{
-	1, // 0: memos.api.v1.TranscribeRequest.audio:type_name -> memos.api.v1.TranscriptionAudio
-	0, // 1: memos.api.v1.AIService.Transcribe:input_type -> memos.api.v1.TranscribeRequest
-	2, // 2: memos.api.v1.AIService.Transcribe:output_type -> memos.api.v1.TranscribeResponse
-	2, // [2:3] is the sub-list for method output_type
-	1, // [1:2] is the sub-list for method input_type
+	3, // 0: memos.api.v1.TranscribeRequest.audio:type_name -> memos.api.v1.TranscriptionAudio
+	2, // 1: memos.api.v1.AIService.Transcribe:input_type -> memos.api.v1.TranscribeRequest
+	0, // 2: memos.api.v1.AIService.FormatMarkdown:input_type -> memos.api.v1.FormatMarkdownRequest
+	4, // 3: memos.api.v1.AIService.Transcribe:output_type -> memos.api.v1.TranscribeResponse
+	1, // 4: memos.api.v1.AIService.FormatMarkdown:output_type -> memos.api.v1.FormatMarkdownResponse
+	3, // [3:5] is the sub-list for method output_type
+	1, // [1:3] is the sub-list for method input_type
 	1, // [1:1] is the sub-list for extension type_name
 	1, // [1:1] is the sub-list for extension extendee
 	0, // [0:1] is the sub-list for field type_name
@@ -268,7 +377,7 @@ func file_api_v1_ai_service_proto_init() {
 	if File_api_v1_ai_service_proto != nil {
 		return
 	}
-	file_api_v1_ai_service_proto_msgTypes[1].OneofWrappers = []any{
+	file_api_v1_ai_service_proto_msgTypes[3].OneofWrappers = []any{
 		(*TranscriptionAudio_Content)(nil),
 		(*TranscriptionAudio_Uri)(nil),
 	}
@@ -278,7 +387,7 @@ func file_api_v1_ai_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_ai_service_proto_rawDesc), len(file_api_v1_ai_service_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   3,
+			NumMessages:   5,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

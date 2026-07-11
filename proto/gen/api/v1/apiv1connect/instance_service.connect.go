@@ -55,6 +55,9 @@ const (
 	// InstanceServiceBackupNowProcedure is the fully-qualified name of the InstanceService's BackupNow
 	// RPC.
 	InstanceServiceBackupNowProcedure = "/memos.api.v1.InstanceService/BackupNow"
+	// InstanceServiceTestAIProviderProcedure is the fully-qualified name of the InstanceService's
+	// TestAIProvider RPC.
+	InstanceServiceTestAIProviderProcedure = "/memos.api.v1.InstanceService/TestAIProvider"
 )
 
 // InstanceServiceClient is a client for the memos.api.v1.InstanceService service.
@@ -74,6 +77,10 @@ type InstanceServiceClient interface {
 	// BackupNow triggers an immediate database backup to the configured S3 storage.
 	// Only available when the instance uses SQLite and S3 storage is configured. Admin only.
 	BackupNow(context.Context, *connect.Request[v1.BackupNowRequest]) (*connect.Response[v1.BackupNowResponse], error)
+	// TestAIProvider verifies connectivity to an AI provider by making a minimal live API call.
+	// The provider connection may be given inline (for testing before save) or by provider_id
+	// (for testing an already-stored provider, optionally overriding its API key).
+	TestAIProvider(context.Context, *connect.Request[v1.TestAIProviderRequest]) (*connect.Response[v1.TestAIProviderResponse], error)
 }
 
 // NewInstanceServiceClient constructs a client for the memos.api.v1.InstanceService service. By
@@ -129,6 +136,12 @@ func NewInstanceServiceClient(httpClient connect.HTTPClient, baseURL string, opt
 			connect.WithSchema(instanceServiceMethods.ByName("BackupNow")),
 			connect.WithClientOptions(opts...),
 		),
+		testAIProvider: connect.NewClient[v1.TestAIProviderRequest, v1.TestAIProviderResponse](
+			httpClient,
+			baseURL+InstanceServiceTestAIProviderProcedure,
+			connect.WithSchema(instanceServiceMethods.ByName("TestAIProvider")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -141,6 +154,7 @@ type instanceServiceClient struct {
 	testInstanceEmailSetting *connect.Client[v1.TestInstanceEmailSettingRequest, emptypb.Empty]
 	getInstanceStats         *connect.Client[v1.GetInstanceStatsRequest, v1.InstanceStats]
 	backupNow                *connect.Client[v1.BackupNowRequest, v1.BackupNowResponse]
+	testAIProvider           *connect.Client[v1.TestAIProviderRequest, v1.TestAIProviderResponse]
 }
 
 // GetInstanceProfile calls memos.api.v1.InstanceService.GetInstanceProfile.
@@ -178,6 +192,11 @@ func (c *instanceServiceClient) BackupNow(ctx context.Context, req *connect.Requ
 	return c.backupNow.CallUnary(ctx, req)
 }
 
+// TestAIProvider calls memos.api.v1.InstanceService.TestAIProvider.
+func (c *instanceServiceClient) TestAIProvider(ctx context.Context, req *connect.Request[v1.TestAIProviderRequest]) (*connect.Response[v1.TestAIProviderResponse], error) {
+	return c.testAIProvider.CallUnary(ctx, req)
+}
+
 // InstanceServiceHandler is an implementation of the memos.api.v1.InstanceService service.
 type InstanceServiceHandler interface {
 	// Gets the instance profile.
@@ -195,6 +214,10 @@ type InstanceServiceHandler interface {
 	// BackupNow triggers an immediate database backup to the configured S3 storage.
 	// Only available when the instance uses SQLite and S3 storage is configured. Admin only.
 	BackupNow(context.Context, *connect.Request[v1.BackupNowRequest]) (*connect.Response[v1.BackupNowResponse], error)
+	// TestAIProvider verifies connectivity to an AI provider by making a minimal live API call.
+	// The provider connection may be given inline (for testing before save) or by provider_id
+	// (for testing an already-stored provider, optionally overriding its API key).
+	TestAIProvider(context.Context, *connect.Request[v1.TestAIProviderRequest]) (*connect.Response[v1.TestAIProviderResponse], error)
 }
 
 // NewInstanceServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -246,6 +269,12 @@ func NewInstanceServiceHandler(svc InstanceServiceHandler, opts ...connect.Handl
 		connect.WithSchema(instanceServiceMethods.ByName("BackupNow")),
 		connect.WithHandlerOptions(opts...),
 	)
+	instanceServiceTestAIProviderHandler := connect.NewUnaryHandler(
+		InstanceServiceTestAIProviderProcedure,
+		svc.TestAIProvider,
+		connect.WithSchema(instanceServiceMethods.ByName("TestAIProvider")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/memos.api.v1.InstanceService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case InstanceServiceGetInstanceProfileProcedure:
@@ -262,6 +291,8 @@ func NewInstanceServiceHandler(svc InstanceServiceHandler, opts ...connect.Handl
 			instanceServiceGetInstanceStatsHandler.ServeHTTP(w, r)
 		case InstanceServiceBackupNowProcedure:
 			instanceServiceBackupNowHandler.ServeHTTP(w, r)
+		case InstanceServiceTestAIProviderProcedure:
+			instanceServiceTestAIProviderHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -297,4 +328,8 @@ func (UnimplementedInstanceServiceHandler) GetInstanceStats(context.Context, *co
 
 func (UnimplementedInstanceServiceHandler) BackupNow(context.Context, *connect.Request[v1.BackupNowRequest]) (*connect.Response[v1.BackupNowResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.BackupNow is not implemented"))
+}
+
+func (UnimplementedInstanceServiceHandler) TestAIProvider(context.Context, *connect.Request[v1.TestAIProviderRequest]) (*connect.Response[v1.TestAIProviderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.InstanceService.TestAIProvider is not implemented"))
 }

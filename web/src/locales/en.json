@@ -29,7 +29,8 @@
   },
   "attachment-preview": {
     "unavailable": "This attachment can't be previewed.",
-    "back-to-top": "Back to top"
+    "back-to-top": "Back to top",
+    "ai-formatting": "Formatting with AI…"
   },
   "attachment-library": {
     "actions": {
@@ -465,7 +466,10 @@
       "byok-title": "Use your own AI account",
       "configured": "Configured",
       "current-key": "Current key: {{key}}",
+      "default-badge": "Default",
       "default-endpoint": "Default endpoint",
+      "default-provider-hint": "The default provider is used by AI features that don't have their own provider configured.",
+      "set-as-default": "Set as default",
       "delete-provider": "Delete AI provider `{{title}}`?",
       "description": "Provider keys are supplied by the instance owner and used by server-side AI features.",
       "dialog-description": "Add a key from your own provider account. Memos uses built-in models for each provider; leave the API key blank while editing to keep the stored key.",
@@ -476,6 +480,17 @@
       "integrations-title": "AI integrations",
       "keep-api-key": "Leave blank to keep the existing key",
       "label": "AI",
+      "add-model": "Add model",
+      "model-id-placeholder": "e.g. deepseek-chat",
+      "model-duplicate": "This model is already added.",
+      "models": "Models",
+      "models-hint": "Add the provider-specific model IDs you want to use (e.g. deepseek-chat, gpt-4o, gemini-2.5-flash).",
+      "no-models": "No models added yet.",
+      "test-connection": "Test connection",
+      "testing": "Testing…",
+      "test-model-required": "Add a model before testing the connection.",
+      "test-success": "Connection succeeded.",
+      "test-failed": "Connection failed.",
       "no-providers": "No AI providers configured.",
       "provider-title": "Provider name",
       "provider-title-required": "Provider name is required.",
@@ -938,7 +953,11 @@
     "add-annotation": "Add a note",
     "annotations": "Notes",
     "no-annotations": "No notes yet. Toggle \"Add a note\" and select some text to write one about it.",
-    "page-n": "Page {{page}}"
+    "page-n": "Page {{page}}",
+    "note-expand": "More",
+    "note-collapse": "Less",
+    "view-plain-text": "View plain text",
+    "plain-text-view": "Plain text"
   },
   "bookshelf": {
     "title": "Bookshelf",

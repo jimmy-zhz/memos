@@ -27,6 +27,7 @@ const (
 	InstanceService_TestInstanceEmailSetting_FullMethodName = "/memos.api.v1.InstanceService/TestInstanceEmailSetting"
 	InstanceService_GetInstanceStats_FullMethodName         = "/memos.api.v1.InstanceService/GetInstanceStats"
 	InstanceService_BackupNow_FullMethodName                = "/memos.api.v1.InstanceService/BackupNow"
+	InstanceService_TestAIProvider_FullMethodName           = "/memos.api.v1.InstanceService/TestAIProvider"
 )
 
 // InstanceServiceClient is the client API for InstanceService service.
@@ -48,6 +49,10 @@ type InstanceServiceClient interface {
 	// BackupNow triggers an immediate database backup to the configured S3 storage.
 	// Only available when the instance uses SQLite and S3 storage is configured. Admin only.
 	BackupNow(ctx context.Context, in *BackupNowRequest, opts ...grpc.CallOption) (*BackupNowResponse, error)
+	// TestAIProvider verifies connectivity to an AI provider by making a minimal live API call.
+	// The provider connection may be given inline (for testing before save) or by provider_id
+	// (for testing an already-stored provider, optionally overriding its API key).
+	TestAIProvider(ctx context.Context, in *TestAIProviderRequest, opts ...grpc.CallOption) (*TestAIProviderResponse, error)
 }
 
 type instanceServiceClient struct {
@@ -128,6 +133,16 @@ func (c *instanceServiceClient) BackupNow(ctx context.Context, in *BackupNowRequ
 	return out, nil
 }
 
+func (c *instanceServiceClient) TestAIProvider(ctx context.Context, in *TestAIProviderRequest, opts ...grpc.CallOption) (*TestAIProviderResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TestAIProviderResponse)
+	err := c.cc.Invoke(ctx, InstanceService_TestAIProvider_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // InstanceServiceServer is the server API for InstanceService service.
 // All implementations must embed UnimplementedInstanceServiceServer
 // for forward compatibility.
@@ -147,6 +162,10 @@ type InstanceServiceServer interface {
 	// BackupNow triggers an immediate database backup to the configured S3 storage.
 	// Only available when the instance uses SQLite and S3 storage is configured. Admin only.
 	BackupNow(context.Context, *BackupNowRequest) (*BackupNowResponse, error)
+	// TestAIProvider verifies connectivity to an AI provider by making a minimal live API call.
+	// The provider connection may be given inline (for testing before save) or by provider_id
+	// (for testing an already-stored provider, optionally overriding its API key).
+	TestAIProvider(context.Context, *TestAIProviderRequest) (*TestAIProviderResponse, error)
 	mustEmbedUnimplementedInstanceServiceServer()
 }
 
@@ -177,6 +196,9 @@ func (UnimplementedInstanceServiceServer) GetInstanceStats(context.Context, *Get
 }
 func (UnimplementedInstanceServiceServer) BackupNow(context.Context, *BackupNowRequest) (*BackupNowResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method BackupNow not implemented")
+}
+func (UnimplementedInstanceServiceServer) TestAIProvider(context.Context, *TestAIProviderRequest) (*TestAIProviderResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method TestAIProvider not implemented")
 }
 func (UnimplementedInstanceServiceServer) mustEmbedUnimplementedInstanceServiceServer() {}
 func (UnimplementedInstanceServiceServer) testEmbeddedByValue()                         {}
@@ -325,6 +347,24 @@ func _InstanceService_BackupNow_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _InstanceService_TestAIProvider_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TestAIProviderRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceServiceServer).TestAIProvider(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: InstanceService_TestAIProvider_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceServiceServer).TestAIProvider(ctx, req.(*TestAIProviderRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // InstanceService_ServiceDesc is the grpc.ServiceDesc for InstanceService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -359,6 +399,10 @@ var InstanceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BackupNow",
 			Handler:    _InstanceService_BackupNow_Handler,
+		},
+		{
+			MethodName: "TestAIProvider",
+			Handler:    _InstanceService_TestAIProvider_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

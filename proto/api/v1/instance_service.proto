@@ -64,6 +64,16 @@ service InstanceService {
       body: "*"
     };
   }
+
+  // TestAIProvider verifies connectivity to an AI provider by making a minimal live API call.
+  // The provider connection may be given inline (for testing before save) or by provider_id
+  // (for testing an already-stored provider, optionally overriding its API key).
+  rpc TestAIProvider(TestAIProviderRequest) returns (TestAIProviderResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/instance/settings/ai:testProvider"
+      body: "*"
+    };
+  }
 }
 
 message BackupNowRequest {}
@@ -270,6 +280,11 @@ message InstanceSetting {
     // transcription is the speech-to-text feature configuration.
     // When unset or transcription.provider_id is empty, transcription is disabled.
     TranscriptionConfig transcription = 2;
+
+    // default_provider_id references an entry in providers[].id. AI features that have
+    // no feature-specific provider configuration of their own fall back to this provider.
+    // Empty string means no default is set.
+    string default_provider_id = 3;
   }
 
   // BackupSetting configures and reports the status of the weekly/manual SQLite-to-S3 database
@@ -303,11 +318,23 @@ message InstanceSetting {
     bool api_key_set = 8 [(google.api.field_behavior) = OUTPUT_ONLY];
     // api_key_hint is a masked hint for the stored API key.
     string api_key_hint = 9 [(google.api.field_behavior) = OUTPUT_ONLY];
+    // models is the list of manually-added model IDs available for this provider.
+    repeated AIModelConfig models = 10;
+  }
+
+  // AIModelConfig is a manually-added model entry under a provider.
+  message AIModelConfig {
+    // id is the model identifier sent to the provider API (e.g. "deepseek-chat").
+    string id = 1;
+    // name is an optional display name. Falls back to id when empty.
+    string name = 2;
   }
 
   // AIProviderType is the provider implementation type.
   enum AIProviderType {
     AI_PROVIDER_TYPE_UNSPECIFIED = 0;
+    // OPENAI covers OpenAI and any OpenAI-compatible chat-completions API
+    // (DeepSeek, MiniMax, SiliconFlow, OpenRouter, Ollama, etc.) via a custom endpoint.
     OPENAI = 1;
     GEMINI = 2;
   }
@@ -374,6 +401,34 @@ message TestInstanceEmailSettingRequest {
 
   // Optional. Recipient email address. If omitted, the current user's email address is used.
   string recipient_email = 2 [(google.api.field_behavior) = OPTIONAL];
+}
+
+// Request message for TestAIProvider.
+message TestAIProviderRequest {
+  // Optional. References an existing provider in the stored AI setting. When set and
+  // api_key is empty, the stored API key for this provider is used.
+  string provider_id = 1 [(google.api.field_behavior) = OPTIONAL];
+
+  // The provider type to test.
+  InstanceSetting.AIProviderType type = 2;
+
+  // Optional. The endpoint to test. Falls back to the provider's default endpoint when empty.
+  string endpoint = 3 [(google.api.field_behavior) = OPTIONAL];
+
+  // The API key to test with. Required unless provider_id references a provider with a stored key.
+  string api_key = 4 [(google.api.field_behavior) = INPUT_ONLY];
+
+  // The model ID to use for the test call.
+  string model = 5;
+}
+
+// Response message for TestAIProvider.
+message TestAIProviderResponse {
+  // success indicates whether the live API call succeeded.
+  bool success = 1;
+
+  // message describes the result: a short success confirmation, or the error returned by the provider.
+  string message = 2;
 }
 
 // Request message for GetInstanceStats.

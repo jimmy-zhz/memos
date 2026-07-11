@@ -1,9 +1,7 @@
 import { create } from "@bufbuild/protobuf";
-import { ListIcon } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import MemoEditor from "@/components/MemoEditor";
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import useMediaQuery from "@/hooks/useMediaQuery";
@@ -38,13 +36,65 @@ export const PdfDocumentView = ({ url, toolbarSlot, className, parentMemoName, a
   const [annotateMode, setAnnotateMode] = useState(false);
   const [selectedMemoName, setSelectedMemoName] = useState<string>();
   const [pendingAnnotation, setPendingAnnotation] = useState<{ page: number; rect: PdfAnnotationRect; text: string }>();
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const canAnnotate = !!parentMemoName && !!attachmentName;
   const { byPage, all, refetch } = usePdfAnnotations(parentMemoName, attachmentName);
+  const pageRefs = useRef(new Map<number, HTMLDivElement>());
+  const defaultOpenedRef = useRef(false);
+
+  const registerPageRef = useCallback((page: number, el: HTMLDivElement | null) => {
+    if (el) pageRefs.current.set(page, el);
+    else pageRefs.current.delete(page);
+  }, []);
+
+  // Open the comments panel by default when the PDF already has notes, so they're
+  // visible on arrival instead of requiring the reader to discover the toggle button.
+  // Only does this once per mount (not every time `all` changes), so it doesn't fight
+  // a reader who's deliberately closed the panel.
+  useEffect(() => {
+    if (defaultOpenedRef.current || all.length === 0) return;
+    defaultOpenedRef.current = true;
+    setSidebarOpen(true);
+  }, [all.length]);
+
+  // Jumps to the page an annotation lives on. In paginated (horizontal) mode that means
+  // flipping pages; in continuous scroll (vertical) mode it scrolls that page's wrapper
+  // into view (sized ahead of render via basePageWidth/Height so the target is accurate
+  // even if the page hasn't rendered yet — see PdfPageCanvas's `estimatedWidth/Height`).
+  // Uses an instant jump rather than `behavior: "smooth"`: pages between the current
+  // scroll position and the target lazy-render as the animation passes over them, and
+  // each one swapping from its estimated placeholder size to its real measured size
+  // mid-flight shifts the scroll target, which killed the in-progress smooth scroll
+  // partway (a single click looked like it needed a second click to "finish").
+  const jumpToPage = (page: number) => {
+    if (state.orientation === "horizontal") {
+      const target = page - ((page - 1) % Math.max(state.pagesPerView, 1));
+      if (target !== state.pageNumber) {
+        const diff = target - state.pageNumber;
+        if (diff > 0) for (let i = 0; i < diff; i += state.pagesPerView) state.goNext();
+        else for (let i = 0; i > diff; i -= state.pagesPerView) state.goPrev();
+      }
+      return;
+    }
+    pageRefs.current.get(page)?.scrollIntoView({ behavior: "auto", block: "start" });
+  };
 
   if (state.error) {
     return <div className={cn("w-full p-6 text-center text-sm text-destructive", className)}>{t("pdf.load-failed")}</div>;
   }
+
+  const sidebar = (
+    <PdfAnnotationSidebar
+      annotations={all}
+      selectedMemoName={selectedMemoName}
+      onClose={() => setSidebarOpen(false)}
+      onSelect={(memoName, page) => {
+        setSelectedMemoName(memoName);
+        jumpToPage(page);
+        if (!isDesktop) setSidebarOpen(false);
+      }}
+    />
+  );
 
   return (
     <>
@@ -67,19 +117,13 @@ export const PdfDocumentView = ({ url, toolbarSlot, className, parentMemoName, a
           onZoomIn={state.zoomIn}
           annotateMode={canAnnotate ? annotateMode : undefined}
           onToggleAnnotateMode={canAnnotate ? () => setAnnotateMode((v) => !v) : undefined}
+          sidebarOpen={canAnnotate ? sidebarOpen : undefined}
+          onToggleSidebar={canAnnotate ? () => setSidebarOpen((v) => !v) : undefined}
+          textViewHref={attachmentName ? `/${attachmentName}/text` : undefined}
         />,
         toolbarSlot,
       )}
-      {canAnnotate &&
-        all.length > 0 &&
-        !isDesktop &&
-        createPortal(
-          <Button variant="ghost" size="icon" onClick={() => setMobileSidebarOpen(true)} title={t("pdf.annotations")}>
-            <ListIcon className="w-4 h-4" />
-          </Button>,
-          toolbarSlot,
-        )}
-      <div className="w-full flex items-start gap-2">
+      <div className="w-full flex items-start">
         <PdfPages
           doc={state.doc}
           numPages={state.numPages}
@@ -88,52 +132,43 @@ export const PdfDocumentView = ({ url, toolbarSlot, className, parentMemoName, a
           orientation={state.orientation}
           pagesPerView={state.pagesPerView}
           containerRef={state.containerRef}
-          className={className}
+          className={cn("min-w-0 flex-1", className)}
           annotationsByPage={byPage}
           selectedAnnotationMemoName={selectedMemoName}
           annotateMode={canAnnotate && annotateMode}
-          onAnnotationSelect={setSelectedMemoName}
+          onAnnotationSelect={(memoName) => {
+            setSelectedMemoName(memoName);
+            setSidebarOpen(true);
+          }}
           onAnnotationCreate={canAnnotate ? (page, rect, text) => setPendingAnnotation({ page, rect, text }) : undefined}
+          basePageWidth={state.basePageWidth}
+          basePageHeight={state.basePageHeight}
+          onWrapperRef={registerPageRef}
         />
-        {canAnnotate && all.length > 0 && isDesktop && (
-          <PdfAnnotationSidebar
-            annotations={all}
-            selectedMemoName={selectedMemoName}
-            onSelect={(memoName, page) => {
-              setSelectedMemoName(memoName);
-              if (state.orientation === "horizontal") {
-                const target = page - ((page - 1) % Math.max(state.pagesPerView, 1));
-                if (target !== state.pageNumber) {
-                  const diff = target - state.pageNumber;
-                  if (diff > 0) for (let i = 0; i < diff; i += state.pagesPerView) state.goNext();
-                  else for (let i = 0; i > diff; i -= state.pagesPerView) state.goPrev();
-                }
-              }
-            }}
-          />
+        {canAnnotate && sidebarOpen && isDesktop && (
+          // Sticky (not part of the page stack's own height) so it stays docked to the
+          // right edge of whichever ancestor scrolls, like Adobe's comments panel, instead
+          // of stretching the row or getting pushed around as notes/pages accumulate.
+          // The width lives here (not on the sidebar itself): the sidebar uses w-full, and
+          // a percentage width on a child of this auto-width sticky wrapper would resolve
+          // circularly and blow up to content width.
+          <div className="sticky top-0 h-[calc(100vh-6rem)] max-h-[calc(100vh-6rem)] w-[20%] min-w-[240px] shrink-0">{sidebar}</div>
         )}
       </div>
-      {canAnnotate && all.length > 0 && !isDesktop && (
-        <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
+      {canAnnotate && !isDesktop && (
+        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
           <SheetContent side="right" className="w-[85%] max-w-full overflow-y-auto px-2 py-3 bg-background">
             <SheetHeader>
               <SheetTitle>{t("pdf.annotations")}</SheetTitle>
             </SheetHeader>
             <PdfAnnotationSidebar
-              className="w-full"
+              className="w-full max-w-full border-l-0 border-t-0"
               annotations={all}
               selectedMemoName={selectedMemoName}
               onSelect={(memoName, page) => {
                 setSelectedMemoName(memoName);
-                setMobileSidebarOpen(false);
-                if (state.orientation === "horizontal") {
-                  const target = page - ((page - 1) % Math.max(state.pagesPerView, 1));
-                  if (target !== state.pageNumber) {
-                    const diff = target - state.pageNumber;
-                    if (diff > 0) for (let i = 0; i < diff; i += state.pagesPerView) state.goNext();
-                    else for (let i = 0; i > diff; i -= state.pagesPerView) state.goPrev();
-                  }
-                }
+                setSidebarOpen(false);
+                jumpToPage(page);
               }}
             />
           </SheetContent>
@@ -160,8 +195,10 @@ export const PdfDocumentView = ({ url, toolbarSlot, className, parentMemoName, a
                 height: pendingAnnotation.rect.height,
                 textSnippet: pendingAnnotation.text,
               })}
-              onConfirm={() => {
+              onConfirm={(memoName) => {
                 setPendingAnnotation(undefined);
+                setSelectedMemoName(memoName);
+                setSidebarOpen(true);
                 refetch();
               }}
               onCancel={() => setPendingAnnotation(undefined)}

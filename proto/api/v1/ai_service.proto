@@ -17,6 +17,29 @@ service AIService {
     };
     option (google.api.method_signature) = "audio";
   }
+
+  // FormatMarkdown restructures plain text into markdown using an instance AI provider,
+  // preserving the original text content verbatim.
+  rpc FormatMarkdown(FormatMarkdownRequest) returns (FormatMarkdownResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/ai:formatMarkdown"
+      body: "*"
+    };
+    option (google.api.method_signature) = "text";
+  }
+}
+
+message FormatMarkdownRequest {
+  // Required. The plain text to format.
+  string text = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Optional. The source filename, used as context for the model.
+  string filename = 2 [(google.api.field_behavior) = OPTIONAL];
+}
+
+message FormatMarkdownResponse {
+  // The markdown-formatted text.
+  string markdown = 1;
 }
 
 message TranscribeRequest {

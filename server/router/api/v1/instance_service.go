@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/usememos/memos/internal/ai"
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/server/backup"
@@ -297,6 +298,66 @@ func (s *APIV1Service) BackupNow(ctx context.Context, _ *v1pb.BackupNowRequest) 
 		return nil, status.Errorf(codes.Internal, "failed to get backup status: %v", err)
 	}
 	return &v1pb.BackupNowResponse{BackupTime: backupSetting.GetLastBackupTime()}, nil
+}
+
+// TestAIProvider verifies connectivity to an AI provider with a minimal live chat-completion call.
+func (s *APIV1Service) TestAIProvider(ctx context.Context, request *v1pb.TestAIProviderRequest) (*v1pb.TestAIProviderResponse, error) {
+	user, err := s.fetchCurrentUser(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
+	}
+	if user == nil {
+		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
+	}
+	if user.Role != store.RoleAdmin {
+		return nil, status.Errorf(codes.PermissionDenied, "permission denied")
+	}
+
+	providerType := convertAIProviderTypeFromStore(storepb.AIProviderType(request.Type))
+	if providerType == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "provider type is required")
+	}
+
+	endpoint := strings.TrimSpace(request.Endpoint)
+	apiKey := request.ApiKey
+	providerID := strings.TrimSpace(request.ProviderId)
+
+	if providerID != "" {
+		aiSetting, err := s.Store.GetInstanceAISetting(ctx)
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "failed to get AI setting: %v", err)
+		}
+		for _, provider := range aiSetting.GetProviders() {
+			if provider.GetId() == providerID {
+				if endpoint == "" {
+					endpoint = provider.GetEndpoint()
+				}
+				if apiKey == "" {
+					apiKey = provider.GetApiKey()
+				}
+				break
+			}
+		}
+	}
+
+	model := strings.TrimSpace(request.Model)
+	if model == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "model is required")
+	}
+	if apiKey == "" {
+		return nil, status.Errorf(codes.InvalidArgument, "API key is required")
+	}
+
+	provider := ai.ProviderConfig{
+		Type:     providerType,
+		Endpoint: endpoint,
+		APIKey:   apiKey,
+	}
+
+	if err := ai.ProbeChat(ctx, provider, model); err != nil {
+		return &v1pb.TestAIProviderResponse{Success: false, Message: err.Error()}, nil
+	}
+	return &v1pb.TestAIProviderResponse{Success: true, Message: "Connection succeeded"}, nil
 }
 
 func (s *APIV1Service) TestInstanceEmailSetting(ctx context.Context, request *v1pb.TestInstanceEmailSettingRequest) (*emptypb.Empty, error) {
@@ -686,14 +747,25 @@ func convertInstanceAISettingFromStore(setting *storepb.InstanceAISetting) *v1pb
 	}
 
 	aiSetting := &v1pb.InstanceSetting_AISetting{
-		Providers:     make([]*v1pb.InstanceSetting_AIProviderConfig, 0, len(setting.Providers)),
-		Transcription: convertTranscriptionConfigFromStore(setting.GetTranscription()),
+		Providers:         make([]*v1pb.InstanceSetting_AIProviderConfig, 0, len(setting.Providers)),
+		Transcription:     convertTranscriptionConfigFromStore(setting.GetTranscription()),
+		DefaultProviderId: setting.GetDefaultProviderId(),
 	}
 	for _, provider := range setting.Providers {
 		if provider == nil {
 			continue
 		}
 		apiKey := provider.GetApiKey()
+		models := make([]*v1pb.InstanceSetting_AIModelConfig, 0, len(provider.GetModels()))
+		for _, model := range provider.GetModels() {
+			if model == nil {
+				continue
+			}
+			models = append(models, &v1pb.InstanceSetting_AIModelConfig{
+				Id:   model.GetId(),
+				Name: model.GetName(),
+			})
+		}
 		aiSetting.Providers = append(aiSetting.Providers, &v1pb.InstanceSetting_AIProviderConfig{
 			Id:         provider.GetId(),
 			Title:      provider.GetTitle(),
@@ -701,6 +773,7 @@ func convertInstanceAISettingFromStore(setting *storepb.InstanceAISetting) *v1pb
 			Endpoint:   provider.GetEndpoint(),
 			ApiKeySet:  apiKey != "",
 			ApiKeyHint: maskAPIKey(apiKey),
+			Models:     models,
 		})
 	}
 	return aiSetting
@@ -712,12 +785,23 @@ func convertInstanceAISettingToStore(setting *v1pb.InstanceSetting_AISetting) *s
 	}
 
 	aiSetting := &storepb.InstanceAISetting{
-		Providers:     make([]*storepb.AIProviderConfig, 0, len(setting.Providers)),
-		Transcription: convertTranscriptionConfigToStore(setting.GetTranscription()),
+		Providers:         make([]*storepb.AIProviderConfig, 0, len(setting.Providers)),
+		Transcription:     convertTranscriptionConfigToStore(setting.GetTranscription()),
+		DefaultProviderId: setting.GetDefaultProviderId(),
 	}
 	for _, provider := range setting.Providers {
 		if provider == nil {
 			continue
+		}
+		models := make([]*storepb.AIModelConfig, 0, len(provider.GetModels()))
+		for _, model := range provider.GetModels() {
+			if model == nil {
+				continue
+			}
+			models = append(models, &storepb.AIModelConfig{
+				Id:   model.GetId(),
+				Name: model.GetName(),
+			})
 		}
 		aiSetting.Providers = append(aiSetting.Providers, &storepb.AIProviderConfig{
 			Id:       provider.GetId(),
@@ -725,6 +809,7 @@ func convertInstanceAISettingToStore(setting *v1pb.InstanceSetting_AISetting) *s
 			Type:     storepb.AIProviderType(provider.GetType()),
 			Endpoint: provider.GetEndpoint(),
 			ApiKey:   provider.GetApiKey(),
+			Models:   models,
 		})
 	}
 	return aiSetting
@@ -822,6 +907,30 @@ func (s *APIV1Service) prepareInstanceAISettingForUpdate(ctx context.Context, se
 		if provider.ApiKey == "" {
 			return errors.Errorf("provider %q API key is required", provider.Id)
 		}
+
+		models := make([]*storepb.AIModelConfig, 0, len(provider.Models))
+		seenModelIDs := map[string]bool{}
+		for _, model := range provider.Models {
+			if model == nil {
+				continue
+			}
+			model.Id = strings.TrimSpace(model.Id)
+			if model.Id == "" {
+				continue
+			}
+			if seenModelIDs[model.Id] {
+				continue
+			}
+			seenModelIDs[model.Id] = true
+			model.Name = strings.TrimSpace(model.Name)
+			models = append(models, model)
+		}
+		provider.Models = models
+	}
+
+	setting.DefaultProviderId = strings.TrimSpace(setting.DefaultProviderId)
+	if setting.DefaultProviderId != "" && !seenIDs[setting.DefaultProviderId] {
+		return errors.Errorf("default_provider_id %q does not reference any configured provider", setting.DefaultProviderId)
 	}
 
 	if err := preparePersistedTranscriptionConfig(setting, existing); err != nil {

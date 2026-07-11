@@ -16,6 +16,7 @@ export function usePdfViewerState(url: string) {
   const [scale, setScale] = useState(1);
   const [orientation, setOrientation] = useState<PdfOrientation>("horizontal");
   const [basePageWidth, setBasePageWidth] = useState(0); // page width in CSS px at scale=1
+  const [basePageHeight, setBasePageHeight] = useState(0); // page height in CSS px at scale=1
   const [containerWidth, setContainerWidth] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   // Tracks whether the user has manually picked an orientation, so the auto-detection below
@@ -35,6 +36,7 @@ export function usePdfViewerState(url: string) {
       if (cancelled || !page) return;
       const viewport = page.getViewport({ scale: 1 });
       setBasePageWidth(viewport.width);
+      setBasePageHeight(viewport.height);
       if (!orientationTouchedRef.current) {
         setOrientation(viewport.width > viewport.height ? "vertical" : "horizontal");
       }
@@ -69,6 +71,8 @@ export function usePdfViewerState(url: string) {
     pageNumber,
     scale,
     orientation,
+    basePageWidth,
+    basePageHeight,
     pagesPerView,
     containerRef,
     goPrev,
