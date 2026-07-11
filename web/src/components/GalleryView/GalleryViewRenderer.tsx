@@ -8,7 +8,8 @@ import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentThumbnailUrl, isImage } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
-import { type GalleryViewConfig, parseGalleryViewConfig } from "./types";
+import { fieldValue, matchesPropertyFilters, propertyMap } from "./fields";
+import { type GalleryBlock, parseGalleryViewConfig } from "./types";
 
 interface Props {
   memo: Memo;
@@ -24,18 +25,18 @@ const firstMarkdownImage = (content: string): string | undefined => {
   return match?.[1];
 };
 
-const coverUrl = (doc: Memo, config: GalleryViewConfig): string | undefined => {
-  if (config.cover === "none") return undefined;
+const coverUrl = (doc: Memo, block: GalleryBlock): string | undefined => {
+  if (block.cover === "none") return undefined;
   const imageAttachment = doc.attachments.find((a) => isImage(a.type));
   if (imageAttachment) return getAttachmentThumbnailUrl(imageAttachment);
   if (doc.docType === Memo_DocType.MARKDOWN) return firstMarkdownImage(doc.content);
   return undefined;
 };
 
-const sortDocs = (docs: Memo[], config: GalleryViewConfig): Memo[] => {
+const sortDocs = (docs: Memo[], block: GalleryBlock): Memo[] => {
   const ts = (t?: { seconds: bigint }) => Number(t?.seconds ?? 0n);
   const sorted = [...docs];
-  switch (config.sort) {
+  switch (block.sort) {
     case "updated_asc":
       return sorted.sort((a, b) => ts(a.updateTime) - ts(b.updateTime));
     case "created_desc":
@@ -49,45 +50,36 @@ const sortDocs = (docs: Memo[], config: GalleryViewConfig): Memo[] => {
   }
 };
 
-// Renders a VIEW document: optional markdown intro on top (existing markdown
-// pipeline, including sanitization), then a gallery card wall built by
-// querying the scope's documents live — nothing is generated or cached.
-const GalleryViewRenderer = ({ memo, onOpenDoc, className }: Props) => {
+interface BlockProps {
+  block: GalleryBlock;
+  memo: Memo;
+  openDoc: (memoName: string) => void;
+}
+
+// Renders one gallery block: optional markdown intro (existing markdown
+// pipeline, including sanitization), then a card wall built by querying the
+// block's scope live — nothing is generated or cached.
+const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
   const t = useTranslate();
-  const navigate = useNavigate();
-  const config = parseGalleryViewConfig(memo.content);
-
   const scopeFilter =
-    config?.scope.type === "tag" ? `tag in [${JSON.stringify(config.scope.tag)}]` : `workspace == ${JSON.stringify(memo.workspace)}`;
+    block.scope.type === "tag" ? `tag in [${JSON.stringify(block.scope.tag)}]` : `workspace == ${JSON.stringify(memo.workspace)}`;
 
-  const { data, isLoading } = useMemos(
-    config
-      ? {
-          pageSize: 1000,
-          state: State.NORMAL,
-          filter: scopeFilter,
-        }
-      : {},
-  );
+  const { data, isLoading } = useMemos({ pageSize: 1000, state: State.NORMAL, filter: scopeFilter });
 
   const docs = useMemo(() => {
-    if (!config) return [];
     let list = (data?.memos ?? []).filter((m) => m.name !== memo.name && m.docType !== Memo_DocType.VIEW);
-    if (config.scope.type === "folder") {
+    if (block.scope.type === "folder") {
       list = list.filter((m) => m.workspace === memo.workspace && m.folderPath === memo.folderPath);
+    } else if (block.scope.type === "property") {
+      const filters = block.scope.filters;
+      list = list.filter((m) => matchesPropertyFilters(propertyMap(m.content), filters));
     }
-    return sortDocs(list, config);
-  }, [data, config, memo.name, memo.workspace, memo.folderPath]);
-
-  if (!config) {
-    return <div className={cn("text-sm text-muted-foreground", className)}>{t("gallery.not-configured")}</div>;
-  }
-
-  const openDoc = onOpenDoc ?? ((name: string) => navigate(`/${name}`));
+    return sortDocs(list, block);
+  }, [data, block, memo.name, memo.workspace, memo.folderPath]);
 
   return (
-    <div className={cn("w-full flex flex-col gap-4", className)}>
-      {config.description && <MemoContent content={config.description} memoName={memo.name} />}
+    <div className="w-full flex flex-col gap-4">
+      {block.description && <MemoContent content={block.description} memoName={memo.name} />}
       {isLoading ? (
         <div className="text-sm text-muted-foreground">{t("gallery.loading")}</div>
       ) : docs.length === 0 ? (
@@ -98,7 +90,10 @@ const GalleryViewRenderer = ({ memo, onOpenDoc, className }: Props) => {
       ) : (
         <div className="grid gap-4 grid-cols-[repeat(auto-fill,minmax(200px,1fr))]">
           {docs.map((doc) => {
-            const cover = coverUrl(doc, config);
+            const cover = coverUrl(doc, block);
+            const props = propertyMap(doc.content);
+            const primary = fieldValue(doc, props, block.cardFields.primary) || doc.title || doc.name;
+            const secondary = fieldValue(doc, props, block.cardFields.secondary);
             return (
               <button
                 key={doc.name}
@@ -114,18 +109,39 @@ const GalleryViewRenderer = ({ memo, onOpenDoc, className }: Props) => {
                   )}
                 </div>
                 <div className="flex flex-col gap-0.5 px-3 py-2">
-                  <div className="text-sm font-medium truncate">{doc.title || doc.name}</div>
-                  {doc.updateTime && (
-                    <div className="text-xs text-muted-foreground">
-                      {new Date(Number(doc.updateTime.seconds) * 1000).toLocaleDateString()}
-                    </div>
-                  )}
+                  <div className="text-sm font-medium truncate">{primary}</div>
+                  {secondary && <div className="text-xs text-muted-foreground truncate">{secondary}</div>}
                 </div>
               </button>
             );
           })}
         </div>
       )}
+    </div>
+  );
+};
+
+// Renders a VIEW document: each configured gallery block top-to-bottom,
+// separated by dividers.
+const GalleryViewRenderer = ({ memo, onOpenDoc, className }: Props) => {
+  const t = useTranslate();
+  const navigate = useNavigate();
+  const config = parseGalleryViewConfig(memo.content);
+
+  if (!config) {
+    return <div className={cn("text-sm text-muted-foreground", className)}>{t("gallery.not-configured")}</div>;
+  }
+
+  const openDoc = onOpenDoc ?? ((name: string) => navigate(`/${name}`));
+
+  return (
+    <div className={cn("w-full flex flex-col gap-6", className)}>
+      {config.blocks.map((block, index) => (
+        <div key={index} className="flex flex-col gap-6">
+          {index > 0 && <hr className="border-border" />}
+          <GalleryBlockView block={block} memo={memo} openDoc={openDoc} />
+        </div>
+      ))}
     </div>
   );
 };

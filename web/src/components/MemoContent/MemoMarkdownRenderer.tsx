@@ -1,5 +1,6 @@
 import type { Element } from "hast";
 import "katex/dist/katex.min.css";
+import { useMemo } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
@@ -9,6 +10,7 @@ import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import { getAlertIcon, getAlertType, isMentionElement, isTagElement, isTaskListItemElement } from "@/types/markdown";
+import { parseFrontmatter } from "@/utils/frontmatter";
 import { rehypeHeadingId } from "@/utils/rehype-plugins/rehype-heading-id";
 import { remarkAlert } from "@/utils/remark-plugins/remark-alert";
 import { remarkDisableSetext } from "@/utils/remark-plugins/remark-disable-setext";
@@ -21,6 +23,7 @@ import { SANITIZE_SCHEMA } from "./constants";
 import { MarkdownRenderContext, rootMarkdownRenderContext } from "./MarkdownRenderContext";
 import { Mention } from "./Mention";
 import { Alert, AnchorLink, Blockquote, Heading, HorizontalRule, Image, InlineCode, Link, List, ListItem, Paragraph } from "./markdown";
+import { PropertiesPanel } from "./PropertiesPanel";
 import { Table, TableBody, TableCell, TableHead, TableHeaderCell, TableRow } from "./Table";
 import { Tag } from "./Tag";
 import { TaskListItem } from "./TaskListItem";
@@ -55,6 +58,11 @@ function getMentionUsername(node: Element, children?: React.ReactNode): string {
 }
 
 export const MemoMarkdownRenderer = ({ content, resolvedMentionUsernames, memoName, compact }: MemoMarkdownRendererProps) => {
+  // Split off any leading Obsidian-style frontmatter: compliant properties render
+  // as a read-only panel above the body, and the raw `---` block never reaches
+  // the markdown pipeline (where it would otherwise show as horizontal rules).
+  const { properties, body } = useMemo(() => parseFrontmatter(content), [content]);
+
   const markdownComponents: Components = {
     input: ({ node, ...inputProps }) => {
       if (node && isTaskListItemElement(node)) {
@@ -156,6 +164,7 @@ export const MemoMarkdownRenderer = ({ content, resolvedMentionUsernames, memoNa
 
   return (
     <MarkdownRenderContext.Provider value={rootMarkdownRenderContext}>
+      <PropertiesPanel properties={properties} />
       <ReactMarkdown
         remarkPlugins={[
           remarkDisableSetext,
@@ -176,7 +185,7 @@ export const MemoMarkdownRenderer = ({ content, resolvedMentionUsernames, memoNa
         ]}
         components={markdownComponents}
       >
-        {content}
+        {body}
       </ReactMarkdown>
     </MarkdownRenderContext.Provider>
   );

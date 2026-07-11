@@ -11,6 +11,7 @@ import { userKeys } from "@/hooks/useUserQueries";
 import { handleError } from "@/lib/error";
 import { cn } from "@/lib/utils";
 import { InstanceSetting_Key } from "@/types/proto/api/v1/instance_service_pb";
+import { hasFrontmatter } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 import { convertVisibilityFromString } from "@/utils/memo";
 import { AudioRecorderPanel, EditorContent, EditorMetadata, FocusModeOverlay, TimestampPopover } from "./components";
@@ -199,6 +200,26 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
     setFormattingToolbarVisible((visible) => !visible);
   }, [setFormattingToolbarVisible]);
 
+  // Insert an example properties block at the very top of the document, but only
+  // when the memo doesn't already open with one — the button seeds a starting
+  // point, and the user edits the fields as raw markdown from there.
+  const handleInsertProperties = useCallback(() => {
+    const editor = editorRef.current;
+    if (!editor) {
+      return;
+    }
+    const markdown = editor.getMarkdown();
+    if (hasFrontmatter(markdown)) {
+      toast(t("editor.insert-menu.properties-exists"));
+      return;
+    }
+    const today = new Date().toISOString().slice(0, 10);
+    const example = ["---", "title: ", "tags: []", "status: ", `date: ${today}`, "---", ""].join("\n");
+    editor.setMarkdown(markdown ? `${example}\n${markdown}` : example);
+    editor.focus();
+    editor.scrollToCursor();
+  }, [t]);
+
   const handleStartAudioRecording = async () => {
     setIsAudioRecorderOpen(true);
     await audioRecorder.startRecording();
@@ -380,6 +401,7 @@ const MemoEditorImpl: React.FC<MemoEditorProps> = ({
             onAudioRecorderClick={handleAudioRecorderClick}
             isFormattingToolbarVisible={isFormattingToolbarVisible}
             onToggleFormattingToolbar={handleToggleFormattingToolbar}
+            onInsertProperties={handleInsertProperties}
             compact={expand && !isFocusMode}
           />
         </div>

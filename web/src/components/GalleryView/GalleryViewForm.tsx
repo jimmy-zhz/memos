@@ -1,6 +1,7 @@
-import { LayoutGridIcon } from "lucide-react";
+import { LayoutGridIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -8,10 +9,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslate } from "@/utils/i18n";
 import {
-  DEFAULT_GALLERY_CONFIG,
+  DEFAULT_GALLERY_BLOCK,
+  type GalleryBlock,
+  type GalleryCardField,
   type GalleryCoverRule,
+  type GalleryPropertyFilter,
   type GallerySort,
-  type GalleryViewConfig,
   parseGalleryViewConfig,
   serializeGalleryViewConfig,
 } from "./types";
@@ -22,85 +25,230 @@ interface Props {
   onCancel: () => void;
 }
 
-// Guided editor for VIEW documents: pick a view style (gallery only for now,
-// listed so future styles like calendar can slot in), then fill the fixed,
-// hand-written form for that style. Submitting stores only the config JSON
-// (plus the optional markdown intro) as the document content.
-const GalleryViewForm = ({ content, onSave, onCancel }: Props) => {
-  const t = useTranslate();
-  const existing = parseGalleryViewConfig(content);
-  const [styleChosen, setStyleChosen] = useState(!!existing);
-  const [description, setDescription] = useState(existing?.description ?? "");
-  const [scopeType, setScopeType] = useState<"folder" | "tag">(existing?.scope.type ?? "folder");
-  const [tag, setTag] = useState(existing?.scope.type === "tag" ? existing.scope.tag : "");
-  const [sort, setSort] = useState<GallerySort>(existing?.sort ?? DEFAULT_GALLERY_CONFIG.sort);
-  const [cover, setCover] = useState<GalleryCoverRule>(existing?.cover ?? DEFAULT_GALLERY_CONFIG.cover);
+// UI state for one card-field row: a "kind" (built-in token or "property") plus
+// the property key used when kind === "property". "none" is a UI sentinel
+// (Radix Select forbids empty-string item values) serializing to "".
+interface CardFieldState {
+  kind: "__title__" | "__updated__" | "__created__" | "none" | "property";
+  propKey: string;
+}
 
-  if (!styleChosen) {
-    return (
-      <div className="w-full max-w-lg mx-auto flex flex-col gap-3">
-        <div className="text-sm text-muted-foreground">{t("gallery.choose-style")}</div>
-        <button
-          type="button"
-          className="flex items-center gap-3 rounded-lg border border-border p-4 text-left hover:bg-accent/60 transition-colors"
-          onClick={() => setStyleChosen(true)}
-        >
-          <LayoutGridIcon className="w-6 h-6 text-primary shrink-0" />
-          <div>
-            <div className="font-medium">{t("gallery.style-gallery")}</div>
-            <div className="text-sm text-muted-foreground">{t("gallery.style-gallery-description")}</div>
-          </div>
-        </button>
-      </div>
-    );
+// Editable draft of a single gallery block. Keeps UI-only shape (scope split
+// into type + tag + filters, card fields split into kind + propKey) so toggling
+// options never loses typed input; converted to a GalleryBlock on save.
+interface BlockDraft {
+  description: string;
+  scopeType: "folder" | "tag" | "property";
+  tag: string;
+  propertyFilters: GalleryPropertyFilter[];
+  sort: GallerySort;
+  cover: GalleryCoverRule;
+  primary: CardFieldState;
+  secondary: CardFieldState;
+}
+
+function toCardFieldState(field: GalleryCardField): CardFieldState {
+  if (field.startsWith("prop:")) return { kind: "property", propKey: field.slice(5) };
+  if (field === "") return { kind: "none", propKey: "" };
+  if (field === "__title__" || field === "__updated__" || field === "__created__") {
+    return { kind: field as CardFieldState["kind"], propKey: "" };
   }
+  return { kind: "__title__", propKey: "" };
+}
 
-  const handleSubmit = () => {
-    const config: GalleryViewConfig = {
-      viewType: "gallery",
-      description: description.trim() ? description : undefined,
-      scope: scopeType === "tag" ? { type: "tag", tag: tag.trim() } : { type: "folder" },
-      sort,
-      cover,
-    };
-    onSave(serializeGalleryViewConfig(config));
+function fromCardFieldState(state: CardFieldState): GalleryCardField {
+  if (state.kind === "property") return `prop:${state.propKey.trim()}`;
+  if (state.kind === "none") return "";
+  return state.kind;
+}
+
+function toDraft(block: GalleryBlock): BlockDraft {
+  return {
+    description: block.description ?? "",
+    scopeType: block.scope.type,
+    tag: block.scope.type === "tag" ? block.scope.tag : "",
+    propertyFilters: block.scope.type === "property" ? block.scope.filters : [],
+    sort: block.sort,
+    cover: block.cover,
+    primary: toCardFieldState(block.cardFields.primary),
+    secondary: toCardFieldState(block.cardFields.secondary),
+  };
+}
+
+function cleanedFilters(draft: BlockDraft): GalleryPropertyFilter[] {
+  return draft.propertyFilters.map((f) => ({ key: f.key.trim(), value: f.value })).filter((f) => f.key !== "");
+}
+
+function fromDraft(draft: BlockDraft): GalleryBlock {
+  const scope: GalleryBlock["scope"] =
+    draft.scopeType === "tag"
+      ? { type: "tag", tag: draft.tag.trim() }
+      : draft.scopeType === "property"
+        ? { type: "property", filters: cleanedFilters(draft) }
+        : { type: "folder" };
+  return {
+    description: draft.description.trim() ? draft.description : undefined,
+    scope,
+    sort: draft.sort,
+    cover: draft.cover,
+    cardFields: { primary: fromCardFieldState(draft.primary), secondary: fromCardFieldState(draft.secondary) },
+  };
+}
+
+function blockInvalid(draft: BlockDraft): boolean {
+  if (draft.scopeType === "tag") return !draft.tag.trim();
+  if (draft.scopeType === "property") {
+    return cleanedFilters(draft).length === 0 || draft.propertyFilters.some((f) => f.key.trim() === "");
+  }
+  return false;
+}
+
+// One editable gallery block. Controlled via `draft` / `onChange`.
+const GalleryBlockForm = ({
+  draft,
+  index,
+  onChange,
+  onRemove,
+}: {
+  draft: BlockDraft;
+  index: number;
+  onChange: (patch: Partial<BlockDraft>) => void;
+  onRemove: () => void;
+}) => {
+  const t = useTranslate();
+
+  const setFilter = (i: number, patch: Partial<GalleryPropertyFilter>) => {
+    onChange({ propertyFilters: draft.propertyFilters.map((f, j) => (j === i ? { ...f, ...patch } : f)) });
   };
 
+  const renderCardFieldRow = (label: string, state: CardFieldState, key: "primary" | "secondary", allowNone: boolean) => (
+    <div className="flex flex-col gap-1.5">
+      <Label>{label}</Label>
+      <div className="flex items-center gap-2">
+        <Select value={state.kind} onValueChange={(v) => onChange({ [key]: { ...state, kind: v as CardFieldState["kind"] } })}>
+          <SelectTrigger className="flex-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__title__">{t("gallery.field-title")}</SelectItem>
+            <SelectItem value="__updated__">{t("gallery.field-updated")}</SelectItem>
+            <SelectItem value="__created__">{t("gallery.field-created")}</SelectItem>
+            <SelectItem value="property">{t("gallery.field-property")}</SelectItem>
+            {allowNone && <SelectItem value="none">{t("gallery.field-none")}</SelectItem>}
+          </SelectContent>
+        </Select>
+        {state.kind === "property" && (
+          <Input
+            className="flex-1"
+            placeholder={t("gallery.property-key-placeholder")}
+            value={state.propKey}
+            onChange={(e) => onChange({ [key]: { ...state, propKey: e.target.value } })}
+          />
+        )}
+      </div>
+    </div>
+  );
+
   return (
-    <div className="w-full max-w-lg mx-auto flex flex-col gap-4">
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <LayoutGridIcon className="w-4 h-4 text-primary" />
+          {t("gallery.block-title", { index: index + 1 })}
+        </div>
+        <Button variant="ghost" size="icon" onClick={onRemove} title={t("gallery.remove-block")}>
+          <Trash2Icon className="w-4 h-4" />
+        </Button>
+      </div>
+
       <div className="flex flex-col gap-1.5">
-        <Label htmlFor="gallery-description">{t("gallery.description-label")}</Label>
+        <Label>{t("gallery.description-label")}</Label>
         <Textarea
-          id="gallery-description"
-          rows={4}
+          rows={3}
           placeholder={t("gallery.description-placeholder")}
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
+          value={draft.description}
+          onChange={(e) => onChange({ description: e.target.value })}
         />
       </div>
 
       <div className="flex flex-col gap-1.5">
         <Label>{t("gallery.scope-label")}</Label>
-        <RadioGroup value={scopeType} onValueChange={(v) => setScopeType(v as "folder" | "tag")} className="flex flex-col gap-2">
+        <RadioGroup
+          value={draft.scopeType}
+          onValueChange={(v) => onChange({ scopeType: v as BlockDraft["scopeType"] })}
+          className="flex flex-col gap-2"
+        >
           <div className="flex items-center gap-2">
-            <RadioGroupItem value="folder" id="gallery-scope-folder" />
-            <Label htmlFor="gallery-scope-folder" className="font-normal cursor-pointer">
+            <RadioGroupItem value="folder" id={`scope-folder-${index}`} />
+            <Label htmlFor={`scope-folder-${index}`} className="font-normal cursor-pointer">
               {t("gallery.scope-folder")}
             </Label>
           </div>
           <div className="flex items-center gap-2">
-            <RadioGroupItem value="tag" id="gallery-scope-tag" />
-            <Label htmlFor="gallery-scope-tag" className="font-normal cursor-pointer">
+            <RadioGroupItem value="tag" id={`scope-tag-${index}`} />
+            <Label htmlFor={`scope-tag-${index}`} className="font-normal cursor-pointer">
               {t("gallery.scope-tag")}
             </Label>
           </div>
+          {draft.scopeType === "tag" && (
+            <Input
+              className="ml-6"
+              placeholder={t("gallery.tag-placeholder")}
+              value={draft.tag}
+              onChange={(e) => onChange({ tag: e.target.value })}
+            />
+          )}
+          <div className="flex items-center gap-2">
+            <RadioGroupItem value="property" id={`scope-property-${index}`} />
+            <Label htmlFor={`scope-property-${index}`} className="font-normal cursor-pointer">
+              {t("gallery.scope-property")}
+            </Label>
+          </div>
+          {draft.scopeType === "property" && (
+            <div className="ml-6 flex flex-col gap-2 rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">{t("gallery.property-filters-hint")}</p>
+              {draft.propertyFilters.map((filter, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Input
+                    className="flex-1"
+                    placeholder={t("gallery.property-key-placeholder")}
+                    value={filter.key}
+                    onChange={(e) => setFilter(i, { key: e.target.value })}
+                  />
+                  <span className="text-muted-foreground text-sm">=</span>
+                  <Input
+                    className="flex-1"
+                    placeholder={t("gallery.property-value-placeholder")}
+                    value={filter.value}
+                    onChange={(e) => setFilter(i, { value: e.target.value })}
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => onChange({ propertyFilters: draft.propertyFilters.filter((_, j) => j !== i) })}
+                  >
+                    <XIcon className="w-4 h-4" />
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                className="self-start"
+                onClick={() => onChange({ propertyFilters: [...draft.propertyFilters, { key: "", value: "" }] })}
+              >
+                <PlusIcon className="w-4 h-4 mr-1" />
+                {t("gallery.add-property-filter")}
+              </Button>
+            </div>
+          )}
         </RadioGroup>
-        {scopeType === "tag" && <Input placeholder={t("gallery.tag-placeholder")} value={tag} onChange={(e) => setTag(e.target.value)} />}
       </div>
 
       <div className="flex flex-col gap-1.5">
         <Label>{t("gallery.sort-label")}</Label>
-        <Select value={sort} onValueChange={(v) => setSort(v as GallerySort)}>
+        <Select value={draft.sort} onValueChange={(v) => onChange({ sort: v as GallerySort })}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -116,7 +264,7 @@ const GalleryViewForm = ({ content, onSave, onCancel }: Props) => {
 
       <div className="flex flex-col gap-1.5">
         <Label>{t("gallery.cover-label")}</Label>
-        <Select value={cover} onValueChange={(v) => setCover(v as GalleryCoverRule)}>
+        <Select value={draft.cover} onValueChange={(v) => onChange({ cover: v as GalleryCoverRule })}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -127,13 +275,74 @@ const GalleryViewForm = ({ content, onSave, onCancel }: Props) => {
         </Select>
       </div>
 
-      <div className="flex items-center justify-end gap-2">
-        <Button variant="ghost" onClick={onCancel}>
-          {t("common.cancel")}
-        </Button>
-        <Button onClick={handleSubmit} disabled={scopeType === "tag" && !tag.trim()}>
-          {t("common.save")}
-        </Button>
+      {renderCardFieldRow(t("gallery.card-primary-label"), draft.primary, "primary", false)}
+      {renderCardFieldRow(t("gallery.card-secondary-label"), draft.secondary, "secondary", true)}
+    </div>
+  );
+};
+
+// Editor for VIEW documents. A document may hold multiple gallery blocks; the
+// bottom toolbar's "+" inserts another, and Save/Cancel are pinned bottom-right.
+const GalleryViewForm = ({ content, onSave, onCancel }: Props) => {
+  const t = useTranslate();
+  const [blocks, setBlocks] = useState<BlockDraft[]>(() => (parseGalleryViewConfig(content)?.blocks ?? []).map(toDraft));
+
+  const updateBlock = (index: number, patch: Partial<BlockDraft>) => {
+    setBlocks((prev) => prev.map((b, i) => (i === index ? { ...b, ...patch } : b)));
+  };
+
+  const addGalleryBlock = () => setBlocks((prev) => [...prev, toDraft(DEFAULT_GALLERY_BLOCK)]);
+
+  const handleSave = () => {
+    onSave(serializeGalleryViewConfig({ viewType: "gallery", blocks: blocks.map(fromDraft) }));
+  };
+
+  const saveDisabled = blocks.length === 0 || blocks.some(blockInvalid);
+
+  return (
+    <div className="h-full flex flex-col">
+      <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="w-full max-w-lg mx-auto flex flex-col gap-6">
+          {blocks.length === 0 ? (
+            <div className="text-sm text-muted-foreground text-center py-10">{t("gallery.empty-editor")}</div>
+          ) : (
+            blocks.map((draft, index) => (
+              <div key={index} className="flex flex-col gap-6">
+                {index > 0 && <hr className="border-border" />}
+                <GalleryBlockForm
+                  draft={draft}
+                  index={index}
+                  onChange={(patch) => updateBlock(index, patch)}
+                  onRemove={() => setBlocks((prev) => prev.filter((_, i) => i !== index))}
+                />
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      <div className="shrink-0 border-t border-border px-4 py-2 flex items-center justify-between gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="secondary" size="icon" title={t("gallery.insert")}>
+              <PlusIcon className="w-4 h-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={addGalleryBlock}>
+              <LayoutGridIcon className="w-4 h-4" />
+              {t("gallery.style-gallery")}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" onClick={onCancel}>
+            {t("common.cancel")}
+          </Button>
+          <Button onClick={handleSave} disabled={saveDisabled}>
+            {t("common.save")}
+          </Button>
+        </div>
       </div>
     </div>
   );

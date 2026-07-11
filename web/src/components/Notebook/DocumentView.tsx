@@ -211,7 +211,7 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
             mode === "preview" ? (
               <GalleryViewRenderer memo={memo} onOpenDoc={onOpenDocument} className="px-6 py-4" />
             ) : (
-              <div className="px-6 py-4">
+              <div className="h-full">
                 <GalleryViewForm
                   key={memo.name}
                   content={memo.content}

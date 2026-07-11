@@ -1,5 +1,17 @@
 import { uniqBy } from "lodash-es";
-import { CheckIcon, FileIcon, ImageIcon, LinkIcon, LoaderIcon, MapPinIcon, Maximize2Icon, MicIcon, PlusIcon, TypeIcon } from "lucide-react";
+import {
+  CheckIcon,
+  FileIcon,
+  ImageIcon,
+  LinkIcon,
+  LoaderIcon,
+  MapPinIcon,
+  Maximize2Icon,
+  MicIcon,
+  PlusIcon,
+  TablePropertiesIcon,
+  TypeIcon,
+} from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { LinkMemoDialog, LocationDialog } from "@/components/MemoMetadata";
 import type { MapPoint } from "@/components/map/types";
@@ -29,6 +41,7 @@ const InsertMenu = (props: InsertMenuProps) => {
     onLocationChange,
     onToggleFocusMode,
     onToggleFormattingToolbar,
+    onInsertProperties,
     isFormattingToolbarVisible,
     isUploading: isUploadingProp,
   } = props;
@@ -129,6 +142,9 @@ const InsertMenu = (props: InsertMenuProps) => {
     { key: "file", label: t("common.file"), icon: FileIcon, onClick: handleFileUploadClick },
     { key: "link", label: t("editor.insert-menu.link-memo"), icon: LinkIcon, onClick: handleOpenLinkDialog },
     { key: "location", label: t("editor.insert-menu.add-location"), icon: MapPinIcon, onClick: handleLocationClick },
+    ...(onInsertProperties
+      ? [{ key: "properties", label: t("editor.insert-menu.properties"), icon: TablePropertiesIcon, onClick: onInsertProperties }]
+      : []),
   ];
 
   return (
