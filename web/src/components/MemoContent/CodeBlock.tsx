@@ -5,6 +5,7 @@ import { isValidElement, type ReactElement, type ReactNode, useEffect, useMemo, 
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
 import { getThemeWithFallback, resolveTheme } from "@/utils/theme";
+import { CalendarBlock } from "./CalendarBlock";
 import { MermaidBlock } from "./MermaidBlock";
 import type { ReactMarkdownProps } from "./markdown/types";
 import { extractCodeContent, extractLanguage } from "./utils";
@@ -21,7 +22,7 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
   const codeElement = isValidElement(children) ? (children as ReactElement<{ className?: string }>) : null;
   const codeClassName = codeElement?.props.className || "";
   const codeContent = extractCodeContent(children);
-  const language = extractLanguage(codeClassName);
+  const language = extractLanguage(codeClassName).toLowerCase();
 
   // If it's a mermaid block, render with MermaidBlock component
   if (language === "mermaid") {
@@ -30,6 +31,17 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
         <MermaidBlock className={cn(className)} {...props}>
           {children}
         </MermaidBlock>
+      </pre>
+    );
+  }
+
+  // If it's a calendar block, render with CalendarBlock component
+  if (language === "calendar") {
+    return (
+      <pre className="relative">
+        <CalendarBlock className={cn(className)} {...props}>
+          {children}
+        </CalendarBlock>
       </pre>
     );
   }
