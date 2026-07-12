@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { useInstance } from "@/contexts/InstanceContext";
 import { addMonths, formatMonth } from "@/lib/calendar-utils";
 import { cn } from "@/lib/utils";
+import { useTranslate } from "@/utils/i18n";
 import { CalendarDayCell } from "./CalendarDayCell";
 import type { VisibleMonth } from "./defaultVisibleMonth";
 import type { CalendarItem } from "./parseCalendarBlock";
@@ -35,6 +36,7 @@ export const CalendarMonthGrid = ({
   selectedDate,
   onSelectDate,
 }: CalendarMonthGridProps) => {
+  const t = useTranslate();
   const { generalSetting } = useInstance();
   const today = useTodayDate();
   const weekDays = useWeekdayLabels();
@@ -85,7 +87,7 @@ export const CalendarMonthGrid = ({
                 : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
             )}
           >
-            今天
+            {t("common.today")}
           </Button>
           <Button
             variant="ghost"

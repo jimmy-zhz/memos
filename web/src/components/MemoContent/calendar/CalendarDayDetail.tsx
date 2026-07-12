@@ -1,5 +1,5 @@
 import { Checkbox } from "@/components/ui/checkbox";
-import { cn } from "@/lib/utils";
+import { useTranslate } from "@/utils/i18n";
 import type { CalendarGroup } from "./parseCalendarBlock";
 
 interface CalendarDayDetailProps {
@@ -8,12 +8,14 @@ interface CalendarDayDetailProps {
 }
 
 export const CalendarDayDetail = ({ group, selectedDate }: CalendarDayDetailProps) => {
+  const t = useTranslate();
+
   if (!selectedDate) {
     return null;
   }
 
   if (!group || group.items.length === 0) {
-    return <div className="text-sm text-muted-foreground px-1 py-2">{selectedDate} 当天无记录</div>;
+    return <div className="text-sm text-muted-foreground px-1 py-2">{t("markdown.calendar-block.no-records", { date: selectedDate })}</div>;
   }
 
   return (
@@ -25,7 +27,7 @@ export const CalendarDayDetail = ({ group, selectedDate }: CalendarDayDetailProp
             {item.checked !== undefined ? (
               <>
                 <Checkbox checked={item.checked} disabled className="shrink-0" />
-                <span className={cn(item.checked && "line-through text-muted-foreground")}>{item.text}</span>
+                <span>{item.text}</span>
               </>
             ) : (
               <span className="pl-6">{item.text}</span>

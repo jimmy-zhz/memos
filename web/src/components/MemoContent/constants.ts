@@ -43,6 +43,7 @@ const TRUSTED_IFRAME_SRC_PATTERNS = [
 const KATEX_INLINE_CLASS_NAMES = ["language-math", "math-inline"] as const;
 const KATEX_BLOCK_CLASS_NAMES = ["language-math", "math-display"] as const;
 const SPAN_CLASS_NAMES = ["mention", "tag"] as const;
+const MARK_CLASS_NAMES = ["highlight", "highlight-yellow", "highlight-pink"] as const;
 const INPUT_ATTRIBUTES = [...(defaultSchema.attributes?.input || []), ["checked", true]] as const;
 
 export const isTrustedIframeSrc = (src: string): boolean => TRUSTED_IFRAME_SRC_PATTERNS.some((pattern) => pattern.test(src));
@@ -69,6 +70,7 @@ export const SANITIZE_SCHEMA = {
     input: INPUT_ATTRIBUTES,
     code: [...(defaultSchema.attributes?.code || []), ["className", ...KATEX_INLINE_CLASS_NAMES, ...KATEX_BLOCK_CLASS_NAMES]],
     span: [...(defaultSchema.attributes?.span || []), ["className", ...SPAN_CLASS_NAMES], ["aria*"], ["data*"]],
+    mark: [["className", ...MARK_CLASS_NAMES]],
     blockquote: [...(defaultSchema.attributes?.blockquote || []), ["data*"]],
     iframe: [
       ["src", ...TRUSTED_IFRAME_SRC_PATTERNS],
@@ -82,7 +84,7 @@ export const SANITIZE_SCHEMA = {
       "loading",
     ],
   },
-  tagNames: [...(defaultSchema.tagNames || []), "iframe"],
+  tagNames: [...(defaultSchema.tagNames || []), "iframe", "mark"],
   protocols: {
     ...defaultSchema.protocols,
     src: ["https"],

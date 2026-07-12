@@ -122,9 +122,13 @@ with the product:
 
 - Strikethrough (`~~text~~`)
 - Underline
-- Highlight / mark (`==text==`)
 - Blockquote (`> `)
 - Fenced code block (```` ``` ````)
+
+Highlight (`==text==` / `===text===`) is a partial exception: the Markdown
+syntax itself renders (see [4.4](#44-highlight)), it just has no toolbar
+button or keyboard shortcut to insert/toggle it yet — you type the `=`
+delimiters by hand.
 
 To add one, you first extend `formatting/commands.ts` with the matching
 `EditorCommandId` and `ActiveFormatState` field, implement the toggle in
@@ -178,3 +182,34 @@ hidden: true
 
 # body starts here
 ```
+
+---
+
+## 4.4 Highlight
+
+Two Obsidian-flavored inline highlight delimiters are supported in rendered
+Markdown:
+
+| Syntax | Result |
+| --- | --- |
+| `==text==` | `text` on a light yellow background |
+| `===text===` | `text` on a light pink background (this project's own extension — not part of Obsidian) |
+
+```markdown
+This is ==important== and this is ===also important, differently===.
+```
+
+- **Parser:** `web/src/utils/remark-plugins/remark-highlight.ts` — a remark
+  plugin that scans text nodes left to right, preferring the longer `===`
+  delimiter so `===text===` isn't misread as `=` + `==text==` + `=`. A bare
+  run of `=` (e.g. `====`) or an empty pair never opens a highlight, and
+  content inside inline code / fenced code blocks is left untouched (the
+  plugin only rewrites plain `text` mdast nodes).
+- **Rendering:** the plugin emits a `<mark class="highlight highlight-yellow">`
+  / `<mark class="highlight highlight-pink">` node; `MemoMarkdownRenderer.tsx`
+  maps `mark` to Tailwind background classes (with dark-mode variants).
+  `rehype-sanitize`'s schema (`MemoContent/constants.ts`) explicitly allows the
+  `mark` tag and its `className`.
+- **No editor shortcut yet:** unlike bold/italic/strikethrough, there's no
+  toolbar button or keyboard toggle for highlight — type the `=` delimiters
+  directly in the editor. See the note in [4.2](#42-not-supported-intentionally-deferred).

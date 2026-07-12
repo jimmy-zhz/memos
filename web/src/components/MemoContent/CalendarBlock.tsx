@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useTodayDate } from "@/components/ActivityCalendar/hooks";
+import { useTranslate } from "@/utils/i18n";
 import { CalendarDayDetail } from "./calendar/CalendarDayDetail";
 import { CalendarMonthGrid } from "./calendar/CalendarMonthGrid";
 import { CalendarUngroupedSection } from "./calendar/CalendarUngroupedSection";
@@ -13,6 +14,7 @@ interface CalendarBlockProps {
 }
 
 export const CalendarBlock = ({ children }: CalendarBlockProps) => {
+  const t = useTranslate();
   const codeContent = extractCodeContent(children);
   const groups = useMemo(() => parseCalendarBlock(codeContent), [codeContent]);
 
@@ -40,7 +42,7 @@ export const CalendarBlock = ({ children }: CalendarBlockProps) => {
   }, [datedGroups]);
 
   if (groups.length === 0) {
-    return <div className="text-sm text-muted-foreground px-1 py-2">空的 calendar 代码块</div>;
+    return <div className="text-sm text-muted-foreground px-1 py-2">{t("markdown.calendar-block.empty")}</div>;
   }
 
   const handleSelectDate = (date: string) => {
@@ -63,7 +65,7 @@ export const CalendarBlock = ({ children }: CalendarBlockProps) => {
     <div className="flex flex-col gap-3 not-prose">
       {ungroupedItems.length > 0 && <CalendarUngroupedSection items={ungroupedItems} />}
       <div className="flex flex-col gap-3 md:flex-row md:items-start md:gap-4">
-        <div className="md:basis-[60%] md:grow-[6] md:shrink-0">
+        <div className="md:basis-[60%] md:grow-[6] md:shrink-0 md:border-r md:border-border/40 md:pr-4">
           <CalendarMonthGrid
             month={visibleMonth}
             onMonthChange={handleMonthChange}
@@ -73,7 +75,7 @@ export const CalendarBlock = ({ children }: CalendarBlockProps) => {
             onSelectDate={handleSelectDate}
           />
         </div>
-        <div className="md:basis-[40%] md:grow-[4] md:shrink-0 md:border-l md:border-border/40 md:pl-4">
+        <div className="md:basis-[40%] md:grow-[4] md:shrink-0 md:pl-4">
           <CalendarDayDetail group={selectedGroup} selectedDate={selectedDate} />
         </div>
       </div>

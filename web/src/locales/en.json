@@ -270,6 +270,11 @@
     "disconnected": "Live updates unavailable"
   },
   "markdown": {
+    "calendar-block": {
+      "empty": "Empty calendar code block",
+      "no-records": "No records for {{date}}",
+      "ungrouped": "Ungrouped"
+    },
     "checkbox": "Checkbox",
     "code-block": "Code block",
     "content-syntax": "Content syntax"

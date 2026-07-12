@@ -9,11 +9,13 @@ import rehypeSanitize from "rehype-sanitize";
 import remarkBreaks from "remark-breaks";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { cn } from "@/lib/utils";
 import { getAlertIcon, getAlertType, isMentionElement, isTagElement, isTaskListItemElement } from "@/types/markdown";
 import { parseFrontmatter } from "@/utils/frontmatter";
 import { rehypeHeadingId } from "@/utils/rehype-plugins/rehype-heading-id";
 import { remarkAlert } from "@/utils/remark-plugins/remark-alert";
 import { remarkDisableSetext } from "@/utils/remark-plugins/remark-disable-setext";
+import { remarkHighlight } from "@/utils/remark-plugins/remark-highlight";
 import { remarkMention } from "@/utils/remark-plugins/remark-mention";
 import { remarkPreserveType } from "@/utils/remark-plugins/remark-preserve-type";
 import { remarkSplitMixedTaskLists } from "@/utils/remark-plugins/remark-split-mixed-task-lists";
@@ -151,6 +153,19 @@ export const MemoMarkdownRenderer = ({ content, resolvedMentionUsernames, memoNa
       );
     },
     code: ({ children, ...props }) => <InlineCode {...props}>{children}</InlineCode>,
+    mark: ({ children, className, ...props }) => (
+      <mark
+        className={cn(
+          "rounded-sm px-0.5",
+          typeof className === "string" && className.includes("highlight-pink")
+            ? "bg-pink-200/70 dark:bg-pink-900/50"
+            : "bg-yellow-200/70 dark:bg-yellow-800/50",
+        )}
+        {...props}
+      >
+        {children}
+      </mark>
+    ),
     iframe: TrustedIframe,
     img: (props) => <Image {...props} />,
     pre: CodeBlock,
@@ -174,6 +189,7 @@ export const MemoMarkdownRenderer = ({ content, resolvedMentionUsernames, memoNa
           remarkBreaks,
           remarkMention,
           remarkTag,
+          remarkHighlight,
           remarkAlert,
           remarkPreserveType,
         ]}

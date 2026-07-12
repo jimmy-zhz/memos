@@ -203,6 +203,11 @@
     "unread": "未读"
   },
   "markdown": {
+    "calendar-block": {
+      "empty": "空的 calendar 代码块",
+      "no-records": "{{date}} 当天无记录",
+      "ungrouped": "未分组"
+    },
     "checkbox": "复选框",
     "code-block": "代码块",
     "content-syntax": "内容语法"
