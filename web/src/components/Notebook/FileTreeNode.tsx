@@ -8,7 +8,7 @@ import {
   LayoutGridIcon,
   MoreHorizontalIcon,
 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -59,6 +59,13 @@ const FileTreeNode = ({
     [isFolder, node, selectedMemo],
   );
   const [manualExpanded, setManualExpanded] = useState<boolean | null>(null);
+  // Drop any manual expand/collapse override whenever the opened document changes so the
+  // tree re-syncs to the selection: expand exactly the ancestors of the opened doc and
+  // collapse everything else. Without this, a stale manual toggle would stick and keep
+  // non-ancestor folders open (or ancestor folders closed) after navigating.
+  useEffect(() => {
+    setManualExpanded(null);
+  }, [selectedMemo]);
   const expanded = manualExpanded ?? ((depth === 0 && !selectedMemo) || containsSelected);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pdfInputRef = useRef<HTMLInputElement>(null);
