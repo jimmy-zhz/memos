@@ -12,6 +12,11 @@
   & .cm-editor {
     background: transparent;
     font-size: 1rem;
+    max-height: 50vh;
+  }
+  &[data-focus-mode] .cm-editor {
+    height: 100%;
+    max-height: none;
   }
   & .cm-editor.cm-focused {
     outline: none;
@@ -19,7 +24,6 @@
   & .cm-content {
     font-family: inherit;
     padding: 0;
-    caret-color: var(--foreground);
   }
   & .cm-line {
     padding: 0;
@@ -27,6 +31,7 @@
   & .cm-scroller {
     font-family: inherit;
     line-height: 1.5;
+    overflow: auto;
   }
   & .cm-placeholder {
     color: var(--muted-foreground);
