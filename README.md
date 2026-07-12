@@ -3,7 +3,7 @@
 > A hierarchical, view-powered knowledge base built on top of
 > [**Memos**](https://github.com/usememos/memos).
 
-![](docs/images/overview.svg)
+![overview](docs/images/overview.svg)
 <img align="right" height="96px" src="https://raw.githubusercontent.com/usememos/.github/refs/heads/main/assets/logo-rounded.png" alt="Memos" />
 
 This project is a fork of the excellent open-source
@@ -20,6 +20,10 @@ hierarchy** combined with **Notion's views**, without either one's weight.
   record = one document model, and full REST + gRPC APIs. No heavyweight
   per-page database.
 
+![knowledgebase](docs/images/Yuque-like-knowledgebase.png)
+
+---
+
 ## What this fork adds
 
 ### 📂 Hierarchical knowledge base (Yuque-like)
@@ -30,6 +34,7 @@ workspace: a folder tree as the primary navigator, a preview-first single
 document view, and a Markdown outline. A **Bookshelf** arranges your knowledge
 bases as books, and the reworked **Explore** page adds workspace / visibility /
 archive filters. → [Manual](./docs/manual/01-knowledge-base.md)
+
 
 ### 📄 Render-only document types: HTML & PDF
 
