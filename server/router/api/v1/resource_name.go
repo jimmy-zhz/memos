@@ -18,6 +18,7 @@ const (
 	UserNamePrefix             = "users/"
 	MemoNamePrefix             = "memos/"
 	MemoShareNamePrefix        = "shares/"
+	MemoHistoryNamePrefix      = "histories/"
 	AttachmentNamePrefix       = "attachments/"
 	ReactionNamePrefix         = "reactions/"
 	InboxNamePrefix            = "inboxes/"

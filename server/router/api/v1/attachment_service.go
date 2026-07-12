@@ -381,6 +381,45 @@ func (s *APIV1Service) DeleteAttachment(ctx context.Context, request *v1pb.Delet
 	return &emptypb.Empty{}, nil
 }
 
+// UnlinkAttachment detaches an attachment from its memo (clears memo_id) without
+// deleting the file. Use this instead of DeleteAttachment when the attachment
+// might still be referenced by a saved memo version, so that restoring that
+// version can relink the file later.
+func (s *APIV1Service) UnlinkAttachment(ctx context.Context, request *v1pb.UnlinkAttachmentRequest) (*v1pb.Attachment, error) {
+	attachmentUID, err := ExtractAttachmentUIDFromName(request.Name)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid attachment id: %v", err)
+	}
+	user, err := s.fetchCurrentUser(ctx)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
+	}
+	if user == nil {
+		return nil, status.Errorf(codes.Unauthenticated, "user not authenticated")
+	}
+	attachment, err := s.Store.GetAttachment(ctx, &store.FindAttachment{
+		UID:       &attachmentUID,
+		CreatorID: &user.ID,
+	})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to find attachment: %v", err)
+	}
+	if attachment == nil {
+		return nil, status.Errorf(codes.NotFound, "attachment not found")
+	}
+	if err := s.Store.UpdateAttachment(ctx, &store.UpdateAttachment{
+		ID:          attachment.ID,
+		UnsetMemoID: true,
+	}); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to unlink attachment: %v", err)
+	}
+	updated, err := s.Store.GetAttachment(ctx, &store.FindAttachment{UID: &attachmentUID})
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get attachment: %v", err)
+	}
+	return convertAttachmentFromStore(updated), nil
+}
+
 func (s *APIV1Service) BatchDeleteAttachments(ctx context.Context, request *v1pb.BatchDeleteAttachmentsRequest) (*emptypb.Empty, error) {
 	user, err := s.fetchCurrentUser(ctx)
 	if err != nil {

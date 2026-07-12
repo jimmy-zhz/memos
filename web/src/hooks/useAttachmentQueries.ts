@@ -91,6 +91,23 @@ export function useDeleteAttachment() {
   });
 }
 
+// Hook to unlink an attachment from its memo (memo_id cleared) without deleting
+// the file. Use for attachments that may still be referenced by a saved memo
+// version, so restoring that version can relink the file later.
+export function useUnlinkAttachment() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (name: string) => {
+      return attachmentServiceClient.unlinkAttachment({ name });
+    },
+    onSuccess: (_data, name) => {
+      queryClient.invalidateQueries({ queryKey: attachmentKeys.detail(name) });
+      queryClient.invalidateQueries({ queryKey: attachmentKeys.lists() });
+    },
+  });
+}
+
 export function useBatchDeleteAttachments() {
   const queryClient = useQueryClient();
 

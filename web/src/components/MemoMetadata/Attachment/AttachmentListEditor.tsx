@@ -11,16 +11,20 @@ import {
   XIcon,
 } from "lucide-react";
 import { type FC, type MouseEvent, useMemo, useRef, useState } from "react";
+import toast from "react-hot-toast";
 import type { AttachmentItem, LocalFile } from "@/components/MemoEditor/types/attachment";
 import { getAudioRecordingTimeLabel, toAttachmentItems } from "@/components/MemoEditor/types/attachment";
 import MetadataSection from "@/components/MemoMetadata/MetadataSection";
 import PreviewImageDialog from "@/components/PreviewImageDialog";
 import { Button } from "@/components/ui/button";
+import { useUnlinkAttachment } from "@/hooks/useAttachmentQueries";
+import { useMemoHistories } from "@/hooks/useMemoHistoryQueries";
 import { cn } from "@/lib/utils";
 import type { Attachment } from "@/types/proto/api/v1/attachment_service_pb";
 import { formatFileSize, getFileTypeLabel } from "@/utils/format";
 import { useTranslate } from "@/utils/i18n";
 import type { PreviewMediaItem } from "@/utils/media-item";
+import AttachmentReferencedDialog from "./AttachmentReferencedDialog";
 import { formatAudioTime } from "./attachmentHelpers";
 
 interface AttachmentListEditorProps {
@@ -35,6 +39,9 @@ interface AttachmentListEditorProps {
   hiddenInlineCount?: number;
   showInlineAttachments?: boolean;
   onToggleShowInlineAttachments?: () => void;
+  // The memo being edited. Used to check whether a saved attachment is referenced
+  // by any saved version, so removing it can offer "unlink" instead of "delete".
+  memoName?: string;
 }
 
 const AttachmentItemActions: FC<{
@@ -243,8 +250,24 @@ const AttachmentListEditor: FC<AttachmentListEditorProps> = ({
   hiddenInlineCount = 0,
   showInlineAttachments = false,
   onToggleShowInlineAttachments,
+  memoName,
 }) => {
+  const t = useTranslate();
   const [previewState, setPreviewState] = useState<{ open: boolean; initialIndex: number }>({ open: false, initialIndex: 0 });
+  const [pendingRemoval, setPendingRemoval] = useState<Attachment | null>(null);
+  const { mutateAsync: unlinkAttachment } = useUnlinkAttachment();
+  // Only fetched to compute which attachment uids are referenced by a saved version;
+  // no history UI is rendered here.
+  const { data: histories = [] } = useMemoHistories(memoName ?? "", { enabled: !!memoName });
+  const referencedAttachmentUids = useMemo(() => {
+    const uids = new Set<string>();
+    for (const history of histories) {
+      for (const attachment of history.attachments) {
+        uids.add(attachment.uid);
+      }
+    }
+    return uids;
+  }, [histories]);
   const items = toAttachmentItems(attachments, localFiles);
   const attachmentItems = items.filter((item) => !item.isLocal);
   const localItems = items.filter((item) => item.isLocal);
@@ -307,6 +330,16 @@ const AttachmentListEditor: FC<AttachmentListEditorProps> = ({
     );
   };
 
+  // Removes a saved attachment from the memo's attachment list. If the file was
+  // never referenced by a saved version, this is deferred (persisted as a hard
+  // delete only when the editor saves, via SetMemoAttachments). If it IS
+  // referenced by a saved version, we intervene: hard-deleting now would make
+  // that version's snapshot permanently unrecoverable, so we ask the user
+  // whether to unlink (keep the file, droppable/relinkable later) or delete anyway.
+  const removeAttachment = (attachment: Attachment) => {
+    onAttachmentsChange?.(attachments.filter((a) => a.name !== attachment.name));
+  };
+
   const handleRemoveItem = (item: AttachmentItem) => {
     if (item.isLocal) {
       const nextLocalFiles = localFiles.filter((file) => !item.memberIds.includes(file.previewUrl));
@@ -317,9 +350,31 @@ const AttachmentListEditor: FC<AttachmentListEditorProps> = ({
       return;
     }
 
-    if (onAttachmentsChange) {
-      onAttachmentsChange(attachments.filter((attachment) => !item.memberIds.includes(attachment.name)));
+    const target = attachments.find((attachment) => item.memberIds.includes(attachment.name));
+    if (!target) {
+      return;
     }
+    const uid = target.name.split("/").pop();
+    if (uid && referencedAttachmentUids.has(uid)) {
+      setPendingRemoval(target);
+      return;
+    }
+    removeAttachment(target);
+  };
+
+  const handleUnlinkOnly = async () => {
+    if (!pendingRemoval) return;
+    try {
+      await unlinkAttachment(pendingRemoval.name);
+      removeAttachment(pendingRemoval);
+    } catch {
+      toast.error(t("memo.attachment-unlink-failed"));
+    }
+  };
+
+  const handleDeleteAnyway = () => {
+    if (!pendingRemoval) return;
+    removeAttachment(pendingRemoval);
   };
 
   const handlePreviewItem = (item: AttachmentItem) => {
@@ -388,6 +443,13 @@ const AttachmentListEditor: FC<AttachmentListEditorProps> = ({
         onOpenChange={(open) => setPreviewState((state) => ({ ...state, open }))}
         items={previewItems}
         initialIndex={previewState.initialIndex}
+      />
+
+      <AttachmentReferencedDialog
+        open={!!pendingRemoval}
+        onOpenChange={(open) => !open && setPendingRemoval(null)}
+        onUnlinkOnly={handleUnlinkOnly}
+        onDelete={handleDeleteAnyway}
       />
     </>
   );

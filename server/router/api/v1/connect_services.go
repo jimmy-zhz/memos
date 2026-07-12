@@ -447,6 +447,30 @@ func (s *ConnectServiceHandler) ListMemoShares(ctx context.Context, req *connect
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) CreateMemoHistory(ctx context.Context, req *connect.Request[v1pb.CreateMemoHistoryRequest]) (*connect.Response[v1pb.MemoHistory], error) {
+	resp, err := s.APIV1Service.CreateMemoHistory(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) ListMemoHistories(ctx context.Context, req *connect.Request[v1pb.ListMemoHistoriesRequest]) (*connect.Response[v1pb.ListMemoHistoriesResponse], error) {
+	resp, err := s.APIV1Service.ListMemoHistories(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) RestoreMemoHistory(ctx context.Context, req *connect.Request[v1pb.RestoreMemoHistoryRequest]) (*connect.Response[v1pb.Memo], error) {
+	resp, err := s.APIV1Service.RestoreMemoHistory(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) DeleteMemoShare(ctx context.Context, req *connect.Request[v1pb.DeleteMemoShareRequest]) (*connect.Response[emptypb.Empty], error) {
 	resp, err := s.APIV1Service.DeleteMemoShare(ctx, req.Msg)
 	if err != nil {
@@ -507,6 +531,14 @@ func (s *ConnectServiceHandler) GetAttachment(ctx context.Context, req *connect.
 
 func (s *ConnectServiceHandler) UpdateAttachment(ctx context.Context, req *connect.Request[v1pb.UpdateAttachmentRequest]) (*connect.Response[v1pb.Attachment], error) {
 	resp, err := s.APIV1Service.UpdateAttachment(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *ConnectServiceHandler) UnlinkAttachment(ctx context.Context, req *connect.Request[v1pb.UnlinkAttachmentRequest]) (*connect.Response[v1pb.Attachment], error) {
+	resp, err := s.APIV1Service.UnlinkAttachment(ctx, req.Msg)
 	if err != nil {
 		return nil, convertGRPCError(err)
 	}

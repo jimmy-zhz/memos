@@ -1,4 +1,4 @@
-import { BugIcon, CheckIcon, CircleCheckIcon, CircleHelpIcon, type LucideIcon, PencilIcon, TriangleAlertIcon, XIcon, ZapIcon } from "lucide-react";
+import { BugIcon, CheckIcon, CircleHelpIcon, InfoIcon, type LucideIcon, PencilIcon, TriangleAlertIcon, XIcon, ZapIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type HeadingLevel = 1 | 2 | 3 | 4 | 5 | 6;
@@ -83,18 +83,43 @@ export const mentionStyles = {
 
 /**
  * "Simple tier" alert callout styling for the read-only memo view
- * (MemoContent/markdown/Alert.tsx) — a colored row with an icon, used for
- * families that don't have a bespoke card design. Keyed by canonical family
- * (see alertFamilies.ts), not by every alias. `[!TYPE(icon)]` in the source
- * overrides the icon only, colors stay tied to the family.
+ * (MemoContent/markdown/Alert.tsx) — a saturated pastel card (tinted bg + solid
+ * left border + bold icon/label header), used for families that don't have a
+ * bespoke card design. Keyed by canonical family (see alertFamilies.ts), not by
+ * every alias. `[!TYPE(icon)]` in the source overrides the icon only, colors
+ * stay tied to the family. Every family gets its own hue so the callouts stay
+ * visually distinct even without a unique layout.
  */
-export const alertStyles: Record<string, { icon: LucideIcon; classes: string }> = {
-  todo: { icon: CircleCheckIcon, classes: "border-primary/40 bg-primary/10 text-foreground" },
-  aside: { icon: PencilIcon, classes: "border-primary/40 bg-primary/10 text-foreground" },
-  success: { icon: CheckIcon, classes: "border-emerald-500/40 bg-emerald-500/10 text-foreground" },
-  question: { icon: CircleHelpIcon, classes: "border-amber-500/40 bg-amber-500/10 text-foreground" },
-  caution: { icon: TriangleAlertIcon, classes: "border-amber-500/40 bg-amber-500/10 text-foreground" },
-  danger: { icon: ZapIcon, classes: "border-red-500/40 bg-red-500/10 text-foreground" },
-  failure: { icon: XIcon, classes: "border-red-500/40 bg-red-500/10 text-foreground" },
-  bug: { icon: BugIcon, classes: "border-red-500/40 bg-red-500/10 text-foreground" },
+export const alertStyles: Record<string, { icon: LucideIcon | string; classes: string }> = {
+  info: { icon: InfoIcon, classes: "bg-sky-100 dark:bg-sky-500/15 border-l-sky-600 dark:border-l-sky-400 text-sky-900 dark:text-sky-100" },
+  aside: {
+    icon: PencilIcon,
+    classes: "bg-slate-100 dark:bg-slate-500/15 border-l-slate-600 dark:border-l-slate-400 text-slate-900 dark:text-slate-100",
+  },
+  success: {
+    icon: CheckIcon,
+    classes: "bg-emerald-100 dark:bg-emerald-500/15 border-l-emerald-600 dark:border-l-emerald-400 text-emerald-900 dark:text-emerald-100",
+  },
+  question: {
+    icon: CircleHelpIcon,
+    classes: "bg-violet-100 dark:bg-violet-500/15 border-l-violet-600 dark:border-l-violet-400 text-violet-900 dark:text-violet-100",
+  },
+  example: {
+    icon: "🌰",
+    classes: "bg-amber-100 dark:bg-amber-500/15 border-l-amber-600 dark:border-l-amber-400 text-amber-900 dark:text-amber-100",
+  },
+  caution: {
+    icon: TriangleAlertIcon,
+    classes: "bg-yellow-100 dark:bg-yellow-500/15 border-l-yellow-600 dark:border-l-yellow-400 text-yellow-900 dark:text-yellow-100",
+  },
+  warning: {
+    icon: TriangleAlertIcon,
+    classes: "bg-orange-100 dark:bg-orange-500/15 border-l-orange-600 dark:border-l-orange-400 text-orange-900 dark:text-orange-100",
+  },
+  danger: { icon: ZapIcon, classes: "bg-red-100 dark:bg-red-500/15 border-l-red-600 dark:border-l-red-400 text-red-900 dark:text-red-100" },
+  failure: {
+    icon: XIcon,
+    classes: "bg-rose-100 dark:bg-rose-500/15 border-l-rose-600 dark:border-l-rose-400 text-rose-900 dark:text-rose-100",
+  },
+  bug: { icon: BugIcon, classes: "bg-pink-100 dark:bg-pink-500/15 border-l-pink-600 dark:border-l-pink-400 text-pink-900 dark:text-pink-100" },
 } as const;

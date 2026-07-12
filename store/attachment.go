@@ -64,6 +64,11 @@ type UpdateAttachment struct {
 	MemoID    *int32
 	Reference *string
 	Payload   *storepb.AttachmentPayload
+	// UnsetMemoID, when true, clears memo_id (sets it to NULL), unlinking the
+	// attachment from its memo without deleting the file. Used when restoring a
+	// memo version so attachments dropped by the restore are kept, not destroyed.
+	// Ignored if MemoID is also set.
+	UnsetMemoID bool
 }
 
 type DeleteAttachment struct {

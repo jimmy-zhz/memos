@@ -38,6 +38,9 @@ const (
 	MemoService_ListMemoShares_FullMethodName       = "/memos.api.v1.MemoService/ListMemoShares"
 	MemoService_DeleteMemoShare_FullMethodName      = "/memos.api.v1.MemoService/DeleteMemoShare"
 	MemoService_GetMemoByShare_FullMethodName       = "/memos.api.v1.MemoService/GetMemoByShare"
+	MemoService_CreateMemoHistory_FullMethodName    = "/memos.api.v1.MemoService/CreateMemoHistory"
+	MemoService_ListMemoHistories_FullMethodName    = "/memos.api.v1.MemoService/ListMemoHistories"
+	MemoService_RestoreMemoHistory_FullMethodName   = "/memos.api.v1.MemoService/RestoreMemoHistory"
 	MemoService_GetLinkMetadata_FullMethodName      = "/memos.api.v1.MemoService/GetLinkMetadata"
 	MemoService_BatchGetLinkMetadata_FullMethodName = "/memos.api.v1.MemoService/BatchGetLinkMetadata"
 )
@@ -90,6 +93,18 @@ type MemoServiceClient interface {
 	// GetMemoByShare resolves a share token to its memo. No authentication required.
 	// Returns NOT_FOUND if the token is invalid or expired.
 	GetMemoByShare(ctx context.Context, in *GetMemoByShareRequest, opts ...grpc.CallOption) (*Memo, error)
+	// CreateMemoHistory saves a manual snapshot (version) of a memo's current content.
+	// Requires authentication as the memo creator.
+	CreateMemoHistory(ctx context.Context, in *CreateMemoHistoryRequest, opts ...grpc.CallOption) (*MemoHistory, error)
+	// ListMemoHistories lists all saved versions for a memo, newest first.
+	// Requires authentication as the memo creator.
+	ListMemoHistories(ctx context.Context, in *ListMemoHistoriesRequest, opts ...grpc.CallOption) (*ListMemoHistoriesResponse, error)
+	// RestoreMemoHistory switches a memo's content and attachment set to a saved
+	// version. Fails with FAILED_PRECONDITION if the memo's current state doesn't
+	// match its latest saved version (i.e. there are unsaved changes) — the caller
+	// must save a version first. Attachments dropped by the restore are unlinked,
+	// not deleted. Requires authentication as the memo creator.
+	RestoreMemoHistory(ctx context.Context, in *RestoreMemoHistoryRequest, opts ...grpc.CallOption) (*Memo, error)
 	// GetLinkMetadata gets metadata for a link.
 	GetLinkMetadata(ctx context.Context, in *GetLinkMetadataRequest, opts ...grpc.CallOption) (*LinkMetadata, error)
 	// BatchGetLinkMetadata gets metadata for links.
@@ -284,6 +299,36 @@ func (c *memoServiceClient) GetMemoByShare(ctx context.Context, in *GetMemoBySha
 	return out, nil
 }
 
+func (c *memoServiceClient) CreateMemoHistory(ctx context.Context, in *CreateMemoHistoryRequest, opts ...grpc.CallOption) (*MemoHistory, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(MemoHistory)
+	err := c.cc.Invoke(ctx, MemoService_CreateMemoHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *memoServiceClient) ListMemoHistories(ctx context.Context, in *ListMemoHistoriesRequest, opts ...grpc.CallOption) (*ListMemoHistoriesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMemoHistoriesResponse)
+	err := c.cc.Invoke(ctx, MemoService_ListMemoHistories_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *memoServiceClient) RestoreMemoHistory(ctx context.Context, in *RestoreMemoHistoryRequest, opts ...grpc.CallOption) (*Memo, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Memo)
+	err := c.cc.Invoke(ctx, MemoService_RestoreMemoHistory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *memoServiceClient) GetLinkMetadata(ctx context.Context, in *GetLinkMetadataRequest, opts ...grpc.CallOption) (*LinkMetadata, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LinkMetadata)
@@ -352,6 +397,18 @@ type MemoServiceServer interface {
 	// GetMemoByShare resolves a share token to its memo. No authentication required.
 	// Returns NOT_FOUND if the token is invalid or expired.
 	GetMemoByShare(context.Context, *GetMemoByShareRequest) (*Memo, error)
+	// CreateMemoHistory saves a manual snapshot (version) of a memo's current content.
+	// Requires authentication as the memo creator.
+	CreateMemoHistory(context.Context, *CreateMemoHistoryRequest) (*MemoHistory, error)
+	// ListMemoHistories lists all saved versions for a memo, newest first.
+	// Requires authentication as the memo creator.
+	ListMemoHistories(context.Context, *ListMemoHistoriesRequest) (*ListMemoHistoriesResponse, error)
+	// RestoreMemoHistory switches a memo's content and attachment set to a saved
+	// version. Fails with FAILED_PRECONDITION if the memo's current state doesn't
+	// match its latest saved version (i.e. there are unsaved changes) — the caller
+	// must save a version first. Attachments dropped by the restore are unlinked,
+	// not deleted. Requires authentication as the memo creator.
+	RestoreMemoHistory(context.Context, *RestoreMemoHistoryRequest) (*Memo, error)
 	// GetLinkMetadata gets metadata for a link.
 	GetLinkMetadata(context.Context, *GetLinkMetadataRequest) (*LinkMetadata, error)
 	// BatchGetLinkMetadata gets metadata for links.
@@ -419,6 +476,15 @@ func (UnimplementedMemoServiceServer) DeleteMemoShare(context.Context, *DeleteMe
 }
 func (UnimplementedMemoServiceServer) GetMemoByShare(context.Context, *GetMemoByShareRequest) (*Memo, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetMemoByShare not implemented")
+}
+func (UnimplementedMemoServiceServer) CreateMemoHistory(context.Context, *CreateMemoHistoryRequest) (*MemoHistory, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateMemoHistory not implemented")
+}
+func (UnimplementedMemoServiceServer) ListMemoHistories(context.Context, *ListMemoHistoriesRequest) (*ListMemoHistoriesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListMemoHistories not implemented")
+}
+func (UnimplementedMemoServiceServer) RestoreMemoHistory(context.Context, *RestoreMemoHistoryRequest) (*Memo, error) {
+	return nil, status.Error(codes.Unimplemented, "method RestoreMemoHistory not implemented")
 }
 func (UnimplementedMemoServiceServer) GetLinkMetadata(context.Context, *GetLinkMetadataRequest) (*LinkMetadata, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetLinkMetadata not implemented")
@@ -771,6 +837,60 @@ func _MemoService_GetMemoByShare_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MemoService_CreateMemoHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateMemoHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MemoServiceServer).CreateMemoHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MemoService_CreateMemoHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MemoServiceServer).CreateMemoHistory(ctx, req.(*CreateMemoHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MemoService_ListMemoHistories_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMemoHistoriesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MemoServiceServer).ListMemoHistories(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MemoService_ListMemoHistories_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MemoServiceServer).ListMemoHistories(ctx, req.(*ListMemoHistoriesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MemoService_RestoreMemoHistory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RestoreMemoHistoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MemoServiceServer).RestoreMemoHistory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MemoService_RestoreMemoHistory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MemoServiceServer).RestoreMemoHistory(ctx, req.(*RestoreMemoHistoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MemoService_GetLinkMetadata_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetLinkMetadataRequest)
 	if err := dec(in); err != nil {
@@ -885,6 +1005,18 @@ var MemoService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetMemoByShare",
 			Handler:    _MemoService_GetMemoByShare_Handler,
+		},
+		{
+			MethodName: "CreateMemoHistory",
+			Handler:    _MemoService_CreateMemoHistory_Handler,
+		},
+		{
+			MethodName: "ListMemoHistories",
+			Handler:    _MemoService_ListMemoHistories_Handler,
+		},
+		{
+			MethodName: "RestoreMemoHistory",
+			Handler:    _MemoService_RestoreMemoHistory_Handler,
 		},
 		{
 			MethodName: "GetLinkMetadata",

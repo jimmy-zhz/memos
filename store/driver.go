@@ -36,6 +36,10 @@ type Driver interface {
 	ListMemoRelations(ctx context.Context, find *FindMemoRelation) ([]*MemoRelation, error)
 	DeleteMemoRelation(ctx context.Context, delete *DeleteMemoRelation) error
 
+	// MemoHistory model related methods.
+	CreateMemoHistory(ctx context.Context, create *MemoHistory) (*MemoHistory, error)
+	ListMemoHistories(ctx context.Context, find *FindMemoHistory) ([]*MemoHistory, error)
+
 	// InstanceSetting model related methods.
 	UpsertInstanceSetting(ctx context.Context, upsert *InstanceSetting) (*InstanceSetting, error)
 	ListInstanceSettings(ctx context.Context, find *FindInstanceSetting) ([]*InstanceSetting, error)

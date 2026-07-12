@@ -2,6 +2,7 @@ import { PaperclipIcon } from "lucide-react";
 import { useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
+import { parseFrontmatter } from "@/utils/frontmatter";
 import { extractHeadings } from "@/utils/markdown-manipulation";
 
 // DOM id of the attachment list section rendered within the document's
@@ -20,7 +21,7 @@ const DocumentOutline = ({ content, containerRef, hasAttachments }: Props) => {
   // Uses the same mdast-based extraction as rehype-heading-id so the slug
   // computed here always matches the id assigned to the rendered heading,
   // even when the heading text contains inline markdown (links, emphasis, etc.).
-  const items = useMemo(() => extractHeadings(content), [content]);
+  const items = useMemo(() => extractHeadings(parseFrontmatter(content).body), [content]);
 
   const scrollToId = (id: string) => {
     const container = containerRef.current;

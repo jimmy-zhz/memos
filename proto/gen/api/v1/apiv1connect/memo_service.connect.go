@@ -83,6 +83,15 @@ const (
 	// MemoServiceGetMemoByShareProcedure is the fully-qualified name of the MemoService's
 	// GetMemoByShare RPC.
 	MemoServiceGetMemoByShareProcedure = "/memos.api.v1.MemoService/GetMemoByShare"
+	// MemoServiceCreateMemoHistoryProcedure is the fully-qualified name of the MemoService's
+	// CreateMemoHistory RPC.
+	MemoServiceCreateMemoHistoryProcedure = "/memos.api.v1.MemoService/CreateMemoHistory"
+	// MemoServiceListMemoHistoriesProcedure is the fully-qualified name of the MemoService's
+	// ListMemoHistories RPC.
+	MemoServiceListMemoHistoriesProcedure = "/memos.api.v1.MemoService/ListMemoHistories"
+	// MemoServiceRestoreMemoHistoryProcedure is the fully-qualified name of the MemoService's
+	// RestoreMemoHistory RPC.
+	MemoServiceRestoreMemoHistoryProcedure = "/memos.api.v1.MemoService/RestoreMemoHistory"
 	// MemoServiceGetLinkMetadataProcedure is the fully-qualified name of the MemoService's
 	// GetLinkMetadata RPC.
 	MemoServiceGetLinkMetadataProcedure = "/memos.api.v1.MemoService/GetLinkMetadata"
@@ -137,6 +146,18 @@ type MemoServiceClient interface {
 	// GetMemoByShare resolves a share token to its memo. No authentication required.
 	// Returns NOT_FOUND if the token is invalid or expired.
 	GetMemoByShare(context.Context, *connect.Request[v1.GetMemoByShareRequest]) (*connect.Response[v1.Memo], error)
+	// CreateMemoHistory saves a manual snapshot (version) of a memo's current content.
+	// Requires authentication as the memo creator.
+	CreateMemoHistory(context.Context, *connect.Request[v1.CreateMemoHistoryRequest]) (*connect.Response[v1.MemoHistory], error)
+	// ListMemoHistories lists all saved versions for a memo, newest first.
+	// Requires authentication as the memo creator.
+	ListMemoHistories(context.Context, *connect.Request[v1.ListMemoHistoriesRequest]) (*connect.Response[v1.ListMemoHistoriesResponse], error)
+	// RestoreMemoHistory switches a memo's content and attachment set to a saved
+	// version. Fails with FAILED_PRECONDITION if the memo's current state doesn't
+	// match its latest saved version (i.e. there are unsaved changes) — the caller
+	// must save a version first. Attachments dropped by the restore are unlinked,
+	// not deleted. Requires authentication as the memo creator.
+	RestoreMemoHistory(context.Context, *connect.Request[v1.RestoreMemoHistoryRequest]) (*connect.Response[v1.Memo], error)
 	// GetLinkMetadata gets metadata for a link.
 	GetLinkMetadata(context.Context, *connect.Request[v1.GetLinkMetadataRequest]) (*connect.Response[v1.LinkMetadata], error)
 	// BatchGetLinkMetadata gets metadata for links.
@@ -262,6 +283,24 @@ func NewMemoServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(memoServiceMethods.ByName("GetMemoByShare")),
 			connect.WithClientOptions(opts...),
 		),
+		createMemoHistory: connect.NewClient[v1.CreateMemoHistoryRequest, v1.MemoHistory](
+			httpClient,
+			baseURL+MemoServiceCreateMemoHistoryProcedure,
+			connect.WithSchema(memoServiceMethods.ByName("CreateMemoHistory")),
+			connect.WithClientOptions(opts...),
+		),
+		listMemoHistories: connect.NewClient[v1.ListMemoHistoriesRequest, v1.ListMemoHistoriesResponse](
+			httpClient,
+			baseURL+MemoServiceListMemoHistoriesProcedure,
+			connect.WithSchema(memoServiceMethods.ByName("ListMemoHistories")),
+			connect.WithClientOptions(opts...),
+		),
+		restoreMemoHistory: connect.NewClient[v1.RestoreMemoHistoryRequest, v1.Memo](
+			httpClient,
+			baseURL+MemoServiceRestoreMemoHistoryProcedure,
+			connect.WithSchema(memoServiceMethods.ByName("RestoreMemoHistory")),
+			connect.WithClientOptions(opts...),
+		),
 		getLinkMetadata: connect.NewClient[v1.GetLinkMetadataRequest, v1.LinkMetadata](
 			httpClient,
 			baseURL+MemoServiceGetLinkMetadataProcedure,
@@ -297,6 +336,9 @@ type memoServiceClient struct {
 	listMemoShares       *connect.Client[v1.ListMemoSharesRequest, v1.ListMemoSharesResponse]
 	deleteMemoShare      *connect.Client[v1.DeleteMemoShareRequest, emptypb.Empty]
 	getMemoByShare       *connect.Client[v1.GetMemoByShareRequest, v1.Memo]
+	createMemoHistory    *connect.Client[v1.CreateMemoHistoryRequest, v1.MemoHistory]
+	listMemoHistories    *connect.Client[v1.ListMemoHistoriesRequest, v1.ListMemoHistoriesResponse]
+	restoreMemoHistory   *connect.Client[v1.RestoreMemoHistoryRequest, v1.Memo]
 	getLinkMetadata      *connect.Client[v1.GetLinkMetadataRequest, v1.LinkMetadata]
 	batchGetLinkMetadata *connect.Client[v1.BatchGetLinkMetadataRequest, v1.BatchGetLinkMetadataResponse]
 }
@@ -391,6 +433,21 @@ func (c *memoServiceClient) GetMemoByShare(ctx context.Context, req *connect.Req
 	return c.getMemoByShare.CallUnary(ctx, req)
 }
 
+// CreateMemoHistory calls memos.api.v1.MemoService.CreateMemoHistory.
+func (c *memoServiceClient) CreateMemoHistory(ctx context.Context, req *connect.Request[v1.CreateMemoHistoryRequest]) (*connect.Response[v1.MemoHistory], error) {
+	return c.createMemoHistory.CallUnary(ctx, req)
+}
+
+// ListMemoHistories calls memos.api.v1.MemoService.ListMemoHistories.
+func (c *memoServiceClient) ListMemoHistories(ctx context.Context, req *connect.Request[v1.ListMemoHistoriesRequest]) (*connect.Response[v1.ListMemoHistoriesResponse], error) {
+	return c.listMemoHistories.CallUnary(ctx, req)
+}
+
+// RestoreMemoHistory calls memos.api.v1.MemoService.RestoreMemoHistory.
+func (c *memoServiceClient) RestoreMemoHistory(ctx context.Context, req *connect.Request[v1.RestoreMemoHistoryRequest]) (*connect.Response[v1.Memo], error) {
+	return c.restoreMemoHistory.CallUnary(ctx, req)
+}
+
 // GetLinkMetadata calls memos.api.v1.MemoService.GetLinkMetadata.
 func (c *memoServiceClient) GetLinkMetadata(ctx context.Context, req *connect.Request[v1.GetLinkMetadataRequest]) (*connect.Response[v1.LinkMetadata], error) {
 	return c.getLinkMetadata.CallUnary(ctx, req)
@@ -447,6 +504,18 @@ type MemoServiceHandler interface {
 	// GetMemoByShare resolves a share token to its memo. No authentication required.
 	// Returns NOT_FOUND if the token is invalid or expired.
 	GetMemoByShare(context.Context, *connect.Request[v1.GetMemoByShareRequest]) (*connect.Response[v1.Memo], error)
+	// CreateMemoHistory saves a manual snapshot (version) of a memo's current content.
+	// Requires authentication as the memo creator.
+	CreateMemoHistory(context.Context, *connect.Request[v1.CreateMemoHistoryRequest]) (*connect.Response[v1.MemoHistory], error)
+	// ListMemoHistories lists all saved versions for a memo, newest first.
+	// Requires authentication as the memo creator.
+	ListMemoHistories(context.Context, *connect.Request[v1.ListMemoHistoriesRequest]) (*connect.Response[v1.ListMemoHistoriesResponse], error)
+	// RestoreMemoHistory switches a memo's content and attachment set to a saved
+	// version. Fails with FAILED_PRECONDITION if the memo's current state doesn't
+	// match its latest saved version (i.e. there are unsaved changes) — the caller
+	// must save a version first. Attachments dropped by the restore are unlinked,
+	// not deleted. Requires authentication as the memo creator.
+	RestoreMemoHistory(context.Context, *connect.Request[v1.RestoreMemoHistoryRequest]) (*connect.Response[v1.Memo], error)
 	// GetLinkMetadata gets metadata for a link.
 	GetLinkMetadata(context.Context, *connect.Request[v1.GetLinkMetadataRequest]) (*connect.Response[v1.LinkMetadata], error)
 	// BatchGetLinkMetadata gets metadata for links.
@@ -568,6 +637,24 @@ func NewMemoServiceHandler(svc MemoServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(memoServiceMethods.ByName("GetMemoByShare")),
 		connect.WithHandlerOptions(opts...),
 	)
+	memoServiceCreateMemoHistoryHandler := connect.NewUnaryHandler(
+		MemoServiceCreateMemoHistoryProcedure,
+		svc.CreateMemoHistory,
+		connect.WithSchema(memoServiceMethods.ByName("CreateMemoHistory")),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoServiceListMemoHistoriesHandler := connect.NewUnaryHandler(
+		MemoServiceListMemoHistoriesProcedure,
+		svc.ListMemoHistories,
+		connect.WithSchema(memoServiceMethods.ByName("ListMemoHistories")),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoServiceRestoreMemoHistoryHandler := connect.NewUnaryHandler(
+		MemoServiceRestoreMemoHistoryProcedure,
+		svc.RestoreMemoHistory,
+		connect.WithSchema(memoServiceMethods.ByName("RestoreMemoHistory")),
+		connect.WithHandlerOptions(opts...),
+	)
 	memoServiceGetLinkMetadataHandler := connect.NewUnaryHandler(
 		MemoServiceGetLinkMetadataProcedure,
 		svc.GetLinkMetadata,
@@ -618,6 +705,12 @@ func NewMemoServiceHandler(svc MemoServiceHandler, opts ...connect.HandlerOption
 			memoServiceDeleteMemoShareHandler.ServeHTTP(w, r)
 		case MemoServiceGetMemoByShareProcedure:
 			memoServiceGetMemoByShareHandler.ServeHTTP(w, r)
+		case MemoServiceCreateMemoHistoryProcedure:
+			memoServiceCreateMemoHistoryHandler.ServeHTTP(w, r)
+		case MemoServiceListMemoHistoriesProcedure:
+			memoServiceListMemoHistoriesHandler.ServeHTTP(w, r)
+		case MemoServiceRestoreMemoHistoryProcedure:
+			memoServiceRestoreMemoHistoryHandler.ServeHTTP(w, r)
 		case MemoServiceGetLinkMetadataProcedure:
 			memoServiceGetLinkMetadataHandler.ServeHTTP(w, r)
 		case MemoServiceBatchGetLinkMetadataProcedure:
@@ -701,6 +794,18 @@ func (UnimplementedMemoServiceHandler) DeleteMemoShare(context.Context, *connect
 
 func (UnimplementedMemoServiceHandler) GetMemoByShare(context.Context, *connect.Request[v1.GetMemoByShareRequest]) (*connect.Response[v1.Memo], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.MemoService.GetMemoByShare is not implemented"))
+}
+
+func (UnimplementedMemoServiceHandler) CreateMemoHistory(context.Context, *connect.Request[v1.CreateMemoHistoryRequest]) (*connect.Response[v1.MemoHistory], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.MemoService.CreateMemoHistory is not implemented"))
+}
+
+func (UnimplementedMemoServiceHandler) ListMemoHistories(context.Context, *connect.Request[v1.ListMemoHistoriesRequest]) (*connect.Response[v1.ListMemoHistoriesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.MemoService.ListMemoHistories is not implemented"))
+}
+
+func (UnimplementedMemoServiceHandler) RestoreMemoHistory(context.Context, *connect.Request[v1.RestoreMemoHistoryRequest]) (*connect.Response[v1.Memo], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.MemoService.RestoreMemoHistory is not implemented"))
 }
 
 func (UnimplementedMemoServiceHandler) GetLinkMetadata(context.Context, *connect.Request[v1.GetLinkMetadataRequest]) (*connect.Response[v1.LinkMetadata], error) {

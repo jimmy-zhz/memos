@@ -680,6 +680,52 @@ func (x *UpdateAttachmentRequest) GetUpdateMask() *fieldmaskpb.FieldMask {
 	return nil
 }
 
+type UnlinkAttachmentRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Required. The attachment name of the attachment to unlink.
+	// Format: attachments/{attachment}
+	Name          string `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnlinkAttachmentRequest) Reset() {
+	*x = UnlinkAttachmentRequest{}
+	mi := &file_api_v1_attachment_service_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnlinkAttachmentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnlinkAttachmentRequest) ProtoMessage() {}
+
+func (x *UnlinkAttachmentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_v1_attachment_service_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnlinkAttachmentRequest.ProtoReflect.Descriptor instead.
+func (*UnlinkAttachmentRequest) Descriptor() ([]byte, []int) {
+	return file_api_v1_attachment_service_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *UnlinkAttachmentRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
 type DeleteAttachmentRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Required. The attachment name of the attachment to delete.
@@ -691,7 +737,7 @@ type DeleteAttachmentRequest struct {
 
 func (x *DeleteAttachmentRequest) Reset() {
 	*x = DeleteAttachmentRequest{}
-	mi := &file_api_v1_attachment_service_proto_msgTypes[7]
+	mi := &file_api_v1_attachment_service_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -703,7 +749,7 @@ func (x *DeleteAttachmentRequest) String() string {
 func (*DeleteAttachmentRequest) ProtoMessage() {}
 
 func (x *DeleteAttachmentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_attachment_service_proto_msgTypes[7]
+	mi := &file_api_v1_attachment_service_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -716,7 +762,7 @@ func (x *DeleteAttachmentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAttachmentRequest.ProtoReflect.Descriptor instead.
 func (*DeleteAttachmentRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_attachment_service_proto_rawDescGZIP(), []int{7}
+	return file_api_v1_attachment_service_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *DeleteAttachmentRequest) GetName() string {
@@ -735,7 +781,7 @@ type BatchDeleteAttachmentsRequest struct {
 
 func (x *BatchDeleteAttachmentsRequest) Reset() {
 	*x = BatchDeleteAttachmentsRequest{}
-	mi := &file_api_v1_attachment_service_proto_msgTypes[8]
+	mi := &file_api_v1_attachment_service_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -747,7 +793,7 @@ func (x *BatchDeleteAttachmentsRequest) String() string {
 func (*BatchDeleteAttachmentsRequest) ProtoMessage() {}
 
 func (x *BatchDeleteAttachmentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_v1_attachment_service_proto_msgTypes[8]
+	mi := &file_api_v1_attachment_service_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -760,7 +806,7 @@ func (x *BatchDeleteAttachmentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use BatchDeleteAttachmentsRequest.ProtoReflect.Descriptor instead.
 func (*BatchDeleteAttachmentsRequest) Descriptor() ([]byte, []int) {
-	return file_api_v1_attachment_service_proto_rawDescGZIP(), []int{8}
+	return file_api_v1_attachment_service_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *BatchDeleteAttachmentsRequest) GetNames() []string {
@@ -823,6 +869,9 @@ const file_api_v1_attachment_service_proto_rawDesc = "" +
 	"attachment\x12@\n" +
 	"\vupdate_mask\x18\x02 \x01(\v2\x1a.google.protobuf.FieldMaskB\x03\xe0A\x02R\n" +
 	"updateMask\"N\n" +
+	"\x17UnlinkAttachmentRequest\x123\n" +
+	"\x04name\x18\x01 \x01(\tB\x1f\xe0A\x02\xfaA\x19\n" +
+	"\x17memos.api.v1/AttachmentR\x04name\"N\n" +
 	"\x17DeleteAttachmentRequest\x123\n" +
 	"\x04name\x18\x01 \x01(\tB\x1f\xe0A\x02\xfaA\x19\n" +
 	"\x17memos.api.v1/AttachmentR\x04name\":\n" +
@@ -841,7 +890,7 @@ const file_api_v1_attachment_service_proto_rawDesc = "" +
 	"\x1dATTACHMENT_ORIGIN_UNSPECIFIED\x10\x00\x12\v\n" +
 	"\aMOUNTED\x10\x01\x12\n" +
 	"\n" +
-	"\x06INLINE\x10\x022\xd0\x06\n" +
+	"\x06INLINE\x10\x022\xda\a\n" +
 	"\x11AttachmentService\x12\x89\x01\n" +
 	"\x10CreateAttachment\x12%.memos.api.v1.CreateAttachmentRequest\x1a\x18.memos.api.v1.Attachment\"4\xdaA\n" +
 	"attachment\x82\xd3\xe4\x93\x02!:\n" +
@@ -850,7 +899,8 @@ const file_api_v1_attachment_service_proto_rawDesc = "" +
 	"\rGetAttachment\x12\".memos.api.v1.GetAttachmentRequest\x1a\x18.memos.api.v1.Attachment\"+\xdaA\x04name\x82\xd3\xe4\x93\x02\x1e\x12\x1c/api/v1/{name=attachments/*}\x12\xa9\x01\n" +
 	"\x10UpdateAttachment\x12%.memos.api.v1.UpdateAttachmentRequest\x1a\x18.memos.api.v1.Attachment\"T\xdaA\x16attachment,update_mask\x82\xd3\xe4\x93\x025:\n" +
 	"attachment2'/api/v1/{attachment.name=attachments/*}\x12~\n" +
-	"\x10DeleteAttachment\x12%.memos.api.v1.DeleteAttachmentRequest\x1a\x16.google.protobuf.Empty\"+\xdaA\x04name\x82\xd3\xe4\x93\x02\x1e*\x1c/api/v1/{name=attachments/*}\x12\x89\x01\n" +
+	"\x10DeleteAttachment\x12%.memos.api.v1.DeleteAttachmentRequest\x1a\x16.google.protobuf.Empty\"+\xdaA\x04name\x82\xd3\xe4\x93\x02\x1e*\x1c/api/v1/{name=attachments/*}\x12\x87\x01\n" +
+	"\x10UnlinkAttachment\x12%.memos.api.v1.UnlinkAttachmentRequest\x1a\x18.memos.api.v1.Attachment\"2\xdaA\x04name\x82\xd3\xe4\x93\x02%\"#/api/v1/{name=attachments/*}:unlink\x12\x89\x01\n" +
 	"\x16BatchDeleteAttachments\x12+.memos.api.v1.BatchDeleteAttachmentsRequest\x1a\x16.google.protobuf.Empty\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/api/v1/attachments:batchDeleteB\xae\x01\n" +
 	"\x10com.memos.api.v1B\x16AttachmentServiceProtoP\x01Z0github.com/usememos/memos/proto/gen/api/v1;apiv1\xa2\x02\x03MAX\xaa\x02\fMemos.Api.V1\xca\x02\fMemos\\Api\\V1\xe2\x02\x18Memos\\Api\\V1\\GPBMetadata\xea\x02\x0eMemos::Api::V1b\x06proto3"
 
@@ -867,7 +917,7 @@ func file_api_v1_attachment_service_proto_rawDescGZIP() []byte {
 }
 
 var file_api_v1_attachment_service_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_api_v1_attachment_service_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_api_v1_attachment_service_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
 var file_api_v1_attachment_service_proto_goTypes = []any{
 	(MotionMediaFamily)(0),                // 0: memos.api.v1.MotionMediaFamily
 	(MotionMediaRole)(0),                  // 1: memos.api.v1.MotionMediaRole
@@ -879,36 +929,39 @@ var file_api_v1_attachment_service_proto_goTypes = []any{
 	(*ListAttachmentsResponse)(nil),       // 7: memos.api.v1.ListAttachmentsResponse
 	(*GetAttachmentRequest)(nil),          // 8: memos.api.v1.GetAttachmentRequest
 	(*UpdateAttachmentRequest)(nil),       // 9: memos.api.v1.UpdateAttachmentRequest
-	(*DeleteAttachmentRequest)(nil),       // 10: memos.api.v1.DeleteAttachmentRequest
-	(*BatchDeleteAttachmentsRequest)(nil), // 11: memos.api.v1.BatchDeleteAttachmentsRequest
-	(*timestamppb.Timestamp)(nil),         // 12: google.protobuf.Timestamp
-	(*fieldmaskpb.FieldMask)(nil),         // 13: google.protobuf.FieldMask
-	(*emptypb.Empty)(nil),                 // 14: google.protobuf.Empty
+	(*UnlinkAttachmentRequest)(nil),       // 10: memos.api.v1.UnlinkAttachmentRequest
+	(*DeleteAttachmentRequest)(nil),       // 11: memos.api.v1.DeleteAttachmentRequest
+	(*BatchDeleteAttachmentsRequest)(nil), // 12: memos.api.v1.BatchDeleteAttachmentsRequest
+	(*timestamppb.Timestamp)(nil),         // 13: google.protobuf.Timestamp
+	(*fieldmaskpb.FieldMask)(nil),         // 14: google.protobuf.FieldMask
+	(*emptypb.Empty)(nil),                 // 15: google.protobuf.Empty
 }
 var file_api_v1_attachment_service_proto_depIdxs = []int32{
 	0,  // 0: memos.api.v1.MotionMedia.family:type_name -> memos.api.v1.MotionMediaFamily
 	1,  // 1: memos.api.v1.MotionMedia.role:type_name -> memos.api.v1.MotionMediaRole
-	12, // 2: memos.api.v1.Attachment.create_time:type_name -> google.protobuf.Timestamp
+	13, // 2: memos.api.v1.Attachment.create_time:type_name -> google.protobuf.Timestamp
 	3,  // 3: memos.api.v1.Attachment.motion_media:type_name -> memos.api.v1.MotionMedia
 	2,  // 4: memos.api.v1.Attachment.origin:type_name -> memos.api.v1.AttachmentOrigin
 	4,  // 5: memos.api.v1.CreateAttachmentRequest.attachment:type_name -> memos.api.v1.Attachment
 	4,  // 6: memos.api.v1.ListAttachmentsResponse.attachments:type_name -> memos.api.v1.Attachment
 	4,  // 7: memos.api.v1.UpdateAttachmentRequest.attachment:type_name -> memos.api.v1.Attachment
-	13, // 8: memos.api.v1.UpdateAttachmentRequest.update_mask:type_name -> google.protobuf.FieldMask
+	14, // 8: memos.api.v1.UpdateAttachmentRequest.update_mask:type_name -> google.protobuf.FieldMask
 	5,  // 9: memos.api.v1.AttachmentService.CreateAttachment:input_type -> memos.api.v1.CreateAttachmentRequest
 	6,  // 10: memos.api.v1.AttachmentService.ListAttachments:input_type -> memos.api.v1.ListAttachmentsRequest
 	8,  // 11: memos.api.v1.AttachmentService.GetAttachment:input_type -> memos.api.v1.GetAttachmentRequest
 	9,  // 12: memos.api.v1.AttachmentService.UpdateAttachment:input_type -> memos.api.v1.UpdateAttachmentRequest
-	10, // 13: memos.api.v1.AttachmentService.DeleteAttachment:input_type -> memos.api.v1.DeleteAttachmentRequest
-	11, // 14: memos.api.v1.AttachmentService.BatchDeleteAttachments:input_type -> memos.api.v1.BatchDeleteAttachmentsRequest
-	4,  // 15: memos.api.v1.AttachmentService.CreateAttachment:output_type -> memos.api.v1.Attachment
-	7,  // 16: memos.api.v1.AttachmentService.ListAttachments:output_type -> memos.api.v1.ListAttachmentsResponse
-	4,  // 17: memos.api.v1.AttachmentService.GetAttachment:output_type -> memos.api.v1.Attachment
-	4,  // 18: memos.api.v1.AttachmentService.UpdateAttachment:output_type -> memos.api.v1.Attachment
-	14, // 19: memos.api.v1.AttachmentService.DeleteAttachment:output_type -> google.protobuf.Empty
-	14, // 20: memos.api.v1.AttachmentService.BatchDeleteAttachments:output_type -> google.protobuf.Empty
-	15, // [15:21] is the sub-list for method output_type
-	9,  // [9:15] is the sub-list for method input_type
+	11, // 13: memos.api.v1.AttachmentService.DeleteAttachment:input_type -> memos.api.v1.DeleteAttachmentRequest
+	10, // 14: memos.api.v1.AttachmentService.UnlinkAttachment:input_type -> memos.api.v1.UnlinkAttachmentRequest
+	12, // 15: memos.api.v1.AttachmentService.BatchDeleteAttachments:input_type -> memos.api.v1.BatchDeleteAttachmentsRequest
+	4,  // 16: memos.api.v1.AttachmentService.CreateAttachment:output_type -> memos.api.v1.Attachment
+	7,  // 17: memos.api.v1.AttachmentService.ListAttachments:output_type -> memos.api.v1.ListAttachmentsResponse
+	4,  // 18: memos.api.v1.AttachmentService.GetAttachment:output_type -> memos.api.v1.Attachment
+	4,  // 19: memos.api.v1.AttachmentService.UpdateAttachment:output_type -> memos.api.v1.Attachment
+	15, // 20: memos.api.v1.AttachmentService.DeleteAttachment:output_type -> google.protobuf.Empty
+	4,  // 21: memos.api.v1.AttachmentService.UnlinkAttachment:output_type -> memos.api.v1.Attachment
+	15, // 22: memos.api.v1.AttachmentService.BatchDeleteAttachments:output_type -> google.protobuf.Empty
+	16, // [16:23] is the sub-list for method output_type
+	9,  // [9:16] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name
 	9,  // [9:9] is the sub-list for extension extendee
 	0,  // [0:9] is the sub-list for field type_name
@@ -926,7 +979,7 @@ func file_api_v1_attachment_service_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_v1_attachment_service_proto_rawDesc), len(file_api_v1_attachment_service_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   9,
+			NumMessages:   10,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

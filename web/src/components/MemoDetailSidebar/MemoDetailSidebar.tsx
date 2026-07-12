@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import useCurrentUser from "@/hooks/useCurrentUser";
 import { cn } from "@/lib/utils";
 import { Memo, Memo_PropertySchema } from "@/types/proto/api/v1/memo_service_pb";
+import { parseFrontmatter } from "@/utils/frontmatter";
 import { type Translations, useTranslate } from "@/utils/i18n";
 import { extractHeadings } from "@/utils/markdown-manipulation";
 import { isSuperUser } from "@/utils/user";
@@ -67,7 +68,7 @@ const MemoDetailSidebar = ({ memo, className, onShareImageOpen }: Props) => {
   const property = create(Memo_PropertySchema, memo.property || {});
   const canManageShares = !memo.parent && (memo.creator === currentUser?.name || isSuperUser(currentUser));
   const hasUpdated = !isEqual(memo.createTime, memo.updateTime);
-  const headings = useMemo(() => extractHeadings(memo.content), [memo.content]);
+  const headings = useMemo(() => extractHeadings(parseFrontmatter(memo.content).body), [memo.content]);
 
   const handleDownloadMarkdown = useCallback(() => {
     const blob = new Blob([memo.content], { type: "text/markdown;charset=utf-8" });

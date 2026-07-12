@@ -75,17 +75,15 @@ function RibbonCard({ rawType, className, children }: SpecialCalloutProps) {
   );
 }
 
-/** tip/hint, info, attention, example, warning: a shared skin — floating outlined pill label (emoji + word) over a colored left border. */
+/** tip/hint, todo, attention: a shared skin — floating outlined pill label (emoji + word) over a colored left border. */
 const MODERN_PILL_CONFIG: Record<string, { emoji: string; border: string; label: string }> = {
   tip: { emoji: "💡", border: "border-l-emerald-500", label: "border-emerald-500 text-emerald-600 dark:text-emerald-400" },
-  info: { emoji: "ℹ️", border: "border-l-primary", label: "border-primary text-primary" },
+  todo: { emoji: "✅", border: "border-l-primary", label: "border-primary text-primary" },
   attention: { emoji: "❗", border: "border-l-amber-500", label: "border-amber-500 text-amber-600 dark:text-amber-400" },
-  example: { emoji: "🌰", border: "border-l-indigo-500", label: "border-indigo-500 text-indigo-600 dark:text-indigo-400" },
-  warning: { emoji: "⚠️", border: "border-l-red-500", label: "border-red-500 text-red-600 dark:text-red-400" },
 };
 
 function ModernCalloutPill({ family, rawType, customIcon, className, children }: SpecialCalloutProps) {
-  const config = MODERN_PILL_CONFIG[family] ?? MODERN_PILL_CONFIG.info;
+  const config = MODERN_PILL_CONFIG[family] ?? MODERN_PILL_CONFIG.tip;
   return (
     <blockquote className={cn(CARD_BASE, "border-l-4 border-border px-5 pt-6 pb-4", config.border, className)}>
       <span
@@ -110,10 +108,8 @@ const SPECIAL_CARD_COMPONENTS: Record<string, React.ComponentType<SpecialCallout
   important: WindowChromeCard,
   summary: RibbonCard,
   tip: ModernCalloutPill,
-  info: ModernCalloutPill,
+  todo: ModernCalloutPill,
   attention: ModernCalloutPill,
-  example: ModernCalloutPill,
-  warning: ModernCalloutPill,
 };
 
 /** Renders the bespoke card for a family in SPECIAL_CARD_FAMILIES; returns null if the family has no special card. */

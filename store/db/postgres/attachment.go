@@ -184,6 +184,8 @@ func (d *DB) UpdateAttachment(ctx context.Context, update *store.UpdateAttachmen
 	}
 	if v := update.MemoID; v != nil {
 		set, args = append(set, "memo_id = "+placeholder(len(args)+1)), append(args, *v)
+	} else if update.UnsetMemoID {
+		set = append(set, "memo_id = NULL")
 	}
 	if v := update.Reference; v != nil {
 		set, args = append(set, "reference = "+placeholder(len(args)+1)), append(args, *v)

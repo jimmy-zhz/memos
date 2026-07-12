@@ -228,6 +228,36 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/attachments/{attachment}:unlink:
+        post:
+            tags:
+                - AttachmentService
+            description: |-
+                UnlinkAttachment detaches an attachment from its memo without deleting the
+                 underlying file. Use this instead of DeleteAttachment when the attachment may
+                 still be referenced by a saved memo version, so restoring that version can
+                 relink it later.
+            operationId: AttachmentService_UnlinkAttachment
+            parameters:
+                - name: attachment
+                  in: path
+                  description: The attachment id.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Attachment'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/attachments:batchDelete:
         post:
             tags:
@@ -1086,6 +1116,110 @@ paths:
                     application/json:
                         schema:
                             $ref: '#/components/schemas/Memo'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Memo'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/memos/{memo}/histories:
+        get:
+            tags:
+                - MemoService
+            description: |-
+                ListMemoHistories lists all saved versions for a memo, newest first.
+                 Requires authentication as the memo creator.
+            operationId: MemoService_ListMemoHistories
+            parameters:
+                - name: memo
+                  in: path
+                  description: The memo id.
+                  required: true
+                  schema:
+                    type: string
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListMemoHistoriesResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+        post:
+            tags:
+                - MemoService
+            description: |-
+                CreateMemoHistory saves a manual snapshot (version) of a memo's current content.
+                 Requires authentication as the memo creator.
+            operationId: MemoService_CreateMemoHistory
+            parameters:
+                - name: memo
+                  in: path
+                  description: The memo id.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/MemoHistory'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/MemoHistory'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
+    /api/v1/memos/{memo}/histories/{history}:restore:
+        post:
+            tags:
+                - MemoService
+            description: |-
+                RestoreMemoHistory switches a memo's content and attachment set to a saved
+                 version. Fails with FAILED_PRECONDITION if the memo's current state doesn't
+                 match its latest saved version (i.e. there are unsaved changes) — the caller
+                 must save a version first. Attachments dropped by the restore are unlinked,
+                 not deleted. Requires authentication as the memo creator.
+            operationId: MemoService_RestoreMemoHistory
+            parameters:
+                - name: memo
+                  in: path
+                  description: The memo id.
+                  required: true
+                  schema:
+                    type: string
+                - name: history
+                  in: path
+                  description: The history id.
+                  required: true
+                  schema:
+                    type: string
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RestoreMemoHistoryRequest'
                 required: true
             responses:
                 "200":
@@ -3554,6 +3688,14 @@ components:
                     type: integer
                     description: The total count of comments.
                     format: int32
+        ListMemoHistoriesResponse:
+            type: object
+            properties:
+                memoHistories:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/MemoHistory'
+                    description: The list of versions, newest first.
         ListMemoReactionsResponse:
             type: object
             properties:
@@ -3826,6 +3968,51 @@ components:
                     description: |-
                         Optional. Set when this memo is a comment anchored to a location within
                          a PDF attachment.
+        MemoHistory:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: 'The resource name of the history record. Format: memos/{memo}/histories/{history}'
+                displayName:
+                    type: string
+                    description: Optional. The user-supplied version name.
+                title:
+                    readOnly: true
+                    type: string
+                    description: Output only. The memo title at snapshot time.
+                content:
+                    type: string
+                    description: The full memo content at snapshot time. Required on create.
+                contentHash:
+                    readOnly: true
+                    type: string
+                    description: Output only. The SHA-256 hex digest of the snapshot content + attachment set.
+                createTime:
+                    readOnly: true
+                    type: string
+                    description: Output only. When this version was created.
+                    format: date-time
+                attachments:
+                    readOnly: true
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/MemoHistory_Attachment'
+                    description: Output only. The attachment set captured at snapshot time.
+            description: MemoHistory is a manually-created snapshot (version) of a memo's content.
+        MemoHistory_Attachment:
+            type: object
+            properties:
+                uid:
+                    type: string
+                    description: The attachment UID.
+                filename:
+                    type: string
+                    description: The attachment filename.
+                type:
+                    type: string
+                    description: The MIME type of the attachment.
+            description: A lightweight reference to an attachment captured in a version snapshot.
         MemoRelation:
             required:
                 - memo
@@ -4091,6 +4278,16 @@ components:
                 newPath:
                     type: string
                     description: Required. The new folder path.
+        RestoreMemoHistoryRequest:
+            required:
+                - name
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: |-
+                        Required. The resource name of the version to restore.
+                         Format: memos/{memo}/histories/{history}
         SetMemoAttachmentsRequest:
             required:
                 - name

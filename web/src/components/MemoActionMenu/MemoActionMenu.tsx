@@ -1,3 +1,4 @@
+import { timestampDate } from "@bufbuild/protobuf/wkt";
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,
@@ -8,10 +9,13 @@ import {
   Edit3Icon,
   FileTextIcon,
   FolderInputIcon,
+  HistoryIcon,
   LinkIcon,
   ListChecksIcon,
   ListRestartIcon,
   MoreVerticalIcon,
+  PaperclipIcon,
+  SaveIcon,
   TrashIcon,
 } from "lucide-react";
 import { useState } from "react";
@@ -27,9 +31,11 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useMemoHistories } from "@/hooks/useMemoHistoryQueries";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { useTranslate } from "@/utils/i18n";
 import { countTasks } from "@/utils/markdown-manipulation";
+import CreateVersionDialog from "./CreateVersionDialog";
 import { useMemoActionHandlers } from "./hooks";
 import type { MemoActionMenuProps } from "./types";
 
@@ -40,6 +46,10 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
   // Dialog state
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [createVersionDialogOpen, setCreateVersionDialogOpen] = useState(false);
+  // Lazily load versions only once the "view versions" submenu is opened, so we
+  // don't fire a request for every memo card that renders this menu.
+  const [versionsMenuOpen, setVersionsMenuOpen] = useState(false);
 
   // Derived state
   const isComment = Boolean(memo.parent);
@@ -48,6 +58,9 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
   const canMutateTasks = !readonly && !isArchived && taskStats.total > 0;
   const hasOpenTasks = taskStats.completed < taskStats.total;
   const hasCompletedTasks = taskStats.completed > 0;
+  const canManageVersions = !readonly && !isArchived && !isComment;
+
+  const { data: histories = [] } = useMemoHistories(memo.name, { enabled: canManageVersions && versionsMenuOpen });
 
   // Action handlers
   const {
@@ -62,11 +75,15 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
     confirmDeleteMemo,
     handleMoveMemoClick,
     confirmMoveMemo,
+    handleCreateVersionClick,
+    confirmCreateVersion,
+    handleSwitchVersion,
   } = useMemoActionHandlers({
     memo,
     onEdit: props.onEdit,
     setDeleteDialogOpen,
     setMoveDialogOpen,
+    setCreateVersionDialogOpen,
   });
 
   return (
@@ -152,6 +169,50 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
               </DropdownMenuItem>
             )}
 
+            {/* Version submenu */}
+            {canManageVersions && (
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <HistoryIcon className="w-4 h-auto" />
+                  {t("memo.version-history")}
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  <DropdownMenuItem onClick={handleCreateVersionClick}>
+                    <SaveIcon className="w-4 h-auto" />
+                    {t("memo.create-as-version")}
+                  </DropdownMenuItem>
+                  <DropdownMenuSub onOpenChange={setVersionsMenuOpen}>
+                    <DropdownMenuSubTrigger>
+                      <HistoryIcon className="w-4 h-auto" />
+                      {t("memo.view-versions")}
+                    </DropdownMenuSubTrigger>
+                    <DropdownMenuSubContent className="max-h-80 overflow-y-auto">
+                      {histories.length === 0 ? (
+                        <DropdownMenuItem disabled>{t("memo.no-versions")}</DropdownMenuItem>
+                      ) : (
+                        histories.map((history) => (
+                          <DropdownMenuItem key={history.name} onClick={() => handleSwitchVersion(history, histories)}>
+                            <div className="flex flex-col">
+                              <span className="text-sm">{history.displayName || t("memo.unnamed-version")}</span>
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                {history.createTime && timestampDate(history.createTime).toLocaleString()}
+                                {history.attachments.length > 0 && (
+                                  <span className="inline-flex items-center gap-0.5">
+                                    <PaperclipIcon className="w-3 h-3" />
+                                    {history.attachments.length}
+                                  </span>
+                                )}
+                              </span>
+                            </div>
+                          </DropdownMenuItem>
+                        ))
+                      )}
+                    </DropdownMenuSubContent>
+                  </DropdownMenuSub>
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
+            )}
+
             {/* Delete */}
             <DropdownMenuItem onClick={handleDeleteMemoClick}>
               <TrashIcon className="w-4 h-auto" />
@@ -180,6 +241,9 @@ const MemoActionMenu = (props: MemoActionMenuProps) => {
         currentWorkspace={memo.workspace}
         onConfirm={confirmMoveMemo}
       />
+
+      {/* Create version dialog */}
+      <CreateVersionDialog open={createVersionDialogOpen} onOpenChange={setCreateVersionDialogOpen} onConfirm={confirmCreateVersion} />
     </DropdownMenu>
   );
 };

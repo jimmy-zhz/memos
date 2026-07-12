@@ -4,24 +4,33 @@ import { useCallback } from "react";
 import toast from "react-hot-toast";
 import { useLocation } from "react-router-dom";
 import { useInstance } from "@/contexts/InstanceContext";
+import { useCreateMemoHistory, useRestoreMemoHistory } from "@/hooks/useMemoHistoryQueries";
 import { memoKeys, useDeleteMemo, useUpdateMemo } from "@/hooks/useMemoQueries";
 import useNavigateTo from "@/hooks/useNavigateTo";
 import { userKeys } from "@/hooks/useUserQueries";
 import { handleError } from "@/lib/error";
 import { ROUTES } from "@/router/routes";
 import { State } from "@/types/proto/api/v1/common_pb";
-import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
+import type { Memo, MemoHistory } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import { checkAllTasks, uncheckAllTasks } from "@/utils/markdown-task-actions";
+import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
 
 interface UseMemoActionHandlersOptions {
   memo: Memo;
   onEdit?: () => void;
   setDeleteDialogOpen: (open: boolean) => void;
   setMoveDialogOpen: (open: boolean) => void;
+  setCreateVersionDialogOpen: (open: boolean) => void;
 }
 
-export const useMemoActionHandlers = ({ memo, onEdit, setDeleteDialogOpen, setMoveDialogOpen }: UseMemoActionHandlersOptions) => {
+export const useMemoActionHandlers = ({
+  memo,
+  onEdit,
+  setDeleteDialogOpen,
+  setMoveDialogOpen,
+  setCreateVersionDialogOpen,
+}: UseMemoActionHandlersOptions) => {
   const t = useTranslate();
   const location = useLocation();
   const navigateTo = useNavigateTo();
@@ -29,6 +38,8 @@ export const useMemoActionHandlers = ({ memo, onEdit, setDeleteDialogOpen, setMo
   const { profile } = useInstance();
   const { mutateAsync: updateMemo } = useUpdateMemo();
   const { mutateAsync: deleteMemo } = useDeleteMemo();
+  const { mutateAsync: createMemoHistory } = useCreateMemoHistory();
+  const { mutateAsync: restoreMemoHistory } = useRestoreMemoHistory();
   const isInMemoDetailPage = location.pathname.startsWith(`/${memo.name}`);
 
   const memoUpdatedCallback = useCallback(() => {
@@ -140,6 +151,45 @@ export const useMemoActionHandlers = ({ memo, onEdit, setDeleteDialogOpen, setMo
     setMoveDialogOpen(true);
   }, [setMoveDialogOpen]);
 
+  const handleCreateVersionClick = useCallback(() => {
+    setCreateVersionDialogOpen(true);
+  }, [setCreateVersionDialogOpen]);
+
+  const confirmCreateVersion = useCallback(
+    async (displayName: string) => {
+      try {
+        await createMemoHistory({ memoName: memo.name, displayName });
+        toast.success(t("memo.version-saved"));
+      } catch (error: unknown) {
+        handleError(error, toast.error, { context: "Create memo version", fallbackMessage: "An error occurred" });
+      }
+    },
+    [createMemoHistory, memo.name, t],
+  );
+
+  // Switches the memo's content and attachment set to a historical version.
+  // Blocks only if the memo's current state (content + attachments) matches NO
+  // saved version — a memo already sitting at an older restored version is
+  // still safe (that state is recoverable via its own history record); only
+  // truly unsaved changes must be saved as a version first. The server
+  // re-checks the same condition as a backstop.
+  const handleSwitchVersion = useCallback(
+    async (history: MemoHistory, histories: MemoHistory[]) => {
+      const currentHash = await hashMemoState(memo.content, attachmentUIDsOf(memo));
+      if (!histories.some((h) => h.contentHash === currentHash)) {
+        toast.error(t("memo.switch-version-blocked"));
+        return;
+      }
+      try {
+        await restoreMemoHistory({ historyName: history.name, memoName: memo.name });
+        toast.success(t("memo.version-switched"));
+      } catch (error: unknown) {
+        handleError(error, toast.error, { context: "Switch memo version", fallbackMessage: "An error occurred" });
+      }
+    },
+    [memo, t, restoreMemoHistory],
+  );
+
   const confirmMoveMemo = useCallback(
     async (workspace: string, folderPath: string) => {
       await updateMemo({
@@ -184,5 +234,8 @@ export const useMemoActionHandlers = ({ memo, onEdit, setDeleteDialogOpen, setMo
     confirmDeleteMemo,
     handleMoveMemoClick,
     confirmMoveMemo,
+    handleCreateVersionClick,
+    confirmCreateVersion,
+    handleSwitchVersion,
   };
 };

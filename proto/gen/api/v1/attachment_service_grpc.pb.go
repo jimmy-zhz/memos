@@ -25,6 +25,7 @@ const (
 	AttachmentService_GetAttachment_FullMethodName          = "/memos.api.v1.AttachmentService/GetAttachment"
 	AttachmentService_UpdateAttachment_FullMethodName       = "/memos.api.v1.AttachmentService/UpdateAttachment"
 	AttachmentService_DeleteAttachment_FullMethodName       = "/memos.api.v1.AttachmentService/DeleteAttachment"
+	AttachmentService_UnlinkAttachment_FullMethodName       = "/memos.api.v1.AttachmentService/UnlinkAttachment"
 	AttachmentService_BatchDeleteAttachments_FullMethodName = "/memos.api.v1.AttachmentService/BatchDeleteAttachments"
 )
 
@@ -42,6 +43,11 @@ type AttachmentServiceClient interface {
 	UpdateAttachment(ctx context.Context, in *UpdateAttachmentRequest, opts ...grpc.CallOption) (*Attachment, error)
 	// DeleteAttachment deletes an attachment by name.
 	DeleteAttachment(ctx context.Context, in *DeleteAttachmentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// UnlinkAttachment detaches an attachment from its memo without deleting the
+	// underlying file. Use this instead of DeleteAttachment when the attachment may
+	// still be referenced by a saved memo version, so restoring that version can
+	// relink it later.
+	UnlinkAttachment(ctx context.Context, in *UnlinkAttachmentRequest, opts ...grpc.CallOption) (*Attachment, error)
 	// BatchDeleteAttachments deletes multiple attachments in one request.
 	BatchDeleteAttachments(ctx context.Context, in *BatchDeleteAttachmentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
@@ -104,6 +110,16 @@ func (c *attachmentServiceClient) DeleteAttachment(ctx context.Context, in *Dele
 	return out, nil
 }
 
+func (c *attachmentServiceClient) UnlinkAttachment(ctx context.Context, in *UnlinkAttachmentRequest, opts ...grpc.CallOption) (*Attachment, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(Attachment)
+	err := c.cc.Invoke(ctx, AttachmentService_UnlinkAttachment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *attachmentServiceClient) BatchDeleteAttachments(ctx context.Context, in *BatchDeleteAttachmentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -128,6 +144,11 @@ type AttachmentServiceServer interface {
 	UpdateAttachment(context.Context, *UpdateAttachmentRequest) (*Attachment, error)
 	// DeleteAttachment deletes an attachment by name.
 	DeleteAttachment(context.Context, *DeleteAttachmentRequest) (*emptypb.Empty, error)
+	// UnlinkAttachment detaches an attachment from its memo without deleting the
+	// underlying file. Use this instead of DeleteAttachment when the attachment may
+	// still be referenced by a saved memo version, so restoring that version can
+	// relink it later.
+	UnlinkAttachment(context.Context, *UnlinkAttachmentRequest) (*Attachment, error)
 	// BatchDeleteAttachments deletes multiple attachments in one request.
 	BatchDeleteAttachments(context.Context, *BatchDeleteAttachmentsRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedAttachmentServiceServer()
@@ -154,6 +175,9 @@ func (UnimplementedAttachmentServiceServer) UpdateAttachment(context.Context, *U
 }
 func (UnimplementedAttachmentServiceServer) DeleteAttachment(context.Context, *DeleteAttachmentRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteAttachment not implemented")
+}
+func (UnimplementedAttachmentServiceServer) UnlinkAttachment(context.Context, *UnlinkAttachmentRequest) (*Attachment, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnlinkAttachment not implemented")
 }
 func (UnimplementedAttachmentServiceServer) BatchDeleteAttachments(context.Context, *BatchDeleteAttachmentsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method BatchDeleteAttachments not implemented")
@@ -269,6 +293,24 @@ func _AttachmentService_DeleteAttachment_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AttachmentService_UnlinkAttachment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnlinkAttachmentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttachmentServiceServer).UnlinkAttachment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttachmentService_UnlinkAttachment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttachmentServiceServer).UnlinkAttachment(ctx, req.(*UnlinkAttachmentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _AttachmentService_BatchDeleteAttachments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BatchDeleteAttachmentsRequest)
 	if err := dec(in); err != nil {
@@ -313,6 +355,10 @@ var AttachmentService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteAttachment",
 			Handler:    _AttachmentService_DeleteAttachment_Handler,
+		},
+		{
+			MethodName: "UnlinkAttachment",
+			Handler:    _AttachmentService_UnlinkAttachment_Handler,
 		},
 		{
 			MethodName: "BatchDeleteAttachments",

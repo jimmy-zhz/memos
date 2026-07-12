@@ -42,7 +42,7 @@ export const ALERT_FAMILY_ALIASES: Record<string, string> = {
  * `[!TYPE]` resolves to "note", so it also lands here — matching Obsidian,
  * where an unknown callout still gets a real (default) look, never raw text.
  */
-export const SPECIAL_CARD_FAMILIES = new Set(["note", "quote", "important", "summary", "tip", "info", "attention", "example", "warning"]);
+export const SPECIAL_CARD_FAMILIES = new Set(["note", "quote", "important", "summary", "tip", "todo", "attention"]);
 
 /** Resolve a raw `[!TYPE]` string (any case) to its canonical family. Unknown types fall back to "note". */
 export function resolveAlertFamily(rawType: string): string {

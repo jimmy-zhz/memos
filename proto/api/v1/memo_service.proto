@@ -133,6 +133,33 @@ service MemoService {
   rpc GetMemoByShare(GetMemoByShareRequest) returns (Memo) {
     option (google.api.http) = {get: "/api/v1/shares/{share_id}"};
   }
+  // CreateMemoHistory saves a manual snapshot (version) of a memo's current content.
+  // Requires authentication as the memo creator.
+  rpc CreateMemoHistory(CreateMemoHistoryRequest) returns (MemoHistory) {
+    option (google.api.http) = {
+      post: "/api/v1/{parent=memos/*}/histories"
+      body: "memo_history"
+    };
+    option (google.api.method_signature) = "parent,memo_history";
+  }
+  // ListMemoHistories lists all saved versions for a memo, newest first.
+  // Requires authentication as the memo creator.
+  rpc ListMemoHistories(ListMemoHistoriesRequest) returns (ListMemoHistoriesResponse) {
+    option (google.api.http) = {get: "/api/v1/{parent=memos/*}/histories"};
+    option (google.api.method_signature) = "parent";
+  }
+  // RestoreMemoHistory switches a memo's content and attachment set to a saved
+  // version. Fails with FAILED_PRECONDITION if the memo's current state doesn't
+  // match its latest saved version (i.e. there are unsaved changes) — the caller
+  // must save a version first. Attachments dropped by the restore are unlinked,
+  // not deleted. Requires authentication as the memo creator.
+  rpc RestoreMemoHistory(RestoreMemoHistoryRequest) returns (Memo) {
+    option (google.api.http) = {
+      post: "/api/v1/{name=memos/*/histories/*}:restore"
+      body: "*"
+    };
+    option (google.api.method_signature) = "name";
+  }
   // GetLinkMetadata gets metadata for a link.
   rpc GetLinkMetadata(GetLinkMetadataRequest) returns (LinkMetadata) {
     option (google.api.http) = {get: "/api/v1/memos/-/linkMetadata"};
@@ -684,6 +711,83 @@ message DeleteMemoShareRequest {
 message GetMemoByShareRequest {
   // Required. The share token extracted from the share URL (/s/{share_id}).
   string share_id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// MemoHistory is a manually-created snapshot (version) of a memo's content.
+message MemoHistory {
+  option (google.api.resource) = {
+    type: "memos.api.v1/MemoHistory"
+    pattern: "memos/{memo}/histories/{history}"
+    singular: "history"
+    plural: "histories"
+  };
+
+  // The resource name of the history record. Format: memos/{memo}/histories/{history}
+  string name = 1 [(google.api.field_behavior) = IDENTIFIER];
+
+  // Optional. The user-supplied version name.
+  string display_name = 2 [(google.api.field_behavior) = OPTIONAL];
+
+  // Output only. The memo title at snapshot time.
+  string title = 3 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // The full memo content at snapshot time. Required on create.
+  string content = 4;
+
+  // Output only. The SHA-256 hex digest of the snapshot content + attachment set.
+  string content_hash = 5 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Output only. When this version was created.
+  google.protobuf.Timestamp create_time = 6 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // Output only. The attachment set captured at snapshot time.
+  repeated Attachment attachments = 7 [(google.api.field_behavior) = OUTPUT_ONLY];
+
+  // A lightweight reference to an attachment captured in a version snapshot.
+  message Attachment {
+    // The attachment UID.
+    string uid = 1;
+    // The attachment filename.
+    string filename = 2;
+    // The MIME type of the attachment.
+    string type = 3;
+  }
+}
+
+message CreateMemoHistoryRequest {
+  // Required. The resource name of the memo to snapshot.
+  // Format: memos/{memo}
+  string parent = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {type: "memos.api.v1/Memo"}
+  ];
+
+  // Required. The version to create. Only display_name is read from the client;
+  // title/content are captured from the memo's current state on the server.
+  MemoHistory memo_history = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ListMemoHistoriesRequest {
+  // Required. The resource name of the memo.
+  // Format: memos/{memo}
+  string parent = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {type: "memos.api.v1/Memo"}
+  ];
+}
+
+message ListMemoHistoriesResponse {
+  // The list of versions, newest first.
+  repeated MemoHistory memo_histories = 1;
+}
+
+message RestoreMemoHistoryRequest {
+  // Required. The resource name of the version to restore.
+  // Format: memos/{memo}/histories/{history}
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {type: "memos.api.v1/MemoHistory"}
+  ];
 }
 
 message GetLinkMetadataRequest {

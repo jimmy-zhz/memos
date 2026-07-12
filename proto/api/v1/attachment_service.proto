@@ -43,6 +43,14 @@ service AttachmentService {
     option (google.api.http) = {delete: "/api/v1/{name=attachments/*}"};
     option (google.api.method_signature) = "name";
   }
+  // UnlinkAttachment detaches an attachment from its memo without deleting the
+  // underlying file. Use this instead of DeleteAttachment when the attachment may
+  // still be referenced by a saved memo version, so restoring that version can
+  // relink it later.
+  rpc UnlinkAttachment(UnlinkAttachmentRequest) returns (Attachment) {
+    option (google.api.http) = {post: "/api/v1/{name=attachments/*}:unlink"};
+    option (google.api.method_signature) = "name";
+  }
   // BatchDeleteAttachments deletes multiple attachments in one request.
   rpc BatchDeleteAttachments(BatchDeleteAttachmentsRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {
@@ -180,6 +188,15 @@ message UpdateAttachmentRequest {
 
   // Required. The list of fields to update.
   google.protobuf.FieldMask update_mask = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UnlinkAttachmentRequest {
+  // Required. The attachment name of the attachment to unlink.
+  // Format: attachments/{attachment}
+  string name = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (google.api.resource_reference) = {type: "memos.api.v1/Attachment"}
+  ];
 }
 
 message DeleteAttachmentRequest {

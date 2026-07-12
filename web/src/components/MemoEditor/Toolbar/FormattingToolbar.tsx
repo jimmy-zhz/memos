@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { type ComponentPropsWithoutRef, forwardRef, type MouseEventHandler, type RefObject, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { Translations } from "@/utils/i18n";
 import { useTranslate } from "@/utils/i18n";
@@ -46,24 +46,39 @@ interface FormattingToolbarProps {
 // Representative callout types offered by the toolbar dropdown — one per
 // visual family (alertFamilies.ts), not all 28 Obsidian aliases, so the menu
 // stays short. Picking one inserts `> [!TYPE] ` as its own block at the cursor.
+// Grouped (with a separator between groups) to mirror the visual tiers:
+// 1. status cards (info/check/success/warning/danger)
+// 2. accent pills (todo/tip)
+// 3. note (also the fallback look for any unrecognized type)
+// 4. status cards with a custom icon (question/example)
+// 5. bespoke designs (quote/important)
 interface CalloutMenuItem {
   type: string;
   labelKey: Translations;
   icon: LucideIcon;
 }
 
-const CALLOUT_MENU_ITEMS: CalloutMenuItem[] = [
-  { type: "note", labelKey: "editor.callout.note", icon: PencilIcon },
-  { type: "info", labelKey: "editor.callout.info", icon: InfoIcon },
-  { type: "todo", labelKey: "editor.callout.todo", icon: CircleCheckIcon },
-  { type: "tip", labelKey: "editor.callout.tip", icon: FlameIcon },
-  { type: "important", labelKey: "editor.callout.important", icon: AlertCircleIcon },
-  { type: "success", labelKey: "editor.callout.success", icon: CheckIcon },
-  { type: "question", labelKey: "editor.callout.question", icon: CircleHelpIcon },
-  { type: "warning", labelKey: "editor.callout.warning", icon: TriangleAlertIcon },
-  { type: "danger", labelKey: "editor.callout.danger", icon: ZapIcon },
-  { type: "example", labelKey: "editor.callout.example", icon: ListIcon },
-  { type: "quote", labelKey: "editor.callout.quote", icon: QuoteIcon },
+const CALLOUT_MENU_GROUPS: CalloutMenuItem[][] = [
+  [
+    { type: "info", labelKey: "editor.callout.info", icon: InfoIcon },
+    { type: "check", labelKey: "editor.callout.check", icon: CircleCheckIcon },
+    { type: "success", labelKey: "editor.callout.success", icon: CheckIcon },
+    { type: "warning", labelKey: "editor.callout.warning", icon: TriangleAlertIcon },
+    { type: "danger", labelKey: "editor.callout.danger", icon: ZapIcon },
+  ],
+  [
+    { type: "todo", labelKey: "editor.callout.todo", icon: CircleCheckIcon },
+    { type: "tip", labelKey: "editor.callout.tip", icon: FlameIcon },
+  ],
+  [{ type: "note", labelKey: "editor.callout.note", icon: PencilIcon }],
+  [
+    { type: "question", labelKey: "editor.callout.question", icon: CircleHelpIcon },
+    { type: "example", labelKey: "editor.callout.example", icon: ListIcon },
+  ],
+  [
+    { type: "quote", labelKey: "editor.callout.quote", icon: QuoteIcon },
+    { type: "important", labelKey: "editor.callout.important", icon: AlertCircleIcon },
+  ],
 ];
 
 const MARK_COMMANDS = EDITOR_COMMANDS.filter((command) => command.group === "mark");
@@ -186,11 +201,16 @@ export function FormattingToolbar({ controllerRef, onExit, className }: Formatti
           <SegmentButton Icon={MessageSquareQuoteIcon} label={t("editor.callout.trigger")} onMouseDown={preventFocusSteal} />
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" onCloseAutoFocus={returnFocusToEditor}>
-          {CALLOUT_MENU_ITEMS.map((item) => (
-            <DropdownMenuItem key={item.type} onClick={() => controllerRef.current?.insertMarkdown(`> [!${item.type.toUpperCase()}] `)}>
-              <item.icon className="w-4 h-4" />
-              {t(item.labelKey)}
-            </DropdownMenuItem>
+          {CALLOUT_MENU_GROUPS.map((group, groupIndex) => (
+            <div key={group[0].type}>
+              {groupIndex > 0 && <DropdownMenuSeparator />}
+              {group.map((item) => (
+                <DropdownMenuItem key={item.type} onClick={() => controllerRef.current?.insertMarkdown(`> [!${item.type.toUpperCase()}] `)}>
+                  <item.icon className="w-4 h-4" />
+                  {t(item.labelKey)}
+                </DropdownMenuItem>
+              ))}
+            </div>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>

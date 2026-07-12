@@ -49,6 +49,9 @@ const (
 	// AttachmentServiceDeleteAttachmentProcedure is the fully-qualified name of the AttachmentService's
 	// DeleteAttachment RPC.
 	AttachmentServiceDeleteAttachmentProcedure = "/memos.api.v1.AttachmentService/DeleteAttachment"
+	// AttachmentServiceUnlinkAttachmentProcedure is the fully-qualified name of the AttachmentService's
+	// UnlinkAttachment RPC.
+	AttachmentServiceUnlinkAttachmentProcedure = "/memos.api.v1.AttachmentService/UnlinkAttachment"
 	// AttachmentServiceBatchDeleteAttachmentsProcedure is the fully-qualified name of the
 	// AttachmentService's BatchDeleteAttachments RPC.
 	AttachmentServiceBatchDeleteAttachmentsProcedure = "/memos.api.v1.AttachmentService/BatchDeleteAttachments"
@@ -66,6 +69,11 @@ type AttachmentServiceClient interface {
 	UpdateAttachment(context.Context, *connect.Request[v1.UpdateAttachmentRequest]) (*connect.Response[v1.Attachment], error)
 	// DeleteAttachment deletes an attachment by name.
 	DeleteAttachment(context.Context, *connect.Request[v1.DeleteAttachmentRequest]) (*connect.Response[emptypb.Empty], error)
+	// UnlinkAttachment detaches an attachment from its memo without deleting the
+	// underlying file. Use this instead of DeleteAttachment when the attachment may
+	// still be referenced by a saved memo version, so restoring that version can
+	// relink it later.
+	UnlinkAttachment(context.Context, *connect.Request[v1.UnlinkAttachmentRequest]) (*connect.Response[v1.Attachment], error)
 	// BatchDeleteAttachments deletes multiple attachments in one request.
 	BatchDeleteAttachments(context.Context, *connect.Request[v1.BatchDeleteAttachmentsRequest]) (*connect.Response[emptypb.Empty], error)
 }
@@ -111,6 +119,12 @@ func NewAttachmentServiceClient(httpClient connect.HTTPClient, baseURL string, o
 			connect.WithSchema(attachmentServiceMethods.ByName("DeleteAttachment")),
 			connect.WithClientOptions(opts...),
 		),
+		unlinkAttachment: connect.NewClient[v1.UnlinkAttachmentRequest, v1.Attachment](
+			httpClient,
+			baseURL+AttachmentServiceUnlinkAttachmentProcedure,
+			connect.WithSchema(attachmentServiceMethods.ByName("UnlinkAttachment")),
+			connect.WithClientOptions(opts...),
+		),
 		batchDeleteAttachments: connect.NewClient[v1.BatchDeleteAttachmentsRequest, emptypb.Empty](
 			httpClient,
 			baseURL+AttachmentServiceBatchDeleteAttachmentsProcedure,
@@ -127,6 +141,7 @@ type attachmentServiceClient struct {
 	getAttachment          *connect.Client[v1.GetAttachmentRequest, v1.Attachment]
 	updateAttachment       *connect.Client[v1.UpdateAttachmentRequest, v1.Attachment]
 	deleteAttachment       *connect.Client[v1.DeleteAttachmentRequest, emptypb.Empty]
+	unlinkAttachment       *connect.Client[v1.UnlinkAttachmentRequest, v1.Attachment]
 	batchDeleteAttachments *connect.Client[v1.BatchDeleteAttachmentsRequest, emptypb.Empty]
 }
 
@@ -155,6 +170,11 @@ func (c *attachmentServiceClient) DeleteAttachment(ctx context.Context, req *con
 	return c.deleteAttachment.CallUnary(ctx, req)
 }
 
+// UnlinkAttachment calls memos.api.v1.AttachmentService.UnlinkAttachment.
+func (c *attachmentServiceClient) UnlinkAttachment(ctx context.Context, req *connect.Request[v1.UnlinkAttachmentRequest]) (*connect.Response[v1.Attachment], error) {
+	return c.unlinkAttachment.CallUnary(ctx, req)
+}
+
 // BatchDeleteAttachments calls memos.api.v1.AttachmentService.BatchDeleteAttachments.
 func (c *attachmentServiceClient) BatchDeleteAttachments(ctx context.Context, req *connect.Request[v1.BatchDeleteAttachmentsRequest]) (*connect.Response[emptypb.Empty], error) {
 	return c.batchDeleteAttachments.CallUnary(ctx, req)
@@ -172,6 +192,11 @@ type AttachmentServiceHandler interface {
 	UpdateAttachment(context.Context, *connect.Request[v1.UpdateAttachmentRequest]) (*connect.Response[v1.Attachment], error)
 	// DeleteAttachment deletes an attachment by name.
 	DeleteAttachment(context.Context, *connect.Request[v1.DeleteAttachmentRequest]) (*connect.Response[emptypb.Empty], error)
+	// UnlinkAttachment detaches an attachment from its memo without deleting the
+	// underlying file. Use this instead of DeleteAttachment when the attachment may
+	// still be referenced by a saved memo version, so restoring that version can
+	// relink it later.
+	UnlinkAttachment(context.Context, *connect.Request[v1.UnlinkAttachmentRequest]) (*connect.Response[v1.Attachment], error)
 	// BatchDeleteAttachments deletes multiple attachments in one request.
 	BatchDeleteAttachments(context.Context, *connect.Request[v1.BatchDeleteAttachmentsRequest]) (*connect.Response[emptypb.Empty], error)
 }
@@ -213,6 +238,12 @@ func NewAttachmentServiceHandler(svc AttachmentServiceHandler, opts ...connect.H
 		connect.WithSchema(attachmentServiceMethods.ByName("DeleteAttachment")),
 		connect.WithHandlerOptions(opts...),
 	)
+	attachmentServiceUnlinkAttachmentHandler := connect.NewUnaryHandler(
+		AttachmentServiceUnlinkAttachmentProcedure,
+		svc.UnlinkAttachment,
+		connect.WithSchema(attachmentServiceMethods.ByName("UnlinkAttachment")),
+		connect.WithHandlerOptions(opts...),
+	)
 	attachmentServiceBatchDeleteAttachmentsHandler := connect.NewUnaryHandler(
 		AttachmentServiceBatchDeleteAttachmentsProcedure,
 		svc.BatchDeleteAttachments,
@@ -231,6 +262,8 @@ func NewAttachmentServiceHandler(svc AttachmentServiceHandler, opts ...connect.H
 			attachmentServiceUpdateAttachmentHandler.ServeHTTP(w, r)
 		case AttachmentServiceDeleteAttachmentProcedure:
 			attachmentServiceDeleteAttachmentHandler.ServeHTTP(w, r)
+		case AttachmentServiceUnlinkAttachmentProcedure:
+			attachmentServiceUnlinkAttachmentHandler.ServeHTTP(w, r)
 		case AttachmentServiceBatchDeleteAttachmentsProcedure:
 			attachmentServiceBatchDeleteAttachmentsHandler.ServeHTTP(w, r)
 		default:
@@ -260,6 +293,10 @@ func (UnimplementedAttachmentServiceHandler) UpdateAttachment(context.Context, *
 
 func (UnimplementedAttachmentServiceHandler) DeleteAttachment(context.Context, *connect.Request[v1.DeleteAttachmentRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AttachmentService.DeleteAttachment is not implemented"))
+}
+
+func (UnimplementedAttachmentServiceHandler) UnlinkAttachment(context.Context, *connect.Request[v1.UnlinkAttachmentRequest]) (*connect.Response[v1.Attachment], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.AttachmentService.UnlinkAttachment is not implemented"))
 }
 
 func (UnimplementedAttachmentServiceHandler) BatchDeleteAttachments(context.Context, *connect.Request[v1.BatchDeleteAttachmentsRequest]) (*connect.Response[emptypb.Empty], error) {

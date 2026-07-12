@@ -30,6 +30,7 @@ export const EditorMetadata: FC<EditorMetadataProps> = ({ memoName }) => {
         hiddenInlineCount={inlined.length}
         showInlineAttachments={showInlineAttachments}
         onToggleShowInlineAttachments={() => setShowInlineAttachments((prev) => !prev)}
+        memoName={memoName}
       />
 
       <RelationListEditor

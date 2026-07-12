@@ -1,3 +1,4 @@
+import { timestampDate } from "@bufbuild/protobuf/wkt";
 import copy from "copy-to-clipboard";
 import {
   ArchiveIcon,
@@ -5,16 +6,20 @@ import {
   CopyIcon,
   FileTextIcon,
   FolderInputIcon,
+  HistoryIcon,
   LinkIcon,
   PanelRightCloseIcon,
   PanelRightOpenIcon,
+  PaperclipIcon,
   PencilIcon,
+  SaveIcon,
   TrashIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import GalleryViewForm from "@/components/GalleryView/GalleryViewForm";
 import GalleryViewRenderer from "@/components/GalleryView/GalleryViewRenderer";
+import CreateVersionDialog from "@/components/MemoActionMenu/CreateVersionDialog";
 import MemoContent from "@/components/MemoContent";
 import MemoEditor from "@/components/MemoEditor";
 import { AttachmentListView } from "@/components/MemoMetadata";
@@ -33,11 +38,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Textarea } from "@/components/ui/textarea";
 import { useInstance } from "@/contexts/InstanceContext";
 import useMediaQuery from "@/hooks/useMediaQuery";
+import { useCreateMemoHistory, useMemoHistories, useRestoreMemoHistory } from "@/hooks/useMemoHistoryQueries";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
-import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
+import { type Memo, Memo_DocType, type MemoHistory } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachment";
 import { useTranslate } from "@/utils/i18n";
+import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
 import DocumentOutline, { ATTACHMENTS_ANCHOR_ID } from "./DocumentOutline";
 import MoveDocumentDialog from "./MoveDocumentDialog";
 
@@ -68,8 +75,45 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
   const [htmlDraft, setHtmlDraft] = useState(memo.content);
   const [titleDraft, setTitleDraft] = useState(memo.title);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
+  const [createVersionDialogOpen, setCreateVersionDialogOpen] = useState(false);
+  // Lazily load versions only once the "view versions" submenu is opened.
+  const [versionsMenuOpen, setVersionsMenuOpen] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const [pdfToolbarSlot, setPdfToolbarSlot] = useState<HTMLDivElement | null>(null);
+
+  const { mutateAsync: createMemoHistory } = useCreateMemoHistory();
+  const { mutateAsync: restoreMemoHistory } = useRestoreMemoHistory();
+  const canManageVersions = memo.state !== State.ARCHIVED && !isView;
+  const { data: histories = [] } = useMemoHistories(memo.name, { enabled: canManageVersions && versionsMenuOpen });
+
+  const handleCreateVersion = async (displayName: string) => {
+    try {
+      await createMemoHistory({ memoName: memo.name, displayName });
+      toast.success(t("memo.version-saved"));
+    } catch {
+      toast.error(t("memo.version-save-failed"));
+    }
+  };
+
+  // Switches to a historical version (content + attachment set). Blocks only if
+  // the memo's current state matches NO saved version — a memo sitting at an
+  // older restored version is still safe (recoverable via its own history
+  // record); only truly unsaved changes must be saved before switching. The
+  // server re-checks the same condition as a backstop.
+  const handleSwitchVersion = async (history: MemoHistory) => {
+    const currentHash = await hashMemoState(memo.content, attachmentUIDsOf(memo));
+    if (!histories.some((h) => h.contentHash === currentHash)) {
+      toast.error(t("memo.switch-version-blocked"));
+      return;
+    }
+    try {
+      await restoreMemoHistory({ historyName: history.name, memoName: memo.name });
+      onSaved();
+      toast.success(t("memo.version-switched"));
+    } catch {
+      toast.error(t("memo.switch-version-blocked"));
+    }
+  };
 
   // Always land on preview first when switching documents (per spec), except
   // a freshly created view doc, which has no config yet and opens its form.
@@ -163,6 +207,48 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
                 <FolderInputIcon className="w-4 h-4 mr-2" />
                 {t("notebook.move")}
               </DropdownMenuItem>
+              {canManageVersions && (
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    <HistoryIcon className="w-4 h-4 mr-2" />
+                    {t("memo.version-history")}
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuSubContent>
+                    <DropdownMenuItem onClick={() => setCreateVersionDialogOpen(true)}>
+                      <SaveIcon className="w-4 h-4 mr-2" />
+                      {t("memo.create-as-version")}
+                    </DropdownMenuItem>
+                    <DropdownMenuSub onOpenChange={setVersionsMenuOpen}>
+                      <DropdownMenuSubTrigger>
+                        <HistoryIcon className="w-4 h-4 mr-2" />
+                        {t("memo.view-versions")}
+                      </DropdownMenuSubTrigger>
+                      <DropdownMenuSubContent className="max-h-80 overflow-y-auto">
+                        {histories.length === 0 ? (
+                          <DropdownMenuItem disabled>{t("memo.no-versions")}</DropdownMenuItem>
+                        ) : (
+                          histories.map((history) => (
+                            <DropdownMenuItem key={history.name} onClick={() => handleSwitchVersion(history)}>
+                              <div className="flex flex-col">
+                                <span className="text-sm">{history.displayName || t("memo.unnamed-version")}</span>
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  {history.createTime && timestampDate(history.createTime).toLocaleString()}
+                                  {history.attachments.length > 0 && (
+                                    <span className="inline-flex items-center gap-0.5">
+                                      <PaperclipIcon className="w-3 h-3" />
+                                      {history.attachments.length}
+                                    </span>
+                                  )}
+                                </span>
+                              </div>
+                            </DropdownMenuItem>
+                          ))
+                        )}
+                      </DropdownMenuSubContent>
+                    </DropdownMenuSub>
+                  </DropdownMenuSubContent>
+                </DropdownMenuSub>
+              )}
               <DropdownMenuItem onClick={onArchiveToggle}>
                 {isArchived ? <ArchiveRestoreIcon className="w-4 h-4 mr-2" /> : <ArchiveIcon className="w-4 h-4 mr-2" />}
                 {isArchived ? t("notebook.unarchive") : t("common.archive")}
@@ -177,6 +263,8 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
       </div>
 
       <MoveDocumentDialog open={moveDialogOpen} onOpenChange={setMoveDialogOpen} currentWorkspace={memo.workspace} onConfirm={onMove} />
+
+      <CreateVersionDialog open={createVersionDialogOpen} onOpenChange={setCreateVersionDialogOpen} onConfirm={handleCreateVersion} />
 
       <div className="flex-1 min-h-0 flex">
         <div className={cn("flex-1 min-w-0", mode === "edit" ? "overflow-hidden" : "overflow-y-auto")} ref={previewRef}>
