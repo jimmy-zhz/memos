@@ -373,6 +373,15 @@ export function createFormattingKeymap(): KeyBinding[] {
     bind("Mod-Shift-7", "orderedList"),
     bind("Mod-Shift-8", "bulletList"),
     bind("Mod-Shift-9", "taskList"),
+    {
+      key: "Mod-Shift-0",
+      run: (view) => {
+        const { from, to } = view.state.selection.main;
+        const insert = "- [x] ";
+        view.dispatch({ changes: { from, to, insert }, selection: { anchor: from + insert.length } });
+        return true;
+      },
+    },
     bind("Mod-Alt-0", "paragraph"),
     bind("Mod-Alt-1", "heading1"),
     bind("Mod-Alt-2", "heading2"),

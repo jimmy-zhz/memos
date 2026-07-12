@@ -43,6 +43,7 @@ import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, Memo_DocType, type MemoHistory } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentUrl, partitionInlinedAttachments } from "@/utils/attachment";
+import { parseFrontmatter } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 import { attachmentUIDsOf, hashMemoState } from "@/utils/memoState";
 import DocumentOutline, { ATTACHMENTS_ANCHOR_ID } from "./DocumentOutline";
@@ -69,9 +70,10 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
   const pdfAttachment = isPdf ? memo.attachments.find((a) => a.type === "application/pdf") : undefined;
   const remainingAttachments = partitionInlinedAttachments(memo.attachments, memo.content).rest;
   const [mode, setMode] = useState<"preview" | "edit">("preview");
-  const [outlineCollapsed, setOutlineCollapsed] = useState(
-    () => typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches,
-  );
+  const [outlineCollapsed, setOutlineCollapsed] = useState(() => {
+    const displayOutline = parseFrontmatter(memo.content).properties.find((p) => p.key === "displayOutline")?.value;
+    return displayOutline === false || (typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches);
+  });
   const [htmlDraft, setHtmlDraft] = useState(memo.content);
   const [titleDraft, setTitleDraft] = useState(memo.title);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
@@ -121,6 +123,12 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
     setMode(isView && !memo.content.trim() ? "edit" : "preview");
     setHtmlDraft(memo.content);
     setTitleDraft(memo.title);
+    // `displayOutline: false` in frontmatter collapses the outline by default
+    // when opening this document; otherwise fall back to the viewport check.
+    const displayOutline = parseFrontmatter(memo.content).properties.find((p) => p.key === "displayOutline")?.value;
+    setOutlineCollapsed(
+      displayOutline === false || (typeof window !== "undefined" && !window.matchMedia("(min-width: 1024px)").matches),
+    );
   }, [memo.name]);
 
   const isArchived = memo.state === State.ARCHIVED;

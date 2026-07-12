@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTodayDate } from "@/components/ActivityCalendar/hooks";
 import { CalendarDayDetail } from "./calendar/CalendarDayDetail";
 import { CalendarMonthGrid } from "./calendar/CalendarMonthGrid";
 import { CalendarUngroupedSection } from "./calendar/CalendarUngroupedSection";
@@ -18,8 +19,9 @@ export const CalendarBlock = ({ children }: CalendarBlockProps) => {
   const datedGroups = useMemo(() => groups.filter((g) => g.date), [groups]);
   const ungroupedItems = groups.find((g) => !g.date)?.items ?? [];
 
+  const today = useTodayDate();
   const [visibleMonth, setVisibleMonth] = useState<VisibleMonth>(() => defaultVisibleMonth());
-  const [selectedDate, setSelectedDate] = useState<string | undefined>();
+  const [selectedDate, setSelectedDate] = useState<string | undefined>(() => today);
 
   const itemCounts = useMemo(() => {
     const counts: Record<string, number> = {};
