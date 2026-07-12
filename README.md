@@ -1,29 +1,77 @@
-> ✨ Featured Sponsor: [CodeRabbit](https://coderabbit.link/usememos) — Cut code review time & bugs in half, instantly.
+# MemoBase
 
-# Memos
+> A hierarchical, view-powered knowledge base built on top of
+> [**Memos**](https://github.com/usememos/memos).
 
+![](docs/images/overview.svg)
 <img align="right" height="96px" src="https://raw.githubusercontent.com/usememos/.github/refs/heads/main/assets/logo-rounded.png" alt="Memos" />
 
-Open-source, self-hosted note-taking tool built for quick capture. Markdown-native, lightweight, and fully yours.
+This project is a fork of the excellent open-source
+[usememos/memos](https://github.com/usememos/memos). Memos gives you a fast,
+Markdown-native, self-hosted place to capture notes. **MemoBase keeps all of
+that** and grows it into a structured knowledge base — think **Yuque's folder
+hierarchy** combined with **Notion's views**, without either one's weight.
 
-[![Home](https://img.shields.io/badge/🏠-usememos.com-blue?style=flat-square)](https://usememos.com)
-[![Live Demo](https://img.shields.io/badge/✨-Try%20Demo-orange?style=flat-square)](https://demo.usememos.com/)
-[![Docs](https://img.shields.io/badge/📚-Documentation-green?style=flat-square)](https://usememos.com/docs)
-[![Discord](https://img.shields.io/badge/💬-Discord-5865f2?style=flat-square&logo=discord&logoColor=white)](https://discord.gg/tfPJa4UmAv)
-[![Docker Pulls](https://img.shields.io/docker/pulls/neosmemo/memos?style=flat-square&logo=docker)](https://hub.docker.com/r/neosmemo/memos)
+- **Yuque's strength:** a knowledge base with real, multi-level folder paths —
+  the capacity to hold and organize a lot.
+- **Notion's strength:** views that surface and connect the documents that
+  matter, instead of leaving them buried in folders.
+- **Memos' strength (kept intact):** a single Go binary, a lightweight one
+  record = one document model, and full REST + gRPC APIs. No heavyweight
+  per-page database.
 
-<img src="https://raw.githubusercontent.com/usememos/.github/refs/heads/main/assets/demo.png" alt="Memos Demo Screenshot" height="512" />
+## What this fork adds
 
-## Features
+### 📂 Hierarchical knowledge base (Yuque-like)
 
-- **Instant Capture** — Timeline-first UI. Open, write, done — no folders to navigate.
-- **Total Data Ownership** — Self-hosted on your infrastructure. Notes stored in Markdown, always portable. Zero telemetry.
-- **Radical Simplicity** — Single Go binary, ~20MB Docker image. One command to deploy with SQLite, MySQL, or PostgreSQL.
-- **Open & Extensible** — MIT-licensed with full REST and gRPC APIs for integration.
+Every document lives in a **workspace** (knowledge base) under a
+slash-separated **folder path**. The home page becomes a three-pane document
+workspace: a folder tree as the primary navigator, a preview-first single
+document view, and a Markdown outline. A **Bookshelf** arranges your knowledge
+bases as books, and the reworked **Explore** page adds workspace / visibility /
+archive filters. → [Manual](./docs/manual/01-knowledge-base.md)
+
+### 📄 Render-only document types: HTML & PDF
+
+Beyond Markdown, MemoBase treats **HTML** and **PDF** as first-class documents.
+HTML renders in a sandboxed iframe (perfect for the self-contained HTML that AI
+assistants love to produce). PDFs get a real **pdf.js viewer** with paging,
+zoom, **annotations**, and **text extraction** — and render consistently in the
+Notebook, the Explore list, and the shareable detail page. Attachment handling
+is upgraded too: paste images/audio/video to inline them, with real playable
+players in preview. → [Manual](./docs/manual/02-rich-documents.md)
+
+### 🖼 Notion-style Gallery Views
+
+A **View** document holds only configuration and renders a **live gallery** of
+other documents — scoped by folder, tag, or property; sorted, covered, and
+labeled however you choose. It always reflects current data, never a stale
+snapshot. This is how you connect the core documents out of a large hierarchy.
+→ [Manual](./docs/manual/03-gallery-views.md)
+
+## 📖 Documentation
+
+The [**User Manual**](./docs/manual/README.md) covers every added feature:
+
+1. [Knowledge Base & Hierarchy](./docs/manual/01-knowledge-base.md)
+2. [Rich Documents & Media](./docs/manual/02-rich-documents.md) (HTML, PDF, inline media, S3 storage & backup)
+3. [Gallery Views](./docs/manual/03-gallery-views.md)
+
+Design and requirement docs for each feature live under [`docs/plans/`](./docs/plans/).
+
+## Where this is going
+
+The roadmap points at **AI-native collaboration**:
+
+- **`memogit`** — a client that wraps the Memos API as familiar Git-style
+  commands (`memogit clone` / `pull` / `push`), checking a knowledge base out to
+  a local folder so AI clients (Claude, GPT, …) can collaborate on it as plain
+  files.
+- Deeper AI integrations built on the same stable REST/gRPC surface.
 
 ## Quick Start
 
-### Docker (Recommended)
+### Docker
 
 ```bash
 docker run -d \
@@ -32,63 +80,35 @@ docker run -d \
   -v ~/.memos:/var/opt/memos \
   neosmemo/memos:stable
 ```
-Open `http://localhost:5230` and start writing!
 
-#### DEV Start
+Open `http://localhost:5230` and start writing.
 
-```bash
-go run ./cmd/memos --port 8081
-pnpm dev
-```
+> Note: the public `neosmemo/memos` image is upstream Memos. To run this fork,
+> build the image from this repository (see the [`Dockerfile`](./Dockerfile) and
+> [`deploy.sh`](./deploy.sh)).
 
-### Native Binary
+### Development
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/usememos/memos/main/scripts/install.sh | sh
+go run ./cmd/memos --port 8081   # backend
+pnpm dev                         # web (in ./web)
 ```
 
-### Try the Live Demo
+## Relationship to upstream Memos
 
-Don't want to install yet? Try our [live demo](https://demo.usememos.com/) first!
+MemoBase is a **respectful fork**, not a replacement. All credit for the
+foundation — the capture UX, the Go backend, the storage layer, the API design —
+belongs to the [Memos team and contributors](https://github.com/usememos/memos).
+This fork tracks upstream and layers a knowledge-base product on top.
 
-### Other Installation Methods
+If you want the original, lightweight, timeline-first note-taking tool, use
+upstream Memos:
 
-- **Docker Compose** - Recommended for production deployments
-- **Pre-built Binaries** - Available for Linux, macOS, and Windows
-- **Kubernetes** - Helm charts and manifests available
-- **Build from Source** - For development and customization
-
-See our [installation guide](https://usememos.com/docs/deploy) for detailed instructions.
-
-## Contributing
-
-Contributions are welcome — bug reports, feature suggestions, pull requests, documentation, and translations.
-
-- [Report bugs](https://github.com/usememos/memos/issues/new?template=bug_report.md)
-- [Suggest features](https://github.com/usememos/memos/issues/new?template=feature_request.md)
-- [Submit pull requests](https://github.com/usememos/memos/pulls)
-- [Improve documentation](https://github.com/usememos/dotcom)
-- [Help with translations](https://github.com/usememos/memos/tree/main/web/src/locales)
-
-## Sponsors
-* [**CodeRabbit** - Cut code review time & bugs in half, instantly](https://coderabbit.link/usememos)
-* [**SSD Nodes** - Affordable VPS hosting for self-hosters](https://ssdnodes.com/?utm_source=memos&utm_medium=sponsor)
-* [**InstaPods** - Get your app online in seconds](https://instapods.com/?utm_source=memos&utm_medium=sponsor) • [Deploy Memos in 30 Seconds](https://instapods.com/apps/memos/?utm_source=memos&utm_medium=sponsor)
-
-Love Memos? [Sponsor us on GitHub](https://github.com/sponsors/usememos) to help keep the project growing!
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=usememos/memos&type=Date)](https://star-history.com/#usememos/memos&Date)
+- **Website** — <https://usememos.com>
+- **Docs** — <https://usememos.com/docs>
+- **Repository** — <https://github.com/usememos/memos>
+- **License** — Memos is [MIT-licensed](LICENSE); this fork inherits the same license.
 
 ## License
 
-Memos is open-source software licensed under the [MIT License](LICENSE). See our [Privacy Policy](https://usememos.com/privacy) for details on data handling.
-
----
-
-**[Website](https://usememos.com)** • **[Documentation](https://usememos.com/docs)** • **[Demo](https://demo.usememos.com/)** • **[Discord](https://discord.gg/tfPJa4UmAv)** • **[X/Twitter](https://x.com/usememos)**
-
-<a href="https://vercel.com/oss">
-  <img alt="Vercel OSS Program" src="https://vercel.com/oss/program-badge.svg" />
-</a>
+Licensed under the [MIT License](LICENSE), inherited from upstream Memos.
