@@ -42,11 +42,18 @@ const AttachmentPreview = () => {
   const isHtml = attachment ? isHtmlAttachment(attachment) : false;
   const isPdf = attachment ? isPdfAttachment(attachment) : false;
 
-  const { data: parentMemo } = useMemoQuery(attachment?.memo ?? "", { enabled: !!attachment?.memo && isHtml });
+  const isParentMemoQueryEnabled = !!attachment?.memo && isHtml;
+  const { data: parentMemo, isPending: isParentMemoPending } = useMemoQuery(attachment?.memo ?? "", {
+    enabled: isParentMemoQueryEnabled,
+  });
   // Scripts only run for HTML attachments on memos that are still PRIVATE (creator-only).
   // Anything shared (PROTECTED/PUBLIC) stays script-free to prevent stored XSS from
   // reaching other viewers. See AttachmentPreview iframe below.
   const isPrivate = parentMemo?.visibility === Visibility.PRIVATE;
+  // A sandboxed iframe locks in its permissions at srcDoc navigation time, so we must
+  // know isPrivate *before* first render — otherwise a later attribute change can't
+  // retroactively grant/revoke script execution. Wait for the visibility check to settle.
+  const isVisibilityResolved = !isParentMemoQueryEnabled || !isParentMemoPending;
 
   useEffect(() => {
     if (!attachment) {
@@ -141,8 +148,11 @@ const AttachmentPreview = () => {
         {isHtml &&
           (htmlError ? (
             <div className="flex h-full items-center justify-center text-sm text-destructive">{t("attachment-preview.unavailable")}</div>
+          ) : !isVisibilityResolved ? (
+            <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{t("pdf.loading")}</div>
           ) : (
             <iframe
+              key={isPrivate ? "private" : "shared"}
               title={attachment.filename}
               srcDoc={htmlContent ?? ""}
               sandbox={isPrivate ? "allow-scripts" : "allow-same-origin"}

@@ -1,11 +1,14 @@
 import { useMemo, useState } from "react";
 import { useTodayDate } from "@/components/ActivityCalendar/hooks";
+import { useMemoViewContextOptional } from "@/components/MemoView/MemoViewContext";
+import { useUpdateMemo } from "@/hooks/useMemoQueries";
 import { useTranslate } from "@/utils/i18n";
 import { CalendarDayDetail } from "./calendar/CalendarDayDetail";
 import { CalendarMonthGrid } from "./calendar/CalendarMonthGrid";
 import { CalendarUngroupedSection } from "./calendar/CalendarUngroupedSection";
 import { defaultVisibleMonth, type VisibleMonth } from "./calendar/defaultVisibleMonth";
 import { type CalendarItem, parseCalendarBlock } from "./calendar/parseCalendarBlock";
+import { toggleCalendarItem, upsertCalendarItem } from "./calendar/upsertCalendarItem";
 import { extractCodeContent } from "./utils";
 
 interface CalendarBlockProps {
@@ -24,6 +27,37 @@ export const CalendarBlock = ({ children }: CalendarBlockProps) => {
   const today = useTodayDate();
   const [visibleMonth, setVisibleMonth] = useState<VisibleMonth>(() => defaultVisibleMonth());
   const [selectedDate, setSelectedDate] = useState<string | undefined>(() => today);
+
+  const memoViewContext = useMemoViewContextOptional();
+  const memo = memoViewContext?.memo;
+  const readonly = memoViewContext?.readonly ?? true;
+  const { mutate: updateMemo } = useUpdateMemo();
+
+  const handleAddItems = (date: string, rawInput: string) => {
+    if (!memo) return;
+    const newContent = upsertCalendarItem(memo.content, date, rawInput);
+    if (newContent === memo.content) return;
+    updateMemo({
+      update: {
+        name: memo.name,
+        content: newContent,
+      },
+      updateMask: ["content", "update_time"],
+    });
+  };
+
+  const handleToggleItem = (date: string, itemIndex: number, checked: boolean) => {
+    if (!memo) return;
+    const newContent = toggleCalendarItem(memo.content, date, itemIndex, checked);
+    if (newContent === memo.content) return;
+    updateMemo({
+      update: {
+        name: memo.name,
+        content: newContent,
+      },
+      updateMask: ["content", "update_time"],
+    });
+  };
 
   const itemCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -59,7 +93,8 @@ export const CalendarBlock = ({ children }: CalendarBlockProps) => {
     }
   };
 
-  const selectedGroup = datedGroups.find((g) => g.date === selectedDate);
+  const effectiveDate = selectedDate ?? today;
+  const selectedGroup = datedGroups.find((g) => g.date === effectiveDate);
 
   return (
     <div className="flex flex-col gap-3 not-prose">
@@ -76,7 +111,13 @@ export const CalendarBlock = ({ children }: CalendarBlockProps) => {
           />
         </div>
         <div className="md:basis-[40%] md:grow-[4] md:shrink-0 md:pl-4">
-          <CalendarDayDetail group={selectedGroup} selectedDate={selectedDate} />
+          <CalendarDayDetail
+            group={selectedGroup}
+            selectedDate={effectiveDate}
+            readonly={readonly}
+            onAddItems={memo ? handleAddItems : undefined}
+            onToggleItem={memo ? handleToggleItem : undefined}
+          />
         </div>
       </div>
     </div>

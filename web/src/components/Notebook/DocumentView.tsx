@@ -23,6 +23,7 @@ import CreateVersionDialog from "@/components/MemoActionMenu/CreateVersionDialog
 import MemoContent from "@/components/MemoContent";
 import MemoEditor from "@/components/MemoEditor";
 import { AttachmentListView } from "@/components/MemoMetadata";
+import { MemoViewContext, type MemoViewContextValue } from "@/components/MemoView/MemoViewContext";
 import { PdfDocumentView } from "@/components/PdfViewer/PdfDocumentView";
 import { Button } from "@/components/ui/button";
 import {
@@ -59,6 +60,25 @@ interface Props {
   onMove: (workspace: string, folderPath: string) => void | Promise<void>;
   onOpenDocument?: (memoName: string) => void;
 }
+
+// Notebook's markdown preview renders MemoContent directly, without the MemoViewContext
+// that memo feed/detail views normally provide. Supply a minimal, writable context here so
+// content components that read it (e.g. the calendar block's add-task button, task checkboxes)
+// work inside Notebook too.
+const buildPreviewContext = (memo: Memo): MemoViewContextValue => ({
+  memo,
+  creator: undefined,
+  currentUser: undefined,
+  parentPage: "/",
+  cardWidth: 0,
+  isArchived: memo.state === State.ARCHIVED,
+  readonly: false,
+  showBlurredContent: false,
+  blurred: false,
+  openEditor: () => {},
+  toggleBlurVisibility: () => {},
+  openPreview: () => {},
+});
 
 const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onSaveHtml, onMove, onOpenDocument }: Props) => {
   const t = useTranslate();
@@ -321,7 +341,9 @@ const DocumentView = ({ memo, onSaved, onRenamed, onArchiveToggle, onDelete, onS
             )
           ) : mode === "preview" ? (
             <div className="px-6 py-4">
-              <MemoContent content={memo.content} memoName={memo.name} />
+              <MemoViewContext.Provider value={buildPreviewContext(memo)}>
+                <MemoContent content={memo.content} memoName={memo.name} />
+              </MemoViewContext.Provider>
               {remainingAttachments.length > 0 && (
                 <div id={ATTACHMENTS_ANCHOR_ID} className="mt-6 border-t border-border pt-4">
                   <AttachmentListView attachments={remainingAttachments} />
