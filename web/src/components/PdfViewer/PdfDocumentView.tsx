@@ -42,7 +42,7 @@ export const PdfDocumentView = ({ url, toolbarSlot, className, parentMemoName, a
   const t = useTranslate();
   const state = usePdfViewerState(url);
   const isDesktop = useMediaQuery("lg");
-  const [annotateMode, setAnnotateMode] = useState(false);
+  const [annotateMode, setAnnotateMode] = useState(true);
   const [selectedMemoName, setSelectedMemoName] = useState<string>();
   const [pendingAnnotation, setPendingAnnotation] = useState<{ page: number; rect: PdfAnnotationRect; text: string }>();
   const [activePanel, setActivePanel] = useState<SidebarPanel>(null);
@@ -147,6 +147,7 @@ export const PdfDocumentView = ({ url, toolbarSlot, className, parentMemoName, a
         annotations={all}
         selectedMemoName={selectedMemoName}
         onClose={forDesktop ? () => setActivePanel(null) : undefined}
+        onEdited={refetch}
         onSelect={(memoName, page) => {
           setSelectedMemoName(memoName);
           if (!forDesktop) setActivePanel(null);

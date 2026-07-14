@@ -70,6 +70,40 @@ Features:
 - **Text extraction** (`extractPdfText.ts`) — pull selectable/searchable text
   out of the PDF.
 
+### Adding a comment
+
+The comment (annotation) tool is **on by default** — the speech-bubble
+"Add annotation" icon in the toolbar (`PdfToolbar.tsx`) starts selected, so you
+can select text right away without an extra click:
+
+1. **Select text** in the PDF page. A floating "Add comment" button appears
+   next to the selection.
+2. Click it (or the toolbar comment icon while a selection is active) to open
+   the comment editor, prefilled with a quote of the selected text. Comment
+   bodies support **Markdown**.
+3. Submit to save. The comment is anchored to that page/rectangle and appears
+   as a highlight on the page plus an entry in the **comments side panel**
+   (`PdfAnnotationSidebar.tsx`).
+
+If you need to select text without creating a comment (e.g. to copy it), click
+the toolbar comment icon once to turn annotate mode off — its background goes
+back to plain/ghost — then select as usual.
+
+### The comments panel
+
+Open it via the panel-toggle icon in the toolbar. Each entry:
+
+- Is grouped by page and, when clicked, **jumps** the viewer to that page.
+- Renders its body through the same **Markdown renderer** used for normal
+  documents, so headings, lists, links, code, etc. all render — not just plain
+  text.
+- Has an **Edit** (pencil) button next to the expand/collapse ("more"/"less")
+  control. Clicking it swaps the entry for an inline `MemoEditor` (the same
+  editor used everywhere else in the app); confirming saves the edit and
+  refreshes the panel.
+- Long comments start collapsed behind "more"/"less"; short ones render in
+  full.
+
 ### PDF everywhere it needs to appear
 
 A PDF document is, at its core, a link/reference — so it renders differently

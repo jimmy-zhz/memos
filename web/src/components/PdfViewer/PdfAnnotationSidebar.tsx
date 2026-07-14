@@ -1,5 +1,7 @@
-import { ChevronDownIcon, ChevronUpIcon, XIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon, PencilIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import MemoContent from "@/components/MemoContent";
+import MemoEditor from "@/components/MemoEditor";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
@@ -10,6 +12,8 @@ interface Props {
   selectedMemoName?: string;
   onSelect?: (memoName: string, page: number) => void;
   onClose?: () => void;
+  /** Called after an annotation's memo is edited in place, so the caller can refetch. */
+  onEdited?: () => void;
   className?: string;
 }
 
@@ -21,10 +25,11 @@ const LONG_NOTE_THRESHOLD = 160;
 // Docked comment list, modeled after Adobe Acrobat's comments panel (title bar toggle,
 // grouped by page, click-to-jump) but kept more compact: no per-comment reply affordance,
 // smaller card padding, no avatar row — this app's PDF notes are jump targets, not a thread.
-export const PdfAnnotationSidebar = ({ annotations, selectedMemoName, onSelect, onClose, className }: Props) => {
+export const PdfAnnotationSidebar = ({ annotations, selectedMemoName, onSelect, onClose, onEdited, className }: Props) => {
   const t = useTranslate();
   const selectedRef = useRef<HTMLDivElement>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [editingMemoName, setEditingMemoName] = useState<string>();
 
   const pages = new Map<number, PdfAnnotationEntry[]>();
   for (const entry of annotations) {
@@ -70,6 +75,25 @@ export const PdfAnnotationSidebar = ({ annotations, selectedMemoName, onSelect, 
                 const text = entry.memo.content || entry.memo.snippet;
                 const isLong = text.length > LONG_NOTE_THRESHOLD;
                 const isExpanded = expanded[entry.memo.name] ?? false;
+                const isEditing = editingMemoName === entry.memo.name;
+
+                if (isEditing) {
+                  return (
+                    <div key={entry.memo.name} ref={isSelected ? selectedRef : undefined} className="min-w-0 rounded-lg border border-primary/40 p-1.5">
+                      <MemoEditor
+                        autoFocus
+                        memo={entry.memo}
+                        parentMemoName={entry.memo.parent || undefined}
+                        onConfirm={() => {
+                          setEditingMemoName(undefined);
+                          onEdited?.();
+                        }}
+                        onCancel={() => setEditingMemoName(undefined)}
+                      />
+                    </div>
+                  );
+                }
+
                 return (
                   <div
                     key={entry.memo.name}
@@ -88,9 +112,22 @@ export const PdfAnnotationSidebar = ({ annotations, selectedMemoName, onSelect, 
                       if (e.key === "Enter" || e.key === " ") onSelect?.(entry.memo.name, entry.page);
                     }}
                   >
-                    <span className={cn("break-words", !isExpanded && "line-clamp-4")}>{text}</span>
-                    {isLong && (
-                      <div className="flex justify-end mt-0.5">
+                    <div className={cn("break-words [&_*]:!text-xs", !isExpanded && "line-clamp-4")}>
+                      <MemoContent content={text} memoName={entry.memo.name} compact contentClassName="!p-0" />
+                    </div>
+                    <div className="flex items-center justify-end gap-2 mt-0.5">
+                      <button
+                        type="button"
+                        className="inline-flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingMemoName(entry.memo.name);
+                        }}
+                      >
+                        <PencilIcon className="w-3 h-3" />
+                        {t("common.edit")}
+                      </button>
+                      {isLong && (
                         <button
                           type="button"
                           className="inline-flex items-center gap-0.5 text-[11px] font-medium text-muted-foreground hover:text-foreground"
@@ -102,8 +139,8 @@ export const PdfAnnotationSidebar = ({ annotations, selectedMemoName, onSelect, 
                           {isExpanded ? t("pdf.note-collapse") : t("pdf.note-expand")}
                           {isExpanded ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />}
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 );
               })}
