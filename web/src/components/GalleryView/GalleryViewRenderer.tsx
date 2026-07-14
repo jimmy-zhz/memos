@@ -2,12 +2,13 @@ import { LayoutGridIcon } from "lucide-react";
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import MemoContent from "@/components/MemoContent";
+import { PropertiesPanel } from "@/components/MemoContent/PropertiesPanel";
 import { useMemos } from "@/hooks/useMemoQueries";
 import { cn } from "@/lib/utils";
 import { State } from "@/types/proto/api/v1/common_pb";
 import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentThumbnailUrl, isImage } from "@/utils/attachment";
-import type { MemoProperty } from "@/utils/frontmatter";
+import { parseFrontmatter, type MemoProperty } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
 import { fieldValue, matchesPropertyFilters, propertyMap, propertyValueToString } from "./fields";
 import { type GalleryBlock, parseGalleryViewConfig } from "./types";
@@ -36,13 +37,23 @@ const propertyCoverUrl = (doc: Memo, props: Map<string, MemoProperty>, key: stri
   return attachment ? getAttachmentThumbnailUrl(attachment) : value;
 };
 
-const coverUrl = (doc: Memo, props: Map<string, MemoProperty>, block: GalleryBlock): string | undefined => {
-  if (block.cover === "none") return undefined;
-  if (block.cover.startsWith("prop:")) return propertyCoverUrl(doc, props, block.cover.slice(5));
+// Fallback used when the configured cover rule finds no image: the document's
+// first image attachment, or its first inline markdown image.
+const documentFirstImage = (doc: Memo): string | undefined => {
   const imageAttachment = doc.attachments.find((a) => isImage(a.type));
   if (imageAttachment) return getAttachmentThumbnailUrl(imageAttachment);
   if (doc.docType === Memo_DocType.MARKDOWN) return firstMarkdownImage(doc.content);
   return undefined;
+};
+
+const coverUrl = (doc: Memo, props: Map<string, MemoProperty>, block: GalleryBlock): string | undefined => {
+  if (block.cover === "none") return undefined;
+  if (block.cover.startsWith("prop:")) {
+    const propCover = propertyCoverUrl(doc, props, block.cover.slice(5));
+    return propCover || documentFirstImage(doc);
+  }
+  const propCover = propertyCoverUrl(doc, props, "cover");
+  return propCover || documentFirstImage(doc);
 };
 
 // Reads a document's value for a frontmatter property as a plain string ("" when
@@ -175,6 +186,7 @@ const GalleryViewRenderer = ({ memo, onOpenDoc, className }: Props) => {
   const t = useTranslate();
   const navigate = useNavigate();
   const config = parseGalleryViewConfig(memo.content);
+  const { properties } = useMemo(() => parseFrontmatter(memo.content), [memo.content]);
 
   if (!config) {
     return <div className={cn("text-sm text-muted-foreground", className)}>{t("gallery.not-configured")}</div>;
@@ -184,6 +196,7 @@ const GalleryViewRenderer = ({ memo, onOpenDoc, className }: Props) => {
 
   return (
     <div className={cn("w-full flex flex-col gap-6", className)}>
+      <PropertiesPanel properties={properties} />
       {config.blocks.map((block, index) => (
         <div key={index} className="flex flex-col gap-6">
           {index > 0 && <hr className="border-border" />}
