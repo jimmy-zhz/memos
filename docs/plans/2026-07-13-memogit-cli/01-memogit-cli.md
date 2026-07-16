@@ -1,8 +1,10 @@
 # memogit：本地知识库检出/同步 CLI 工具 — 需求与技术方案
 
-状态：阶段 1-3（login/clone/pull）实现中。**2026-07-16 重大修订**：对照 `docs/manual/`
-的真实产品模型，把文件布局与元数据设计从"上游 Memos 的扁平 + tags 模型"改为本 fork
-的 **workspace / folder_path / title / doc_type** 层级模型（见 §5、§6 的修订说明）。
+状态：阶段 1-3（login/clone/pull）已实现并本地实测跑通；阶段 4（push）待开发。
+实现细节与联调记录见 [[03-implementation-notes]]，操作手册见 `docs/manual/05-memogit-cli.md`。
+**2026-07-16 重大修订**：对照 `docs/manual/` 的真实产品模型，把文件布局与元数据设计
+从"上游 Memos 的扁平 + tags 模型"改为本 fork 的
+**workspace / folder_path / title / doc_type** 层级模型（见 §5、§6 的修订说明）。
 关联：融合 AI 编写知识库的探索方向，参考 [[hierarchical-notes]] 的知识库定位。
 
 > **为什么修订**：本文档最初的 §5 文件格式（按主 tag 分目录、uid+首行 slug 命名、
