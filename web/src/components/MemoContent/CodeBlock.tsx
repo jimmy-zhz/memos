@@ -26,55 +26,15 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
   const codeContent = extractCodeContent(children);
   const language = extractLanguage(codeClassName).toLowerCase();
 
-  // If it's a mermaid block, render with MermaidBlock component
-  if (language === "mermaid") {
-    return (
-      <pre className="relative">
-        <MermaidBlock className={cn(className)} {...props}>
-          {children}
-        </MermaidBlock>
-      </pre>
-    );
-  }
-
-  // If it's a calendar block, render with CalendarBlock component
-  if (language === "calendar") {
-    return (
-      <pre className="relative">
-        <CalendarBlock className={cn(className)} {...props}>
-          {children}
-        </CalendarBlock>
-      </pre>
-    );
-  }
-
-  // If it's a grid block, render with GridBlock component
-  if (language === "grid") {
-    return (
-      <pre className="relative">
-        <GridBlock className={cn(className)} {...props}>
-          {children}
-        </GridBlock>
-      </pre>
-    );
-  }
-
-  // If it's a kanban block, render with KanbanBlock component
-  if (language === "kanban") {
-    return (
-      <pre className="relative">
-        <KanbanBlock className={cn(className)} {...props}>
-          {children}
-        </KanbanBlock>
-      </pre>
-    );
-  }
-
   const theme = getThemeWithFallback(userGeneralSetting?.theme);
   const resolvedTheme = resolveTheme(theme);
   const isDarkTheme = resolvedTheme.includes("dark");
 
-  // Dynamically load highlight.js theme based on app theme
+  // Dynamically load highlight.js theme based on app theme.
+  // NOTE: this and the highlight useMemo below must run unconditionally (before the
+  // special-block early returns) so the hook count stays stable across re-renders.
+  // Otherwise switching a code block between a special type (mermaid/kanban/etc.) and a
+  // plain block on the same tree position throws React error #310.
   useEffect(() => {
     const dynamicImportStyle = async () => {
       // Remove any existing highlight.js style
@@ -119,6 +79,50 @@ export const CodeBlock = ({ children, className, node: _node, ...props }: CodeBl
       textContent: codeContent,
     }).innerHTML;
   }, [language, codeContent]);
+
+  // If it's a mermaid block, render with MermaidBlock component
+  if (language === "mermaid") {
+    return (
+      <pre className="relative">
+        <MermaidBlock className={cn(className)} {...props}>
+          {children}
+        </MermaidBlock>
+      </pre>
+    );
+  }
+
+  // If it's a calendar block, render with CalendarBlock component
+  if (language === "calendar") {
+    return (
+      <pre className="relative">
+        <CalendarBlock className={cn(className)} {...props}>
+          {children}
+        </CalendarBlock>
+      </pre>
+    );
+  }
+
+  // If it's a grid block, render with GridBlock component
+  if (language === "grid") {
+    return (
+      <pre className="relative">
+        <GridBlock className={cn(className)} {...props}>
+          {children}
+        </GridBlock>
+      </pre>
+    );
+  }
+
+  // If it's a kanban block, render with KanbanBlock component
+  if (language === "kanban") {
+    return (
+      <pre className="relative">
+        <KanbanBlock className={cn(className)} {...props}>
+          {children}
+        </KanbanBlock>
+      </pre>
+    );
+  }
 
   const handleCopy = async () => {
     try {
