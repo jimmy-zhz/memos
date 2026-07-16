@@ -10,27 +10,34 @@ import { splitFrontmatter } from "@/utils/frontmatter";
 // by dividers.
 
 /**
- * An equality condition on a document's frontmatter property. A document passes
- * when it has a property named `key` whose value equals `value` (for list
- * properties, when any item equals `value`). Only equality is supported.
+ * One matching condition within a scope group. `folder` matches documents in
+ * a folder (defaulting to the view doc's own folder when `path` is omitted);
+ * by default it also matches subfolders, unless `includeSubfolders` is false.
+ * `tag` matches documents carrying that tag. `property` matches documents
+ * whose frontmatter property `key` equals `value` (for list properties, when
+ * any item equals `value`).
  */
-export interface GalleryPropertyFilter {
-  key: string;
-  value: string;
+export type GalleryRule =
+  | { kind: "folder"; path?: string; includeSubfolders?: boolean }
+  | { kind: "tag"; tag: string }
+  | { kind: "property"; key: string; value: string };
+
+export type GalleryMatch = "all" | "any";
+
+/** A group of rules, combined with `match` ("all" = AND, "any" = OR). */
+export interface GalleryGroup {
+  match: GalleryMatch;
+  rules: GalleryRule[];
 }
 
-// Which documents a gallery block shows. Exactly one of three mutually
-// exclusive modes: a folder (defaulting to the view doc's own folder), a tag,
-// or a set of property equality conditions (ANDed together).
-//
-// `path` is a slash-separated path relative to the knowledge base root. When
-// omitted (or empty), the folder defaults to the view document's own folder.
-// In both cases the scope includes documents in that folder and all of its
-// subfolders.
-export type GalleryScope =
-  | { type: "folder"; path?: string }
-  | { type: "tag"; tag: string }
-  | { type: "property"; filters: GalleryPropertyFilter[] };
+// Which documents a gallery block shows: groups of rules, themselves combined
+// with `match`. Two levels only (group match, rule match within a group) —
+// e.g. `match: "any"` over groups `[{match: "all", rules: [A, B]}, {match: "all", rules: [C]}]`
+// expresses `(A AND B) OR C`.
+export interface GalleryScope {
+  match: GalleryMatch;
+  groups: GalleryGroup[];
+}
 
 export type GalleryBuiltinSort = "updated_desc" | "updated_asc" | "created_desc" | "created_asc" | "title_asc";
 
@@ -93,30 +100,71 @@ export const DEFAULT_CARD_FIELDS: GalleryCardFields = {
 };
 
 export const DEFAULT_GALLERY_BLOCK: GalleryBlock = {
-  scope: { type: "folder" },
+  scope: { match: "all", groups: [{ match: "all", rules: [{ kind: "folder" }] }] },
   sort: "updated_desc",
   cover: "first_image",
   cardFields: DEFAULT_CARD_FIELDS,
 };
 
-function parsePropertyFilters(raw: unknown): GalleryPropertyFilter[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((f: unknown): f is { key: unknown; value: unknown } => !!f && typeof f === "object")
-    .map((f: { key: unknown; value: unknown }) => ({ key: String(f.key ?? "").trim(), value: String(f.value ?? "") }))
-    .filter((f: GalleryPropertyFilter) => f.key !== "");
+function parseMatch(raw: unknown): GalleryMatch {
+  return raw === "any" ? "any" : "all";
+}
+
+function parseRule(raw: unknown): GalleryRule | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as { kind?: unknown; path?: unknown; includeSubfolders?: unknown; tag?: unknown; key?: unknown; value?: unknown };
+  if (r.kind === "tag" && typeof r.tag === "string") return { kind: "tag", tag: r.tag };
+  if (r.kind === "property") return { kind: "property", key: String(r.key ?? ""), value: String(r.value ?? "") };
+  if (r.kind === "folder") {
+    const includeSubfolders = r.includeSubfolders === false ? false : true;
+    const path = typeof r.path === "string" && r.path.trim() ? r.path.trim() : undefined;
+    return { kind: "folder", path, includeSubfolders };
+  }
+  return undefined;
+}
+
+function parseGroup(raw: unknown): GalleryGroup {
+  if (!raw || typeof raw !== "object") return { match: "all", rules: [] };
+  const g = raw as { match?: unknown; rules?: unknown };
+  const rules = Array.isArray(g.rules) ? g.rules.map(parseRule).filter((r): r is GalleryRule => r !== undefined) : [];
+  return { match: parseMatch(g.match), rules };
+}
+
+// Migrates the pre-group scope shape (a single folder/tag/property selector)
+// into a one-group, one-rule scope.
+function migrateLegacyScope(raw: { type?: unknown; path?: unknown; includeSubfolders?: unknown; tag?: unknown; filters?: unknown }):
+  | GalleryScope
+  | undefined {
+  if (raw.type === "tag" && typeof raw.tag === "string") {
+    return { match: "all", groups: [{ match: "all", rules: [{ kind: "tag", tag: raw.tag }] }] };
+  }
+  if (raw.type === "property") {
+    const filters = Array.isArray(raw.filters)
+      ? raw.filters
+          .filter((f: unknown): f is { key: unknown; value: unknown } => !!f && typeof f === "object")
+          .map((f: { key: unknown; value: unknown }) => ({ key: String(f.key ?? "").trim(), value: String(f.value ?? "") }))
+          .filter((f: { key: string; value: string }) => f.key !== "")
+      : [];
+    return { match: "all", groups: [{ match: "all", rules: filters.map((f) => ({ kind: "property" as const, key: f.key, value: f.value })) }] };
+  }
+  if (raw.type === "folder") {
+    const includeSubfolders = raw.includeSubfolders === false ? false : true;
+    const path = typeof raw.path === "string" && raw.path.trim() ? raw.path.trim() : undefined;
+    return { match: "all", groups: [{ match: "all", rules: [{ kind: "folder", path, includeSubfolders }] }] };
+  }
+  return undefined;
 }
 
 function parseScope(raw: unknown): GalleryScope {
   if (raw && typeof raw === "object") {
-    const scope = raw as { type?: unknown; tag?: unknown; filters?: unknown; path?: unknown };
-    if (scope.type === "tag" && typeof scope.tag === "string") return { type: "tag", tag: scope.tag };
-    if (scope.type === "property") return { type: "property", filters: parsePropertyFilters(scope.filters) };
-    if (scope.type === "folder" && typeof scope.path === "string" && scope.path.trim()) {
-      return { type: "folder", path: scope.path.trim() };
+    const scope = raw as { groups?: unknown; match?: unknown; type?: unknown };
+    if (Array.isArray(scope.groups)) {
+      return { match: parseMatch(scope.match), groups: scope.groups.map(parseGroup) };
     }
+    const legacy = migrateLegacyScope(scope);
+    if (legacy) return legacy;
   }
-  return { type: "folder" };
+  return DEFAULT_GALLERY_BLOCK.scope;
 }
 
 const CARD_FIELD_TOKENS = new Set(["__title__", "__updated__", "__created__"]);

@@ -10,7 +10,7 @@ import { type Memo, Memo_DocType } from "@/types/proto/api/v1/memo_service_pb";
 import { getAttachmentThumbnailUrl, isImage } from "@/utils/attachment";
 import { parseFrontmatter, type MemoProperty } from "@/utils/frontmatter";
 import { useTranslate } from "@/utils/i18n";
-import { fieldValue, matchesPropertyFilters, propertyMap, propertyValueToString } from "./fields";
+import { fieldValue, matchesScope, propertyMap, propertyValueToString } from "./fields";
 import { type GalleryBlock, parseGalleryViewConfig } from "./types";
 
 interface Props {
@@ -114,26 +114,15 @@ interface BlockProps {
 // block's scope live — nothing is generated or cached.
 const GalleryBlockView = ({ block, memo, openDoc }: BlockProps) => {
   const t = useTranslate();
-  const scopeFilter =
-    block.scope.type === "tag" ? `tag in [${JSON.stringify(block.scope.tag)}]` : `workspace == ${JSON.stringify(memo.workspace)}`;
-
-  const { data, isLoading } = useMemos({ pageSize: 1000, state: State.NORMAL, filter: scopeFilter });
+  const { data, isLoading } = useMemos({ pageSize: 1000, state: State.NORMAL, filter: `workspace == ${JSON.stringify(memo.workspace)}` });
 
   const docs = useMemo(() => {
     // VIEW docs are eligible too: they now carry frontmatter properties, so a
     // gallery can filter, sort and reference other views like any other doc.
-    let list = (data?.memos ?? []).filter((m) => m.name !== memo.name);
-    if (block.scope.type === "folder") {
-      const basePath = (block.scope.path?.trim() || memo.folderPath).replace(/^\/+|\/+$/g, "");
-      list = list.filter(
-        (m) => m.workspace === memo.workspace && (basePath === "" || m.folderPath === basePath || m.folderPath.startsWith(`${basePath}/`)),
-      );
-    } else if (block.scope.type === "property") {
-      const filters = block.scope.filters;
-      list = list.filter((m) => matchesPropertyFilters(propertyMap(m.content), filters));
-    }
+    const ctx = { viewFolderPath: memo.folderPath };
+    const list = (data?.memos ?? []).filter((m) => m.name !== memo.name && matchesScope(m, propertyMap(m.content), block.scope, ctx));
     return sortDocs(list, block);
-  }, [data, block, memo.name, memo.workspace, memo.folderPath]);
+  }, [data, block, memo.name, memo.folderPath]);
 
   return (
     <div className="w-full flex flex-col gap-4">

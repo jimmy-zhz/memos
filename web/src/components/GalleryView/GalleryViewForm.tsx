@@ -1,10 +1,10 @@
 import { LayoutGridIcon, PlusIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useTranslate } from "@/utils/i18n";
@@ -13,7 +13,9 @@ import {
   type GalleryBlock,
   type GalleryCardField,
   type GalleryCoverRule,
-  type GalleryPropertyFilter,
+  type GalleryGroup,
+  type GalleryMatch,
+  type GalleryRule,
   type GallerySort,
   parseGalleryViewConfig,
   serializeGalleryViewConfig,
@@ -33,16 +35,30 @@ interface CardFieldState {
   propKey: string;
 }
 
+// Editable draft of one scope rule. Keeps every field's input around
+// regardless of `kind`, so switching kinds never loses typed input.
+interface RuleDraft {
+  kind: "folder" | "tag" | "property";
+  folderPath: string;
+  includeSubfolders: boolean;
+  tag: string;
+  propKey: string;
+  propValue: string;
+}
+
+interface GroupDraft {
+  match: GalleryMatch;
+  rules: RuleDraft[];
+}
+
 // Editable draft of a single gallery block. Keeps UI-only shape (scope split
-// into type + tag + filters, card fields split into kind + propKey) so toggling
+// into groups of rules, card fields split into kind + propKey) so toggling
 // options never loses typed input; converted to a GalleryBlock on save.
 interface BlockDraft {
   description: string;
   footer: string;
-  scopeType: "folder" | "tag" | "property";
-  folderPath: string;
-  tag: string;
-  propertyFilters: GalleryPropertyFilter[];
+  scopeMatch: GalleryMatch;
+  groups: GroupDraft[];
   sort: GallerySort;
   cover: GalleryCoverRule;
   primary: CardFieldState;
@@ -64,14 +80,38 @@ function fromCardFieldState(state: CardFieldState): GalleryCardField {
   return state.kind;
 }
 
+const DEFAULT_RULE_DRAFT: RuleDraft = { kind: "folder", folderPath: "", includeSubfolders: true, tag: "", propKey: "", propValue: "" };
+
+function toRuleDraft(rule: GalleryRule): RuleDraft {
+  if (rule.kind === "tag") return { ...DEFAULT_RULE_DRAFT, kind: "tag", tag: rule.tag };
+  if (rule.kind === "property") return { ...DEFAULT_RULE_DRAFT, kind: "property", propKey: rule.key, propValue: rule.value };
+  return { ...DEFAULT_RULE_DRAFT, kind: "folder", folderPath: rule.path ?? "", includeSubfolders: rule.includeSubfolders ?? true };
+}
+
+// Converts a rule draft back to a GalleryRule, or undefined when the rule is
+// incomplete (empty tag / property key) and should be dropped on save.
+function fromRuleDraft(draft: RuleDraft): GalleryRule | undefined {
+  if (draft.kind === "tag") {
+    const tag = draft.tag.trim();
+    return tag ? { kind: "tag", tag } : undefined;
+  }
+  if (draft.kind === "property") {
+    const key = draft.propKey.trim();
+    return key ? { kind: "property", key, value: draft.propValue } : undefined;
+  }
+  return { kind: "folder", path: draft.folderPath.trim() || undefined, includeSubfolders: draft.includeSubfolders };
+}
+
+function toGroupDraft(group: GalleryGroup): GroupDraft {
+  return { match: group.match, rules: group.rules.map(toRuleDraft) };
+}
+
 function toDraft(block: GalleryBlock): BlockDraft {
   return {
     description: block.description ?? "",
     footer: block.footer ?? "",
-    scopeType: block.scope.type,
-    folderPath: block.scope.type === "folder" ? (block.scope.path ?? "") : "",
-    tag: block.scope.type === "tag" ? block.scope.tag : "",
-    propertyFilters: block.scope.type === "property" ? block.scope.filters : [],
+    scopeMatch: block.scope.match,
+    groups: block.scope.groups.length > 0 ? block.scope.groups.map(toGroupDraft) : [{ match: "all", rules: [{ ...DEFAULT_RULE_DRAFT }] }],
     sort: block.sort,
     cover: block.cover,
     primary: toCardFieldState(block.cardFields.primary),
@@ -79,21 +119,19 @@ function toDraft(block: GalleryBlock): BlockDraft {
   };
 }
 
-function cleanedFilters(draft: BlockDraft): GalleryPropertyFilter[] {
-  return draft.propertyFilters.map((f) => ({ key: f.key.trim(), value: f.value })).filter((f) => f.key !== "");
+// Groups/rules that are incomplete (empty tag / property key) are dropped;
+// groups left with no rules are dropped entirely.
+function effectiveGroups(draft: BlockDraft): GalleryGroup[] {
+  return draft.groups
+    .map((g) => ({ match: g.match, rules: g.rules.map(fromRuleDraft).filter((r): r is GalleryRule => r !== undefined) }))
+    .filter((g) => g.rules.length > 0);
 }
 
 function fromDraft(draft: BlockDraft): GalleryBlock {
-  const scope: GalleryBlock["scope"] =
-    draft.scopeType === "tag"
-      ? { type: "tag", tag: draft.tag.trim() }
-      : draft.scopeType === "property"
-        ? { type: "property", filters: cleanedFilters(draft) }
-        : { type: "folder", path: draft.folderPath.trim() || undefined };
   return {
     description: draft.description.trim() ? draft.description : undefined,
     footer: draft.footer.trim() ? draft.footer : undefined,
-    scope,
+    scope: { match: draft.scopeMatch, groups: effectiveGroups(draft) },
     sort: draft.sort,
     cover: draft.cover,
     cardFields: { primary: fromCardFieldState(draft.primary), secondary: fromCardFieldState(draft.secondary) },
@@ -101,11 +139,7 @@ function fromDraft(draft: BlockDraft): GalleryBlock {
 }
 
 function blockInvalid(draft: BlockDraft): boolean {
-  if (draft.scopeType === "tag") return !draft.tag.trim();
-  if (draft.scopeType === "property") {
-    return cleanedFilters(draft).length === 0 || draft.propertyFilters.some((f) => f.key.trim() === "");
-  }
-  return false;
+  return effectiveGroups(draft).length === 0;
 }
 
 // One editable gallery block. Controlled via `draft` / `onChange`.
@@ -122,9 +156,22 @@ const GalleryBlockForm = ({
 }) => {
   const t = useTranslate();
 
-  const setFilter = (i: number, patch: Partial<GalleryPropertyFilter>) => {
-    onChange({ propertyFilters: draft.propertyFilters.map((f, j) => (j === i ? { ...f, ...patch } : f)) });
+  const updateGroup = (gi: number, patch: Partial<GroupDraft>) => {
+    onChange({ groups: draft.groups.map((g, i) => (i === gi ? { ...g, ...patch } : g)) });
   };
+  const updateRule = (gi: number, ri: number, patch: Partial<RuleDraft>) => {
+    onChange({
+      groups: draft.groups.map((g, i) => (i === gi ? { ...g, rules: g.rules.map((r, j) => (j === ri ? { ...r, ...patch } : r)) } : g)),
+    });
+  };
+  const removeRule = (gi: number, ri: number) => {
+    onChange({ groups: draft.groups.map((g, i) => (i === gi ? { ...g, rules: g.rules.filter((_, j) => j !== ri) } : g)) });
+  };
+  const addRule = (gi: number) => {
+    onChange({ groups: draft.groups.map((g, i) => (i === gi ? { ...g, rules: [...g.rules, { ...DEFAULT_RULE_DRAFT }] } : g)) });
+  };
+  const addGroup = () => onChange({ groups: [...draft.groups, { match: "all", rules: [{ ...DEFAULT_RULE_DRAFT }] }] });
+  const removeGroup = (gi: number) => onChange({ groups: draft.groups.filter((_, i) => i !== gi) });
 
   // Split the serialized sort/cover values into their editable "kind" + property key.
   const sortMatch = draft.sort.match(/^prop_(asc|desc):(.*)$/s);
@@ -166,6 +213,65 @@ const GalleryBlockForm = ({
     </div>
   );
 
+  const renderRule = (rule: RuleDraft, gi: number, ri: number) => (
+    <div key={ri} className="flex items-start gap-2">
+      <Select value={rule.kind} onValueChange={(v) => updateRule(gi, ri, { kind: v as RuleDraft["kind"] })}>
+        <SelectTrigger className="w-28 shrink-0">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="folder">{t("gallery.rule-kind-folder")}</SelectItem>
+          <SelectItem value="tag">{t("gallery.rule-kind-tag")}</SelectItem>
+          <SelectItem value="property">{t("gallery.rule-kind-property")}</SelectItem>
+        </SelectContent>
+      </Select>
+      <div className="flex-1 flex flex-col gap-2">
+        {rule.kind === "folder" && (
+          <>
+            <Input
+              placeholder={t("gallery.folder-path-placeholder")}
+              value={rule.folderPath}
+              onChange={(e) => updateRule(gi, ri, { folderPath: e.target.value })}
+            />
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id={`rule-this-folder-only-${index}-${gi}-${ri}`}
+                checked={!rule.includeSubfolders}
+                onCheckedChange={(checked) => updateRule(gi, ri, { includeSubfolders: !checked })}
+              />
+              <Label htmlFor={`rule-this-folder-only-${index}-${gi}-${ri}`} className="font-normal cursor-pointer text-sm">
+                {t("gallery.scope-this-folder-only")}
+              </Label>
+            </div>
+          </>
+        )}
+        {rule.kind === "tag" && (
+          <Input placeholder={t("gallery.tag-placeholder")} value={rule.tag} onChange={(e) => updateRule(gi, ri, { tag: e.target.value })} />
+        )}
+        {rule.kind === "property" && (
+          <div className="flex items-center gap-2">
+            <Input
+              className="flex-1"
+              placeholder={t("gallery.property-key-placeholder")}
+              value={rule.propKey}
+              onChange={(e) => updateRule(gi, ri, { propKey: e.target.value })}
+            />
+            <span className="text-muted-foreground text-sm">=</span>
+            <Input
+              className="flex-1"
+              placeholder={t("gallery.property-value-placeholder")}
+              value={rule.propValue}
+              onChange={(e) => updateRule(gi, ri, { propValue: e.target.value })}
+            />
+          </div>
+        )}
+      </div>
+      <Button variant="ghost" size="icon" className="shrink-0" onClick={() => removeRule(gi, ri)}>
+        <XIcon className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
@@ -188,87 +294,53 @@ const GalleryBlockForm = ({
         />
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <Label>{t("gallery.scope-label")}</Label>
-        <RadioGroup
-          value={draft.scopeType}
-          onValueChange={(v) => onChange({ scopeType: v as BlockDraft["scopeType"] })}
-          className="flex flex-col gap-2"
-        >
-          <div className="flex items-center gap-2">
-            <RadioGroupItem value="folder" id={`scope-folder-${index}`} />
-            <Label htmlFor={`scope-folder-${index}`} className="font-normal cursor-pointer">
-              {t("gallery.scope-folder")}
-            </Label>
-          </div>
-          {draft.scopeType === "folder" && (
-            <Input
-              className="ml-6"
-              placeholder={t("gallery.folder-path-placeholder")}
-              value={draft.folderPath}
-              onChange={(e) => onChange({ folderPath: e.target.value })}
-            />
-          )}
-          <div className="flex items-center gap-2">
-            <RadioGroupItem value="tag" id={`scope-tag-${index}`} />
-            <Label htmlFor={`scope-tag-${index}`} className="font-normal cursor-pointer">
-              {t("gallery.scope-tag")}
-            </Label>
-          </div>
-          {draft.scopeType === "tag" && (
-            <Input
-              className="ml-6"
-              placeholder={t("gallery.tag-placeholder")}
-              value={draft.tag}
-              onChange={(e) => onChange({ tag: e.target.value })}
-            />
-          )}
-          <div className="flex items-center gap-2">
-            <RadioGroupItem value="property" id={`scope-property-${index}`} />
-            <Label htmlFor={`scope-property-${index}`} className="font-normal cursor-pointer">
-              {t("gallery.scope-property")}
-            </Label>
-          </div>
-          {draft.scopeType === "property" && (
-            <div className="ml-6 flex flex-col gap-2 rounded-lg border border-border p-3">
-              <p className="text-xs text-muted-foreground">{t("gallery.property-filters-hint")}</p>
-              {draft.propertyFilters.map((filter, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <Input
-                    className="flex-1"
-                    placeholder={t("gallery.property-key-placeholder")}
-                    value={filter.key}
-                    onChange={(e) => setFilter(i, { key: e.target.value })}
-                  />
-                  <span className="text-muted-foreground text-sm">=</span>
-                  <Input
-                    className="flex-1"
-                    placeholder={t("gallery.property-value-placeholder")}
-                    value={filter.value}
-                    onChange={(e) => setFilter(i, { value: e.target.value })}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0"
-                    onClick={() => onChange({ propertyFilters: draft.propertyFilters.filter((_, j) => j !== i) })}
-                  >
-                    <XIcon className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                className="self-start"
-                onClick={() => onChange({ propertyFilters: [...draft.propertyFilters, { key: "", value: "" }] })}
-              >
-                <PlusIcon className="w-4 h-4 mr-1" />
-                {t("gallery.add-property-filter")}
-              </Button>
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <Label className="shrink-0">{t("gallery.scope-label")}</Label>
+          <span className="text-sm text-muted-foreground">{t("gallery.match-label")}</span>
+          <Select value={draft.scopeMatch} onValueChange={(v) => onChange({ scopeMatch: v as GalleryMatch })}>
+            <SelectTrigger className="w-28">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("gallery.match-all")}</SelectItem>
+              <SelectItem value="any">{t("gallery.match-any")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {draft.groups.map((group, gi) => (
+          <div key={gi} className="flex flex-col gap-2 rounded-lg border border-border p-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">{t("gallery.group-title", { index: gi + 1 })}</span>
+                <Select value={group.match} onValueChange={(v) => updateGroup(gi, { match: v as GalleryMatch })}>
+                  <SelectTrigger className="w-28">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">{t("gallery.match-all")}</SelectItem>
+                    <SelectItem value="any">{t("gallery.match-any")}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {draft.groups.length > 1 && (
+                <Button variant="ghost" size="icon" onClick={() => removeGroup(gi)}>
+                  <Trash2Icon className="w-4 h-4" />
+                </Button>
+              )}
             </div>
-          )}
-        </RadioGroup>
+            {group.rules.map((rule, ri) => renderRule(rule, gi, ri))}
+            <Button variant="outline" size="sm" className="self-start" onClick={() => addRule(gi)}>
+              <PlusIcon className="w-4 h-4 mr-1" />
+              {t("gallery.add-rule")}
+            </Button>
+          </div>
+        ))}
+        <Button variant="outline" size="sm" className="self-start" onClick={addGroup}>
+          <PlusIcon className="w-4 h-4 mr-1" />
+          {t("gallery.add-group")}
+        </Button>
       </div>
 
       <div className="flex flex-col gap-1.5">
