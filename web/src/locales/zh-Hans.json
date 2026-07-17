@@ -547,6 +547,7 @@
       "search-mode-mixed": "混合（关键词 + 语义）",
       "search-mode-keyword": "仅关键词",
       "search-mode-semantic": "仅语义",
+      "search-mode-like": "仅子串匹配（LIKE）",
       "search-max-docs": "最大结果数",
       "search-max-docs-description": "一次搜索返回的最大文档数。",
       "search-rebuild": "重建索引",

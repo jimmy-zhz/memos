@@ -30,6 +30,9 @@ const (
 	SearchMode_SEARCH_MODE_MIXED       SearchMode = 1
 	SearchMode_SEARCH_MODE_KEYWORD     SearchMode = 2
 	SearchMode_SEARCH_MODE_SEMANTIC    SearchMode = 3
+	// Plain substring (SQL LIKE) retrieval over raw memo title/content, bypassing
+	// the search index entirely.
+	SearchMode_SEARCH_MODE_LIKE SearchMode = 4
 )
 
 // Enum value maps for SearchMode.
@@ -39,12 +42,14 @@ var (
 		1: "SEARCH_MODE_MIXED",
 		2: "SEARCH_MODE_KEYWORD",
 		3: "SEARCH_MODE_SEMANTIC",
+		4: "SEARCH_MODE_LIKE",
 	}
 	SearchMode_value = map[string]int32{
 		"SEARCH_MODE_UNSPECIFIED": 0,
 		"SEARCH_MODE_MIXED":       1,
 		"SEARCH_MODE_KEYWORD":     2,
 		"SEARCH_MODE_SEMANTIC":    3,
+		"SEARCH_MODE_LIKE":        4,
 	}
 )
 
@@ -588,13 +593,14 @@ const file_api_v1_rag_service_proto_rawDesc = "" +
 	"processing\x12\x16\n" +
 	"\x06failed\x18\x03 \x01(\x05R\x06failed\x12\x12\n" +
 	"\x04done\x18\x04 \x01(\x05R\x04done\x121\n" +
-	"\x14embedding_configured\x18\x05 \x01(\bR\x13embeddingConfigured*s\n" +
+	"\x14embedding_configured\x18\x05 \x01(\bR\x13embeddingConfigured*\x89\x01\n" +
 	"\n" +
 	"SearchMode\x12\x1b\n" +
 	"\x17SEARCH_MODE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11SEARCH_MODE_MIXED\x10\x01\x12\x17\n" +
 	"\x13SEARCH_MODE_KEYWORD\x10\x02\x12\x18\n" +
-	"\x14SEARCH_MODE_SEMANTIC\x10\x032\xea\x02\n" +
+	"\x14SEARCH_MODE_SEMANTIC\x10\x03\x12\x14\n" +
+	"\x10SEARCH_MODE_LIKE\x10\x042\xea\x02\n" +
 	"\n" +
 	"RagService\x12b\n" +
 	"\x06Search\x12\x1b.memos.api.v1.SearchRequest\x1a\x1c.memos.api.v1.SearchResponse\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/api/v1/rag:search\x12z\n" +

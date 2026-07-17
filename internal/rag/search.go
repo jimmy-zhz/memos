@@ -23,23 +23,25 @@ const (
 	ModeKeyword
 	// ModeSemantic uses vector (embedding) retrieval only.
 	ModeSemantic
+	// ModeLike uses plain substring (SQL LIKE) retrieval over raw memo title/content,
+	// bypassing the chunk/FTS/vector index entirely. Covers every doc type immediately.
+	ModeLike
 )
 
 const (
 	// rrfK is the RRF constant; larger values flatten rank influence.
 	rrfK = 60
-	// candidateLimit caps how many chunks each retrieval path contributes.
+	// candidateLimit caps how many documents each retrieval path contributes.
 	candidateLimit = 50
-	// minTrigramRunes is the shortest query FTS5's trigram tokenizer accepts.
-	minTrigramRunes = 3
 	// snippetRunes is the target snippet length.
 	snippetRunes = 200
 	// semanticMinSimilarity is the cosine floor below which a purely semantic
 	// (no keyword match) hit is treated as noise and dropped. FTS/substring matches
 	// are always kept regardless of this floor.
-	semanticMinSimilarity = 0.30
+	semanticMinSimilarity = 0.22
 	// relativeScoreCutoff drops long-tail hits whose fused score falls below this
-	// fraction of the top hit's score. The top hit is always kept.
+	// fraction of the top hit's score. The top hit is always kept. Only purely
+	// semantic hits are subject to this cutoff; keyword matches are never trimmed.
 	relativeScoreCutoff = 0.25
 )
 
@@ -83,6 +85,16 @@ func Search(ctx context.Context, s *store.Store, params SearchParams) (*Result, 
 		limit = 20
 	}
 
+	// LIKE mode bypasses the search index entirely: a plain substring scan over raw
+	// memo title/content. It needs no embedding and covers every document type.
+	if params.Mode == ModeLike {
+		hits, err := likeSearch(ctx, s, query, params.MemoIDs, limit)
+		if err != nil {
+			return nil, err
+		}
+		return &Result{Hits: hits, EffectiveMode: ModeLike}, nil
+	}
+
 	embedding, err := resolveEmbedding(ctx, s)
 	if err != nil {
 		return nil, err
@@ -96,9 +108,8 @@ func Search(ctx context.Context, s *store.Store, params SearchParams) (*Result, 
 
 	var ftsResults []*store.ChunkFTSResult
 	runFTS := func() error {
-		if utf8.RuneCountInString(query) < minTrigramRunes {
-			return nil
-		}
+		// The store tokenizes the query and handles short (sub-trigram) terms via a
+		// LIKE fallback, so no minimum-length guard is needed here.
 		results, ftsErr := s.SearchMemoChunksFTS(ctx, &store.ChunkFTSQuery{
 			Query:   query,
 			MemoIDs: params.MemoIDs,
@@ -165,30 +176,80 @@ func vectorSearch(ctx context.Context, s *store.Store, embedding EmbeddingResolu
 		return nil, err
 	}
 
-	scored := make([]scoredChunk, 0, len(chunks))
+	// Collapse to the best-scoring chunk per memo so a single long document with many
+	// chunks can't monopolize the candidate pool; candidateLimit then bounds distinct
+	// documents rather than chunks.
+	bestByMemo := make(map[int32]scoredChunk, len(chunks))
 	for _, c := range chunks {
 		// Only compare against chunks embedded with the active model/dim.
 		if len(c.Embedding) != len(queryVec) {
 			continue
 		}
-		scored = append(scored, scoredChunk{
+		sim := cosine(queryVec, c.Embedding)
+		if existing, ok := bestByMemo[c.MemoID]; ok && existing.Similarity >= sim {
+			continue
+		}
+		bestByMemo[c.MemoID] = scoredChunk{
 			ChunkID:     c.ID,
 			MemoID:      c.MemoID,
 			WorkspaceID: c.WorkspaceID,
 			FolderPath:  c.FolderPath,
 			Content:     c.Content,
-			Similarity:  cosine(queryVec, c.Embedding),
-		})
+			Similarity:  sim,
+		}
 	}
-	sort.Slice(scored, func(i, j int) bool { return scored[i].Similarity > scored[j].Similarity })
+	scored := make([]scoredChunk, 0, len(bestByMemo))
+	for _, c := range bestByMemo {
+		scored = append(scored, c)
+	}
+	sort.Slice(scored, func(i, j int) bool {
+		if scored[i].Similarity == scored[j].Similarity {
+			return scored[i].MemoID < scored[j].MemoID
+		}
+		return scored[i].Similarity > scored[j].Similarity
+	})
 	if len(scored) > candidateLimit {
 		scored = scored[:candidateLimit]
 	}
 	return scored, nil
 }
 
-// fuseAndDedup merges the two retrieval paths with Reciprocal Rank Fusion, then
-// collapses chunks to their best-scoring document.
+// likeSearch runs a plain substring (SQL LIKE) query over raw memo title/content
+// and builds document-level hits. Title matches are surfaced even when the term
+// does not appear in the body, and non-markdown documents are covered too.
+func likeSearch(ctx context.Context, s *store.Store, query string, memoIDs []int32, limit int) ([]Hit, error) {
+	results, err := s.SearchMemosLike(ctx, &store.MemoLikeQuery{
+		Query:   query,
+		MemoIDs: memoIDs,
+		Limit:   limit,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "like search failed")
+	}
+	highlights := []string{query}
+	hits := make([]Hit, 0, len(results))
+	for _, r := range results {
+		// Prefer a body snippet around the match; fall back to the title when the
+		// term only appears there.
+		snippetSource := r.Content
+		if !strings.Contains(strings.ToLower(r.Content), strings.ToLower(query)) {
+			snippetSource = r.Title
+		}
+		hits = append(hits, Hit{
+			MemoID:      r.MemoID,
+			WorkspaceID: r.WorkspaceID,
+			FolderPath:  r.FolderPath,
+			Score:       1,
+			Snippet:     makeSnippet(snippetSource, query),
+			Highlights:  highlights,
+		})
+	}
+	return hits, nil
+}
+
+// fuseAndDedup merges the two retrieval paths with Reciprocal Rank Fusion. Both
+// inputs are already collapsed to one best entry per memo and sorted best-first,
+// so each path contributes a single RRF term per document (no long-document bias).
 func fuseAndDedup(fts []*store.ChunkFTSResult, vec []scoredChunk, query string, limit int) []Hit {
 	type acc struct {
 		memoID         int32
@@ -196,44 +257,43 @@ func fuseAndDedup(fts []*store.ChunkFTSResult, vec []scoredChunk, query string, 
 		folderPath     string
 		score          float64
 		bestContent    string
-		bestRank       float64 // lower is better; used to pick snippet source
-		hasKeyword     bool    // matched via FTS (substring) — always relevant
-		bestSimilarity float64 // best cosine similarity across this memo's chunks
+		hasKeyword     bool    // matched via FTS/substring — always relevant, never trimmed
+		bestSimilarity float64 // best cosine similarity for this memo
 	}
 	byMemo := map[int32]*acc{}
-
-	consider := func(memoID, workspaceID int32, folderPath, content string, rrf, rankKey, similarity float64, isKeyword bool) {
+	get := func(memoID int32) *acc {
 		a := byMemo[memoID]
 		if a == nil {
-			a = &acc{memoID: memoID, workspaceID: workspaceID, folderPath: folderPath, bestRank: rankKey, bestContent: content}
+			a = &acc{memoID: memoID}
 			byMemo[memoID] = a
 		}
-		a.score += rrf
-		if isKeyword {
-			a.hasKeyword = true
-		}
-		if similarity > a.bestSimilarity {
-			a.bestSimilarity = similarity
-		}
-		if rankKey < a.bestRank || a.bestContent == "" {
-			a.bestRank = rankKey
-			a.bestContent = content
-			if workspaceID != 0 {
-				a.workspaceID = workspaceID
-			}
-			if folderPath != "" {
-				a.folderPath = folderPath
-			}
-		}
+		return a
 	}
 
+	// Keyword path. Its content contains the literal match, so it is the preferred
+	// snippet source.
 	for rank, r := range fts {
-		rrf := 1.0 / float64(rrfK+rank+1)
-		consider(r.MemoID, 0, "", r.Content, rrf, float64(rank), 0, true)
+		a := get(r.MemoID)
+		a.score += 1.0 / float64(rrfK+rank+1)
+		a.hasKeyword = true
+		a.bestContent = r.Content
 	}
+	// Semantic path. Only supply content/metadata when the keyword path didn't.
 	for rank, r := range vec {
-		rrf := 1.0 / float64(rrfK+rank+1)
-		consider(r.MemoID, r.WorkspaceID, r.FolderPath, r.Content, rrf, float64(rank), r.Similarity, false)
+		a := get(r.MemoID)
+		a.score += 1.0 / float64(rrfK+rank+1)
+		if r.Similarity > a.bestSimilarity {
+			a.bestSimilarity = r.Similarity
+		}
+		if !a.hasKeyword && a.bestContent == "" {
+			a.bestContent = r.Content
+		}
+		if a.workspaceID == 0 && r.WorkspaceID != 0 {
+			a.workspaceID = r.WorkspaceID
+		}
+		if a.folderPath == "" && r.FolderPath != "" {
+			a.folderPath = r.FolderPath
+		}
 	}
 
 	accs := make([]*acc, 0, len(byMemo))
@@ -252,16 +312,15 @@ func fuseAndDedup(fts []*store.ChunkFTSResult, vec []scoredChunk, query string, 
 		return accs[i].score > accs[j].score
 	})
 
-	// Trim the long tail relative to the top hit so we don't always pad up to `limit`
-	// with weak matches.
+	// Trim the weak semantic long tail relative to the top hit, so results don't pad up
+	// to `limit` with noise. Keyword matches are exempt — a literal match is always shown.
 	if len(accs) > 0 {
 		threshold := accs[0].score * relativeScoreCutoff
-		kept := accs[:1]
-		for _, a := range accs[1:] {
-			if a.score < threshold {
-				break
+		kept := accs[:0]
+		for _, a := range accs {
+			if a.hasKeyword || a.score >= threshold {
+				kept = append(kept, a)
 			}
-			kept = append(kept, a)
 		}
 		accs = kept
 	}

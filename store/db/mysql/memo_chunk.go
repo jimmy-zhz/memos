@@ -29,6 +29,10 @@ func (*DB) SearchMemoChunksFTS(_ context.Context, _ *store.ChunkFTSQuery) ([]*st
 	return nil, errRAGUnsupported
 }
 
+func (*DB) SearchMemosLike(_ context.Context, _ *store.MemoLikeQuery) ([]*store.MemoLikeResult, error) {
+	return nil, errRAGUnsupported
+}
+
 func (*DB) UpsertMemoIndexJob(_ context.Context, _ int32, _ string) error {
 	return errRAGUnsupported
 }

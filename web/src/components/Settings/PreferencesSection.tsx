@@ -183,6 +183,7 @@ const PreferencesSection = () => {
                 <SelectItem value="MIXED">{t("setting.preference.search-mode-mixed")}</SelectItem>
                 <SelectItem value="KEYWORD">{t("setting.preference.search-mode-keyword")}</SelectItem>
                 <SelectItem value="SEMANTIC">{t("setting.preference.search-mode-semantic")}</SelectItem>
+                <SelectItem value="LIKE">{t("setting.preference.search-mode-like")}</SelectItem>
               </SelectContent>
             </Select>
           </SettingListItem>

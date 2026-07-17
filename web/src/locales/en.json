@@ -711,6 +711,7 @@
       "search-mode-mixed": "Mixed (keyword + semantic)",
       "search-mode-keyword": "Keyword only",
       "search-mode-semantic": "Semantic only",
+      "search-mode-like": "Substring (LIKE) only",
       "search-max-docs": "Max results",
       "search-max-docs-description": "Maximum number of documents returned by a search.",
       "search-rebuild": "Rebuild index",

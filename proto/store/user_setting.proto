@@ -52,6 +52,9 @@ enum RagSearchMode {
   KEYWORD = 2;
   // Vector (semantic) retrieval only.
   SEMANTIC = 3;
+  // Plain substring (SQL LIKE) retrieval over raw memo title/content, bypassing
+  // the chunk/FTS/vector index entirely. Covers every document type immediately.
+  LIKE = 4;
 }
 
 message RagSearchUserSetting {

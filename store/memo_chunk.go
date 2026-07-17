@@ -66,6 +66,24 @@ type ChunkFTSResult struct {
 	Rank    float64
 }
 
+// MemoLikeQuery describes a plain substring (SQL LIKE) search over raw memo
+// title/content. It bypasses the chunk/FTS/vector index, so it covers every
+// document type (including non-markdown) with no indexing required.
+type MemoLikeQuery struct {
+	Query   string
+	MemoIDs []int32
+	Limit   int
+}
+
+// MemoLikeResult is a single LIKE hit at document granularity.
+type MemoLikeResult struct {
+	MemoID      int32
+	WorkspaceID int32
+	FolderPath  string
+	Title       string
+	Content     string
+}
+
 // MemoIndexJob is a queued (re)index request for a memo.
 type MemoIndexJob struct {
 	MemoID    int32
@@ -135,6 +153,11 @@ func (s *Store) ListMemoChunks(ctx context.Context, find *FindMemoChunk) ([]*Mem
 // SearchMemoChunksFTS runs a full-text query over chunk content.
 func (s *Store) SearchMemoChunksFTS(ctx context.Context, query *ChunkFTSQuery) ([]*ChunkFTSResult, error) {
 	return s.driver.SearchMemoChunksFTS(ctx, query)
+}
+
+// SearchMemosLike runs a plain substring (LIKE) query over raw memo title/content.
+func (s *Store) SearchMemosLike(ctx context.Context, query *MemoLikeQuery) ([]*MemoLikeResult, error) {
+	return s.driver.SearchMemosLike(ctx, query)
 }
 
 // UpsertMemoIndexJob enqueues (or re-enqueues) a memo for indexing.

@@ -4439,6 +4439,7 @@ components:
                         - SEARCH_MODE_MIXED
                         - SEARCH_MODE_KEYWORD
                         - SEARCH_MODE_SEMANTIC
+                        - SEARCH_MODE_LIKE
                     type: string
                     description: Optional. Retrieval mode. Unspecified falls back to the user's configured mode.
                     format: enum
@@ -4467,6 +4468,7 @@ components:
                         - SEARCH_MODE_MIXED
                         - SEARCH_MODE_KEYWORD
                         - SEARCH_MODE_SEMANTIC
+                        - SEARCH_MODE_LIKE
                     type: string
                     description: The mode actually applied (may be downgraded to KEYWORD when no embedding model is configured).
                     format: enum

@@ -34,6 +34,9 @@ const (
 	RagSearchMode_KEYWORD RagSearchMode = 2
 	// Vector (semantic) retrieval only.
 	RagSearchMode_SEMANTIC RagSearchMode = 3
+	// Plain substring (SQL LIKE) retrieval over raw memo title/content, bypassing
+	// the chunk/FTS/vector index entirely. Covers every document type immediately.
+	RagSearchMode_LIKE RagSearchMode = 4
 )
 
 // Enum value maps for RagSearchMode.
@@ -43,12 +46,14 @@ var (
 		1: "MIXED",
 		2: "KEYWORD",
 		3: "SEMANTIC",
+		4: "LIKE",
 	}
 	RagSearchMode_value = map[string]int32{
 		"RAG_SEARCH_MODE_UNSPECIFIED": 0,
 		"MIXED":                       1,
 		"KEYWORD":                     2,
 		"SEMANTIC":                    3,
+		"LIKE":                        4,
 	}
 )
 
@@ -1295,12 +1300,13 @@ const file_store_user_setting_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x10\n" +
 	"\x03url\x18\x03 \x01(\tR\x03url\x12%\n" +
-	"\x0esigning_secret\x18\x04 \x01(\tR\rsigningSecret*V\n" +
+	"\x0esigning_secret\x18\x04 \x01(\tR\rsigningSecret*`\n" +
 	"\rRagSearchMode\x12\x1f\n" +
 	"\x1bRAG_SEARCH_MODE_UNSPECIFIED\x10\x00\x12\t\n" +
 	"\x05MIXED\x10\x01\x12\v\n" +
 	"\aKEYWORD\x10\x02\x12\f\n" +
-	"\bSEMANTIC\x10\x03B\x9b\x01\n" +
+	"\bSEMANTIC\x10\x03\x12\b\n" +
+	"\x04LIKE\x10\x04B\x9b\x01\n" +
 	"\x0fcom.memos.storeB\x10UserSettingProtoP\x01Z)github.com/usememos/memos/proto/gen/store\xa2\x02\x03MSX\xaa\x02\vMemos.Store\xca\x02\vMemos\\Store\xe2\x02\x17Memos\\Store\\GPBMetadata\xea\x02\fMemos::Storeb\x06proto3"
 
 var (

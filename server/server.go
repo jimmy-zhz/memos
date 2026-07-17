@@ -191,6 +191,11 @@ func (s *Server) startBackgroundRunners(ctx context.Context) {
 		s.backgroundRunnerWG.Add(1)
 		go func() {
 			defer s.backgroundRunnerWG.Done()
+			// One-time bootstrap: enqueue pre-existing memos when the index queue is empty
+			// (e.g. documents that existed before RAG search was installed).
+			if err := rag.Backfill(ragContext, s.Store); err != nil {
+				slog.Error("rag index backfill failed", "err", err)
+			}
 			ragWorker.Run(ragContext)
 			slog.Info("rag index worker stopped")
 		}()

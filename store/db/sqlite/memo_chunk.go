@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/usememos/memos/store"
 )
@@ -140,12 +141,40 @@ func (d *DB) ListMemoChunks(ctx context.Context, find *store.FindMemoChunk) ([]*
 	return list, nil
 }
 
+// minTrigramRunes is the shortest term the FTS5 trigram tokenizer can match.
+// Shorter terms (e.g. 2-character CJK words) are handled via a LIKE fallback so
+// they still contribute keyword recall.
+const minTrigramRunes = 3
+
 func (d *DB) SearchMemoChunksFTS(ctx context.Context, query *store.ChunkFTSQuery) ([]*store.ChunkFTSResult, error) {
-	// Wrap the raw query as a quoted FTS5 string so user input is treated as a
-	// literal phrase (with trigram, effectively a substring match) rather than
-	// FTS5 query syntax.
-	match := `"` + strings.ReplaceAll(query.Query, `"`, `""`) + `"`
-	where, args := []string{"`memo_chunk_fts` MATCH ?"}, []any{match}
+	// Tokenize the query so multiple words are matched independently (AND) rather
+	// than as one literal phrase — otherwise word order or intervening text defeats
+	// the match. Terms long enough for the trigram tokenizer go through FTS5 MATCH;
+	// shorter terms fall back to a literal LIKE so they still narrow results.
+	var ftsTerms, likeTerms []string
+	for _, term := range strings.Fields(query.Query) {
+		if utf8.RuneCountInString(term) >= minTrigramRunes {
+			ftsTerms = append(ftsTerms, term)
+		} else {
+			likeTerms = append(likeTerms, term)
+		}
+	}
+	if len(ftsTerms) == 0 && len(likeTerms) == 0 {
+		return []*store.ChunkFTSResult{}, nil
+	}
+
+	where, args := []string{}, []any{}
+	if len(ftsTerms) > 0 {
+		// Each term is quoted so it is treated as a literal substring, then ANDed.
+		quoted := make([]string, 0, len(ftsTerms))
+		for _, term := range ftsTerms {
+			quoted = append(quoted, `"`+strings.ReplaceAll(term, `"`, `""`)+`"`)
+		}
+		where, args = append(where, "`memo_chunk_fts` MATCH ?"), append(args, strings.Join(quoted, " AND "))
+	}
+	for _, term := range likeTerms {
+		where, args = append(where, "`c`.`content` LIKE ? ESCAPE '\\'"), append(args, "%"+escapeLike(term)+"%")
+	}
 	if query.WorkspaceID != nil {
 		where, args = append(where, "`c`.`workspace_id` = ?"), append(args, *query.WorkspaceID)
 	}
@@ -161,9 +190,79 @@ func (d *DB) SearchMemoChunksFTS(ctx context.Context, query *store.ChunkFTSQuery
 		where = append(where, "`c`.`memo_id` IN ("+strings.Join(placeholders, ",")+")")
 	}
 
-	sqlStr := "SELECT `c`.`id`, `c`.`memo_id`, `c`.`content`, bm25(`memo_chunk_fts`) AS `rank` " +
-		"FROM `memo_chunk_fts` JOIN `memo_chunk` `c` ON `c`.`id` = `memo_chunk_fts`.`rowid` " +
-		"WHERE " + strings.Join(where, " AND ") + " ORDER BY `rank`"
+	// Ranking differs by path: an FTS MATCH yields bm25 (lower is better); a pure LIKE
+	// query has no relevance signal, so order by recency. bm25() may only be used
+	// directly in the query that owns the MATCH (not inside an aggregate or subquery),
+	// so we rank at chunk granularity here and collapse to the best chunk per memo in
+	// Go below — that way `Limit` bounds the number of distinct documents, not chunks,
+	// and a long document can't crowd others out of the candidate pool.
+	whereClause := strings.Join(where, " AND ")
+	var sqlStr string
+	if len(ftsTerms) > 0 {
+		sqlStr = "SELECT `c`.`id`, `c`.`memo_id`, `c`.`content`, bm25(`memo_chunk_fts`) AS `rank` " +
+			"FROM `memo_chunk_fts` JOIN `memo_chunk` `c` ON `c`.`id` = `memo_chunk_fts`.`rowid` WHERE " + whereClause + " ORDER BY `rank`"
+	} else {
+		sqlStr = "SELECT `c`.`id`, `c`.`memo_id`, `c`.`content`, 0 AS `rank` FROM `memo_chunk` `c` WHERE " + whereClause +
+			" ORDER BY `c`.`updated_ts` DESC"
+	}
+	// Over-fetch chunks relative to the document limit so the per-memo collapse still has
+	// enough distinct documents to fill it, while keeping the scan bounded.
+	if query.Limit > 0 {
+		sqlStr = fmt.Sprintf("%s LIMIT %d", sqlStr, query.Limit*chunkFetchFanout)
+	}
+
+	rows, err := d.db.QueryContext(ctx, sqlStr, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	// Collapse to the first (best-ranked) chunk per memo, preserving order, up to Limit docs.
+	list := []*store.ChunkFTSResult{}
+	seen := map[int32]bool{}
+	for rows.Next() {
+		result := &store.ChunkFTSResult{}
+		if err := rows.Scan(&result.ChunkID, &result.MemoID, &result.Content, &result.Rank); err != nil {
+			return nil, err
+		}
+		if seen[result.MemoID] {
+			continue
+		}
+		seen[result.MemoID] = true
+		list = append(list, result)
+		if query.Limit > 0 && len(list) >= query.Limit {
+			break
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return list, nil
+}
+
+// chunkFetchFanout is how many chunk rows to fetch per requested document, so the
+// per-memo collapse has enough distinct documents to satisfy the limit.
+const chunkFetchFanout = 10
+
+func (d *DB) SearchMemosLike(ctx context.Context, query *store.MemoLikeQuery) ([]*store.MemoLikeResult, error) {
+	// Escape LIKE wildcards in user input so they are matched literally.
+	pattern := "%" + escapeLike(query.Query) + "%"
+	where := []string{"(`title` LIKE ? ESCAPE '\\' OR `content` LIKE ? ESCAPE '\\')"}
+	args := []any{pattern, pattern}
+	if query.MemoIDs != nil {
+		if len(query.MemoIDs) == 0 {
+			return []*store.MemoLikeResult{}, nil
+		}
+		placeholders := make([]string, 0, len(query.MemoIDs))
+		for _, id := range query.MemoIDs {
+			placeholders = append(placeholders, "?")
+			args = append(args, id)
+		}
+		where = append(where, "`id` IN ("+strings.Join(placeholders, ",")+")")
+	}
+
+	sqlStr := "SELECT `id`, `workspace_id`, `folder_path`, `title`, `content` FROM `memo` WHERE " +
+		strings.Join(where, " AND ") + " ORDER BY `updated_ts` DESC"
 	if query.Limit > 0 {
 		sqlStr = fmt.Sprintf("%s LIMIT %d", sqlStr, query.Limit)
 	}
@@ -174,10 +273,10 @@ func (d *DB) SearchMemoChunksFTS(ctx context.Context, query *store.ChunkFTSQuery
 	}
 	defer rows.Close()
 
-	list := []*store.ChunkFTSResult{}
+	list := []*store.MemoLikeResult{}
 	for rows.Next() {
-		result := &store.ChunkFTSResult{}
-		if err := rows.Scan(&result.ChunkID, &result.MemoID, &result.Content, &result.Rank); err != nil {
+		result := &store.MemoLikeResult{}
+		if err := rows.Scan(&result.MemoID, &result.WorkspaceID, &result.FolderPath, &result.Title, &result.Content); err != nil {
 			return nil, err
 		}
 		list = append(list, result)

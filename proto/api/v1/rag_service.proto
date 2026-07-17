@@ -38,6 +38,9 @@ enum SearchMode {
   SEARCH_MODE_MIXED = 1;
   SEARCH_MODE_KEYWORD = 2;
   SEARCH_MODE_SEMANTIC = 3;
+  // Plain substring (SQL LIKE) retrieval over raw memo title/content, bypassing
+  // the search index entirely.
+  SEARCH_MODE_LIKE = 4;
 }
 
 message SearchRequest {

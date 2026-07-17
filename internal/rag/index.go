@@ -2,6 +2,7 @@ package rag
 
 import (
 	"context"
+	"strings"
 
 	"github.com/pkg/errors"
 
@@ -39,7 +40,15 @@ func indexMemo(ctx context.Context, s *store.Store, memoID int32, embedding Embe
 		return s.DeleteMemoChunks(ctx, memoID)
 	}
 
-	fragments := ChunkMarkdown(memo.Content)
+	// Index the title alongside the body: in a knowledge-base a lot of meaning lives
+	// in the document name, and a query term may only appear there. Prepending it as a
+	// leading heading keeps it in the first chunk (and its embedding) without a schema change.
+	content := memo.Content
+	if title := strings.TrimSpace(memo.Title); title != "" {
+		content = "# " + title + "\n\n" + content
+	}
+
+	fragments := ChunkMarkdown(content)
 	if len(fragments) == 0 {
 		return s.ReplaceMemoChunks(ctx, memoID, nil)
 	}

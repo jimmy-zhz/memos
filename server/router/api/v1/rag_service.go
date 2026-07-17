@@ -283,6 +283,8 @@ func ragModeFromProto(mode v1pb.SearchMode) rag.Mode {
 		return rag.ModeKeyword
 	case v1pb.SearchMode_SEARCH_MODE_SEMANTIC:
 		return rag.ModeSemantic
+	case v1pb.SearchMode_SEARCH_MODE_LIKE:
+		return rag.ModeLike
 	default:
 		return rag.ModeMixed
 	}
@@ -294,6 +296,8 @@ func ragModeFromStore(mode storepb.RagSearchMode) rag.Mode {
 		return rag.ModeKeyword
 	case storepb.RagSearchMode_SEMANTIC:
 		return rag.ModeSemantic
+	case storepb.RagSearchMode_LIKE:
+		return rag.ModeLike
 	default:
 		return rag.ModeMixed
 	}
@@ -305,6 +309,8 @@ func ragModeToProto(mode rag.Mode) v1pb.SearchMode {
 		return v1pb.SearchMode_SEARCH_MODE_KEYWORD
 	case rag.ModeSemantic:
 		return v1pb.SearchMode_SEARCH_MODE_SEMANTIC
+	case rag.ModeLike:
+		return v1pb.SearchMode_SEARCH_MODE_LIKE
 	default:
 		return v1pb.SearchMode_SEARCH_MODE_MIXED
 	}

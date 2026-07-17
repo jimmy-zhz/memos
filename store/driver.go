@@ -45,6 +45,7 @@ type Driver interface {
 	DeleteMemoChunks(ctx context.Context, memoID int32) error
 	ListMemoChunks(ctx context.Context, find *FindMemoChunk) ([]*MemoChunk, error)
 	SearchMemoChunksFTS(ctx context.Context, query *ChunkFTSQuery) ([]*ChunkFTSResult, error)
+	SearchMemosLike(ctx context.Context, query *MemoLikeQuery) ([]*MemoLikeResult, error)
 	UpsertMemoIndexJob(ctx context.Context, memoID int32, reason string) error
 	ListMemoIndexJobs(ctx context.Context, find *FindMemoIndexJob) ([]*MemoIndexJob, error)
 	UpdateMemoIndexJob(ctx context.Context, update *UpdateMemoIndexJob) error
