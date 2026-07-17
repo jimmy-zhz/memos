@@ -45,6 +45,7 @@ function toTask(rawItem: unknown, srcIndex: number): KanbanTask | undefined {
   return {
     id: toStringOrUndefined(raw.id),
     title,
+    link: toStringOrUndefined(raw.link),
     status: toStringOrUndefined(raw.status),
     priority: toPriority(raw.priority),
     done: raw.done === true || raw.done === "true",

@@ -1,3 +1,4 @@
+import { Link } from "@/components/MemoContent/markdown/Link";
 import { useTranslate } from "@/utils/i18n";
 import type { KanbanTask } from "./types";
 
@@ -30,7 +31,7 @@ export const KanbanTaskDetail = ({ task }: KanbanTaskDetailProps) => {
 
   return (
     <div className="flex flex-col">
-      <div className="mb-2 text-base font-semibold">{task.title}</div>
+      <div className="mb-2 text-base font-semibold">{task.link ? <Link href={task.link}>{task.title}</Link> : task.title}</div>
       {task.status && <Row label={t("markdown.kanban-block.field.status")} value={task.status} />}
       {task.priority && <Row label={t("markdown.kanban-block.field.priority")} value={task.priority} />}
       <Row label={t("markdown.kanban-block.field.done")} value={task.done ? "✔" : "—"} />

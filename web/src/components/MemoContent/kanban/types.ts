@@ -4,7 +4,7 @@
 // beyond the built-in fields below is preserved as a custom field and shown in
 // the task detail panel.
 
-export const BUILT_IN_TASK_FIELDS = ["id", "title", "status", "priority", "done", "order", "tags", "due", "createAt", "updateAt"] as const;
+export const BUILT_IN_TASK_FIELDS = ["id", "title", "link", "status", "priority", "done", "order", "tags", "due", "createAt", "updateAt"] as const;
 
 // Five fixed priority levels, ordered most → least urgent.
 export const PRIORITY_LEVELS = ["highest", "high", "medium", "low", "lowest"] as const;
@@ -13,6 +13,9 @@ export type Priority = (typeof PRIORITY_LEVELS)[number];
 export interface KanbanTask {
   id?: string;
   title: string;
+  // Optional href the card title links to. May be an in-workspace relative doc
+  // path (e.g. `milestones/M-008.md`) or an absolute URL (`https://…`).
+  link?: string;
   status?: string;
   priority?: Priority;
   done?: boolean;

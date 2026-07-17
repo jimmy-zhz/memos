@@ -236,6 +236,8 @@
       "select-task": "选择一个任务以查看详情",
       "add-task": "添加任务",
       "add-placeholder": "任务标题，回车保存",
+      "show-more": "还有 {{count}} 项",
+      "show-less": "收起",
       "field": {
         "status": "状态",
         "priority": "优先级",

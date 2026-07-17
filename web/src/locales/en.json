@@ -287,6 +287,8 @@
       "select-task": "Select a task to see its details",
       "add-task": "Add task",
       "add-placeholder": "Task title, Enter to save",
+      "show-more": "{{count}} more",
+      "show-less": "Show less",
       "field": {
         "status": "Status",
         "priority": "Priority",

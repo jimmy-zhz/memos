@@ -1,4 +1,5 @@
 import { CalendarIcon, CheckIcon } from "lucide-react";
+import { Link } from "@/components/MemoContent/markdown/Link";
 import { cn } from "@/lib/utils";
 import type { DragPayload } from "./KanbanColumn";
 import type { KanbanTask, Priority } from "./types";
@@ -66,7 +67,26 @@ export const KanbanCard = ({ task, selected, interactive, onSelect, onToggleDone
         >
           {task.done && <CheckIcon className="h-2.5 w-2.5" strokeWidth={3} />}
         </button>
-        <span className={cn("text-sm font-medium leading-snug", task.done && "line-through text-muted-foreground")}>{task.title}</span>
+        {task.link ? (
+          // Clicking the title navigates (in-workspace doc or external URL) rather than selecting the
+          // card; stopPropagation keeps the card's own onClick/keydown selection from also firing.
+          <span className="min-w-0 flex-1" onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
+            <Link
+              href={task.link}
+              title={task.title}
+              className={cn("block truncate text-sm font-medium leading-snug", task.done && "line-through text-muted-foreground")}
+            >
+              {task.title}
+            </Link>
+          </span>
+        ) : (
+          <span
+            title={task.title}
+            className={cn("min-w-0 flex-1 truncate text-sm font-medium leading-snug", task.done && "line-through text-muted-foreground")}
+          >
+            {task.title}
+          </span>
+        )}
       </div>
 
       {(task.priority || task.due || task.tags.length > 0) && (

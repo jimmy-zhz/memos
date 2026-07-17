@@ -1,4 +1,4 @@
-import { PlusIcon } from "lucide-react";
+import { ChevronDownIcon, ChevronUpIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
@@ -39,6 +39,13 @@ export const KanbanColumn = ({
   const [dragOver, setDragOver] = useState(false);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
+  const [expanded, setExpanded] = useState(false);
+
+  // Cap a column at COLLAPSED_LIMIT cards, hiding the rest behind a "more" toggle
+  // so a long column doesn't stretch the board.
+  const COLLAPSED_LIMIT = 6;
+  const overflow = tasks.length - COLLAPSED_LIMIT;
+  const visibleTasks = expanded ? tasks : tasks.slice(0, COLLAPSED_LIMIT);
 
   const handleDrop = (event: React.DragEvent) => {
     event.preventDefault();
@@ -79,7 +86,7 @@ export const KanbanColumn = ({
       </div>
 
       <div className="flex flex-col gap-2">
-        {tasks.map((task, index) => (
+        {visibleTasks.map((task, index) => (
           <KanbanCard
             key={task.id ?? `${task.title}-${index}`}
             task={task}
@@ -90,6 +97,26 @@ export const KanbanColumn = ({
           />
         ))}
       </div>
+
+      {overflow > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded((prev) => !prev)}
+          className="mt-2 flex items-center justify-center gap-1 rounded-md px-1.5 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground"
+        >
+          {expanded ? (
+            <>
+              <ChevronUpIcon className="h-3.5 w-3.5" />
+              {t("markdown.kanban-block.show-less")}
+            </>
+          ) : (
+            <>
+              <ChevronDownIcon className="h-3.5 w-3.5" />
+              {t("markdown.kanban-block.show-more", { count: overflow })}
+            </>
+          )}
+        </button>
+      )}
 
       {canEditColumn &&
         (adding ? (

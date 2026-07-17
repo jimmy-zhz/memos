@@ -69,6 +69,7 @@ Each entry under `items` describes one card. All fields are optional **except
 |-------|------|----------|
 | `id` | string | Stable identity for write-back. Auto-generated when missing on first edit (see §6.5). |
 | `title` | string | Card heading. **Required.** |
+| `link` | string | Makes the title a clickable link. Accepts an in-workspace relative doc path (`milestones/M-008_SWM-EOI.md`, resolved the same way as a markdown link) or an absolute URL (`https://…`, opens in a new tab). Clicking the title navigates instead of selecting the card. |
 | `status` | string | Which column the card sits in (when `groupBy` is `status`). |
 | `priority` | enum | Colored badge. One of `highest`, `high`, `medium`, `low`, `lowest`. |
 | `done` | boolean | Completion. A done card is greyed out with a struck-through title and a checked box. |
