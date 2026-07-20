@@ -8,7 +8,7 @@ import { useTranslate } from "@/utils/i18n";
 import { type PolishPreset, polishService } from "../services/polishService";
 import type { EditorController } from "../types/editorController";
 
-const PRESETS: PolishPreset[] = ["polish", "concise", "expand", "grammar", "tone"];
+const PRESETS: PolishPreset[] = ["polish", "concise", "expand", "grammar", "tone", "translate"];
 
 interface Anchor {
   left: number;
@@ -18,8 +18,12 @@ interface Anchor {
 /**
  * Floating "AI" affordance that appears above a non-empty editor selection.
  * Clicking it opens a popover with rewrite presets and a custom-instruction
- * box; the result replaces the selection directly, so the editor's own
- * Cmd/Ctrl-Z reverts it (the intentionally lightweight replace-and-undo flow).
+ * box. Clicking a preset only selects/deselects it (no request fires yet),
+ * so the instruction box can still add detail a preset alone can't express
+ * (e.g. target language for "translate", a style note for "tone") — or the
+ * box can be used alone with no preset selected. "Rewrite" sends the request;
+ * the result replaces the selection directly, so the editor's own Cmd/Ctrl-Z
+ * reverts it (the intentionally lightweight replace-and-undo flow).
  */
 export function AISelectionToolbar({ editorRef }: { editorRef: React.RefObject<EditorController | null> }) {
   const t = useTranslate();
@@ -27,6 +31,7 @@ export function AISelectionToolbar({ editorRef }: { editorRef: React.RefObject<E
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [custom, setCustom] = useState("");
+  const [selectedPreset, setSelectedPreset] = useState<PolishPreset | null>(null);
   // Snapshot of the selection when the popover opened, so an async rewrite acts
   // on the intended span even if focus/selection shift while the request runs.
   const targetRef = useRef<string | null>(null);
@@ -54,16 +59,19 @@ export function AISelectionToolbar({ editorRef }: { editorRef: React.RefObject<E
 
   if (!anchor) return null;
 
-  const runRewrite = async (opts: { preset?: PolishPreset; instruction?: string }) => {
+  const runRewrite = async () => {
     const controller = editorRef.current;
     const text = targetRef.current ?? controller?.getSelection().text ?? "";
     if (!controller || text.trim() === "") return;
+    const instruction = custom.trim();
+    if (!selectedPreset && instruction === "") return;
     setLoading(true);
     try {
-      const result = await polishService.polish(text, opts);
+      const result = await polishService.polish(text, { preset: selectedPreset ?? undefined, instruction: instruction || undefined });
       controller.replaceSelection(result);
       setOpen(false);
       setCustom("");
+      setSelectedPreset(null);
       setAnchor(null);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : t("editor.polish.error"));
@@ -79,6 +87,10 @@ export function AISelectionToolbar({ editorRef }: { editorRef: React.RefObject<E
         onOpenChange={(next) => {
           if (next) targetRef.current = editorRef.current?.getSelection().text ?? null;
           setOpen(next);
+          if (!next) {
+            setSelectedPreset(null);
+            setCustom("");
+          }
         }}
       >
         <PopoverTrigger asChild>
@@ -93,10 +105,10 @@ export function AISelectionToolbar({ editorRef }: { editorRef: React.RefObject<E
               <Button
                 key={preset}
                 size="sm"
-                variant="ghost"
+                variant={selectedPreset === preset ? "secondary" : "ghost"}
                 disabled={loading}
                 className="h-8 justify-start"
-                onClick={() => runRewrite({ preset })}
+                onClick={() => setSelectedPreset((current) => (current === preset ? null : preset))}
               >
                 {t(`editor.polish.preset.${preset}`)}
               </Button>
@@ -105,23 +117,24 @@ export function AISelectionToolbar({ editorRef }: { editorRef: React.RefObject<E
               <Textarea
                 value={custom}
                 onChange={(e) => setCustom(e.target.value)}
-                placeholder={t("editor.polish.custom-placeholder")}
+                placeholder={
+                  selectedPreset === "translate"
+                    ? t("editor.polish.custom-placeholder-translate")
+                    : selectedPreset === "tone"
+                      ? t("editor.polish.custom-placeholder-tone")
+                      : t("editor.polish.custom-placeholder")
+                }
                 rows={2}
                 disabled={loading}
                 className="resize-none text-sm"
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && custom.trim()) {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && (selectedPreset || custom.trim())) {
                     e.preventDefault();
-                    void runRewrite({ instruction: custom.trim() });
+                    void runRewrite();
                   }
                 }}
               />
-              <Button
-                size="sm"
-                disabled={loading || custom.trim() === ""}
-                className="h-8"
-                onClick={() => runRewrite({ instruction: custom.trim() })}
-              >
+              <Button size="sm" disabled={loading || (!selectedPreset && custom.trim() === "")} className="h-8" onClick={() => runRewrite()}>
                 {loading ? <LoaderCircleIcon className="size-3.5 animate-spin" /> : null}
                 {loading ? t("editor.polish.loading") : t("editor.polish.run")}
               </Button>

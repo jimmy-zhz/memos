@@ -182,6 +182,8 @@
       "trigger": "AI",
       "title": "Rewrite with AI",
       "custom-placeholder": "Describe how to rewrite it…",
+      "custom-placeholder-translate": "Target language (e.g. Japanese)…",
+      "custom-placeholder-tone": "Optional: more academic, more casual…",
       "run": "Rewrite",
       "loading": "Rewriting…",
       "error": "Rewrite failed",
@@ -190,7 +192,8 @@
         "concise": "Make concise",
         "expand": "Expand",
         "grammar": "Fix grammar",
-        "tone": "Adjust tone"
+        "tone": "Adjust tone",
+        "translate": "Translate"
       }
     },
     "format": {

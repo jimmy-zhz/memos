@@ -3,7 +3,7 @@ import { aiServiceClient } from "@/connect";
 import { PolishTextRequestSchema } from "@/types/proto/api/v1/ai_service_pb";
 
 /** Named preset actions. Keep in sync with the backend's polishPresetInstructions. */
-export type PolishPreset = "polish" | "concise" | "expand" | "grammar" | "tone";
+export type PolishPreset = "polish" | "concise" | "expand" | "grammar" | "tone" | "translate";
 
 export const polishService = {
   /**

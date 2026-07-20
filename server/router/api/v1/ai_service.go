@@ -238,11 +238,12 @@ const maxPolishTextSizeBytes = 128 * 1024
 // polishPresetInstructions maps a named preset to the rewrite goal appended to
 // the shared polishing instructions. Keep the keys in sync with the frontend.
 var polishPresetInstructions = map[string]string{
-	"polish":  "Polish the text: improve clarity, flow, and word choice while keeping the meaning.",
-	"concise": "Make the text more concise: remove redundancy and tighten the wording without dropping key information.",
-	"expand":  "Expand the text: add detail and elaboration while staying faithful to the original intent.",
-	"grammar": "Correct grammar, spelling, and punctuation. Change wording only as needed for correctness.",
-	"tone":    "Adjust the tone to be more natural and appropriate while keeping the meaning.",
+	"polish":    "Polish the text: improve clarity, flow, and word choice while keeping the meaning.",
+	"concise":   "Make the text more concise: remove redundancy and tighten the wording without dropping key information.",
+	"expand":    "Expand the text: add detail and elaboration while staying faithful to the original intent.",
+	"grammar":   "Correct grammar, spelling, and punctuation. Change wording only as needed for correctness.",
+	"tone":      "Adjust the tone to be more natural and appropriate while keeping the meaning.",
+	"translate": "Translate the text. The target language must be given in the additional instruction below; if none is given, translate to English.",
 }
 
 // PolishText rewrites a selected span of text following a preset or custom
@@ -264,19 +265,25 @@ func (s *APIV1Service) PolishText(ctx context.Context, request *v1pb.PolishTextR
 		return nil, status.Errorf(codes.InvalidArgument, "text is too large; maximum size is 128 KiB")
 	}
 
-	// The custom instruction wins; otherwise fall back to the named preset,
-	// defaulting to a general polish.
-	goal := strings.TrimSpace(request.GetInstruction())
-	if goal == "" {
-		preset := strings.TrimSpace(request.GetPreset())
-		if preset == "" {
-			preset = "polish"
-		}
+	// A preset sets the rewrite goal; a custom instruction, if also given,
+	// supplements it (e.g. the target language for "translate", or a style note
+	// for "tone"). With no preset, the custom instruction is the goal on its own.
+	instruction := strings.TrimSpace(request.GetInstruction())
+	preset := strings.TrimSpace(request.GetPreset())
+	var goal string
+	if preset != "" {
 		presetGoal, ok := polishPresetInstructions[preset]
 		if !ok {
 			return nil, status.Errorf(codes.InvalidArgument, "unknown preset %q", preset)
 		}
 		goal = presetGoal
+		if instruction != "" {
+			goal += " Additional instruction from the user: " + instruction
+		}
+	} else if instruction != "" {
+		goal = instruction
+	} else {
+		goal = polishPresetInstructions["polish"]
 	}
 
 	aiSetting, err := s.Store.GetInstanceAISetting(ctx)
