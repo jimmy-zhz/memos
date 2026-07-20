@@ -32,6 +32,7 @@ export const CommentCard = forwardRef<HTMLDivElement, Props>(({ memo, selected, 
           autoFocus
           memo={memo}
           parentMemoName={memo.parent || undefined}
+          toolbarVariant="comment"
           onConfirm={() => {
             setEditing(false);
             onEdited?.();

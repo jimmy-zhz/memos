@@ -175,7 +175,8 @@
       "warning": "warning",
       "danger": "danger",
       "example": "example",
-      "quote": "quote"
+      "quote": "quote",
+      "chat": "聊天气泡"
     },
     "view": {
       "trigger": "视图",

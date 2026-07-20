@@ -27,6 +27,11 @@ export interface MemoEditorProps {
   expand?: boolean;
   /** Fired with the current markdown on every content change (e.g. to keep an outline sidebar live while editing). */
   onContentChange?: (content: string) => void;
+  /**
+   * Which bottom toolbar to render. `"comment"` swaps in the narrow variant used by
+   * the comment sidebars (icon-only visibility, small Save/Cancel).
+   */
+  toolbarVariant?: "default" | "comment";
 }
 
 export interface EditorContentProps {
@@ -92,4 +97,6 @@ export interface VisibilitySelectorProps {
   value: Visibility;
   onChange: (visibility: Visibility) => void;
   onOpenChange?: (open: boolean) => void;
+  /** Render only the visibility icon + chevron (tight comment sidebar toolbar). */
+  iconOnly?: boolean;
 }

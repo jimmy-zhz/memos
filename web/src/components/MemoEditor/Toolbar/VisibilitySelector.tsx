@@ -1,12 +1,13 @@
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import VisibilityIcon from "@/components/VisibilityIcon";
+import { cn } from "@/lib/utils";
 import { Visibility } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
 import type { VisibilitySelectorProps } from "../types";
 
 const VisibilitySelector = (props: VisibilitySelectorProps) => {
-  const { value, onChange } = props;
+  const { value, onChange, iconOnly } = props;
   const t = useTranslate();
 
   const visibilityOptions = [
@@ -20,10 +21,16 @@ const VisibilitySelector = (props: VisibilitySelectorProps) => {
   return (
     <DropdownMenu onOpenChange={props.onOpenChange}>
       <DropdownMenuTrigger asChild>
-        <button className="inline-flex items-center h-8 px-2 rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors">
-          <VisibilityIcon visibility={value} className="opacity-60 mr-1.5" />
-          <span>{currentLabel}</span>
-          <ChevronDownIcon className="ml-0.5 w-4 h-4 opacity-60" />
+        <button
+          title={iconOnly ? currentLabel : undefined}
+          className={cn(
+            "inline-flex items-center rounded-md text-sm text-muted-foreground hover:bg-accent transition-colors",
+            iconOnly ? "h-7 px-1" : "h-8 px-2",
+          )}
+        >
+          <VisibilityIcon visibility={value} className={cn("opacity-60", !iconOnly && "mr-1.5")} />
+          {!iconOnly && <span>{currentLabel}</span>}
+          <ChevronDownIcon className={cn("w-4 h-4 opacity-60", !iconOnly && "ml-0.5")} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">

@@ -19,7 +19,7 @@ import { FOCUS_MODE_STYLES, FORMATTING_TOOLBAR_STORAGE_KEY } from "./constants";
 import { useAudioRecorder, useAutoSave, useFocusMode, useKeyboard, useMemoInit } from "./hooks";
 import { errorService, memoService, transcriptionService, validationService } from "./services";
 import { EditorProvider, useEditorContext, useEditorSelector } from "./state";
-import { EditorToolbar, FormattingToolbar } from "./Toolbar";
+import { CommentToolbar, EditorToolbar, FormattingToolbar } from "./Toolbar";
 import type { MemoEditorProps } from "./types";
 import type { LocalFile } from "./types/attachment";
 import type { EditorController } from "./types/editorController";
@@ -58,6 +58,7 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
       onConfirm,
       onCancel,
       expand,
+      toolbarVariant = "default",
     },
     forwardedRef,
   ) => {
@@ -415,16 +416,21 @@ const MemoEditorImpl = forwardRef<EditorController, MemoEditorProps>(
             )}
           >
             <EditorMetadata memoName={memoName} />
-            <EditorToolbar
-              onSave={handleSave}
-              onCancel={handleCancel}
-              memoName={memoName}
-              onAudioRecorderClick={handleAudioRecorderClick}
-              isFormattingToolbarVisible={isFormattingToolbarVisible}
-              onToggleFormattingToolbar={handleToggleFormattingToolbar}
-              onInsertProperties={handleInsertProperties}
-              compact={expand && !isFocusMode}
-            />
+            {(() => {
+              const Toolbar = toolbarVariant === "comment" && !isFocusMode ? CommentToolbar : EditorToolbar;
+              return (
+                <Toolbar
+                  onSave={handleSave}
+                  onCancel={handleCancel}
+                  memoName={memoName}
+                  onAudioRecorderClick={handleAudioRecorderClick}
+                  isFormattingToolbarVisible={isFormattingToolbarVisible}
+                  onToggleFormattingToolbar={handleToggleFormattingToolbar}
+                  onInsertProperties={handleInsertProperties}
+                  compact={expand && !isFocusMode}
+                />
+              );
+            })()}
           </div>
         </div>
       </>

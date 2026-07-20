@@ -13,6 +13,7 @@ import {
   ListIcon,
   type LucideIcon,
   MessageSquareQuoteIcon,
+  MessagesSquareIcon,
   Minimize2Icon,
   MoreHorizontalIcon,
   PencilIcon,
@@ -66,6 +67,8 @@ interface CalloutMenuItem {
   type: string;
   labelKey: Translations;
   icon: LucideIcon;
+  /** Multi-line seed inserted instead of the bare `> [!TYPE] ` marker (chat needs two turns to read as a thread). */
+  snippet?: string;
 }
 
 const CALLOUT_MENU_GROUPS: CalloutMenuItem[][] = [
@@ -88,6 +91,12 @@ const CALLOUT_MENU_GROUPS: CalloutMenuItem[][] = [
   [
     { type: "quote", labelKey: "editor.callout.quote", icon: QuoteIcon },
     { type: "important", labelKey: "editor.callout.important", icon: AlertCircleIcon },
+    {
+      type: "chat",
+      labelKey: "editor.callout.chat",
+      icon: MessagesSquareIcon,
+      snippet: ["> [!CHAT:R] Hi! How's it going?", "> [!CHAT:S] All good — shipping it today."].join("\n"),
+    },
   ],
 ];
 
@@ -271,7 +280,12 @@ export function FormattingToolbar({ controllerRef, onExit, className }: Formatti
             <div key={group[0].type}>
               {groupIndex > 0 && <DropdownMenuSeparator />}
               {group.map((item) => (
-                <DropdownMenuItem key={item.type} onClick={() => controllerRef.current?.insertMarkdown(`> [!${item.type.toUpperCase()}] `)}>
+                <DropdownMenuItem
+                  key={item.type}
+                  onClick={() =>
+                    controllerRef.current?.insertMarkdown(item.snippet ? `\n${item.snippet}\n` : `> [!${item.type.toUpperCase()}] `)
+                  }
+                >
                   <item.icon className="w-4 h-4" />
                   {t(item.labelKey)}
                 </DropdownMenuItem>

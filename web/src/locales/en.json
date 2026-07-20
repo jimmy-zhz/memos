@@ -227,7 +227,8 @@
       "warning": "Warning",
       "danger": "Danger",
       "example": "Example",
-      "quote": "Quote"
+      "quote": "Quote",
+      "chat": "Chat"
     },
     "view": {
       "trigger": "View",

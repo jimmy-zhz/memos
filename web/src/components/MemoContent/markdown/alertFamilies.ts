@@ -34,7 +34,19 @@ export const ALERT_FAMILY_ALIASES: Record<string, string> = {
   missing: "failure",
   bug: "bug",
   aside: "aside",
+  // Chat transcript bubbles — S(end) is the outgoing (blue, right) side,
+  // R(eceive) the incoming (grey, left) one. Bare `chat` defaults to incoming.
+  chat: "chat-recv",
+  "chat:s": "chat-send",
+  "chat-s": "chat-send",
+  "chat:me": "chat-send",
+  "chat:r": "chat-recv",
+  "chat-r": "chat-recv",
+  "chat:you": "chat-recv",
 };
+
+/** The two chat-bubble families: rendered as a bare bubble instead of a card, one blockquote per bubble. */
+export const CHAT_FAMILIES = new Set(["chat-send", "chat-recv"]);
 
 /**
  * Families rendered as a bespoke "special card" (Note/Quote/Important/Summary/
@@ -42,7 +54,17 @@ export const ALERT_FAMILY_ALIASES: Record<string, string> = {
  * `[!TYPE]` resolves to "note", so it also lands here — matching Obsidian,
  * where an unknown callout still gets a real (default) look, never raw text.
  */
-export const SPECIAL_CARD_FAMILIES = new Set(["note", "quote", "important", "summary", "tip", "todo", "attention"]);
+export const SPECIAL_CARD_FAMILIES = new Set([
+  "note",
+  "quote",
+  "important",
+  "summary",
+  "tip",
+  "todo",
+  "attention",
+  "chat-send",
+  "chat-recv",
+]);
 
 /** Resolve a raw `[!TYPE]` string (any case) to its canonical family. Unknown types fall back to "note". */
 export function resolveAlertFamily(rawType: string): string {

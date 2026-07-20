@@ -94,6 +94,7 @@ export const DocCommentSidebar = ({
               placeholder={t("editor.add-your-comment-here")}
               parentMemoName={parentMemoName}
               docAnchor={pendingAnchor}
+              toolbarVariant="comment"
               onConfirm={() => {
                 setShowEditor(false);
                 onChanged?.();

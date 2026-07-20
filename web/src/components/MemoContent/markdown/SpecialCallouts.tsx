@@ -107,6 +107,48 @@ function ModernCalloutPill({ family, rawType, customIcon, title, className, chil
   );
 }
 
+/**
+ * chat:s / chat:r: an iMessage-style speech bubble — outgoing bubbles are blue
+ * and right-aligned, incoming ones grey and left-aligned, each with the curled
+ * tail hooked onto its bottom corner. Not a card: the bubble hugs its text and
+ * consecutive bubbles stack tightly so a `[!CHAT:…]` block reads as a thread.
+ * The `[!CHAT:R(…)]` icon slot carries a sender/timestamp caption, tucked right
+ * under the bubble and aligned to the bubble's own side.
+ */
+// Drawn 14x18 with the straight closing edge pushed *inside* the bubble, so the
+// seam between tail and bubble body is covered even at the corner radius.
+const CHAT_TAIL_PATH = "M14 2 C14 9 11 15 0.5 17.5 C6 17 10 16 14 14 Z";
+
+function ChatBubble({ family, customIcon, className, children }: SpecialCalloutProps) {
+  const sent = family === "chat-send";
+  return (
+    <div className={cn("my-0.5 flex flex-col", sent ? "items-end" : "items-start", className)}>
+      <blockquote
+        className={cn(
+          // Paragraphs keep the global bottom margin, which reads as lopsided padding inside a bubble — drop it on the last one.
+          "relative max-w-[78%] rounded-[18px] px-3.5 py-2 text-[15px] leading-snug not-italic break-words [&_p:last-child]:mb-0",
+          sent ? "bg-[#248BF5] text-white" : "bg-[#E9E9EB] text-[#1c1c1e] dark:bg-[#3B3B3D] dark:text-white",
+        )}
+      >
+        <svg
+          aria-hidden
+          viewBox="0 0 14 18"
+          className={cn(
+            "absolute bottom-0 h-[18px] w-[14px] fill-current",
+            sent ? "right-[-6px] -scale-x-100 text-[#248BF5]" : "left-[-6px] text-[#E9E9EB] dark:text-[#3B3B3D]",
+          )}
+        >
+          <path d={CHAT_TAIL_PATH} />
+        </svg>
+        <div className="relative min-w-0">
+          <NestedMarkdownRenderContext>{children}</NestedMarkdownRenderContext>
+        </div>
+      </blockquote>
+      {customIcon && <span className="mt-px px-1.5 text-[10px] leading-4 text-muted-foreground">{customIcon}</span>}
+    </div>
+  );
+}
+
 const SPECIAL_CARD_COMPONENTS: Record<string, React.ComponentType<SpecialCalloutProps>> = {
   note: NoteCard,
   quote: QuoteBox,
@@ -115,6 +157,8 @@ const SPECIAL_CARD_COMPONENTS: Record<string, React.ComponentType<SpecialCallout
   tip: ModernCalloutPill,
   todo: ModernCalloutPill,
   attention: ModernCalloutPill,
+  "chat-send": ChatBubble,
+  "chat-recv": ChatBubble,
 };
 
 /** Renders the bespoke card for a family in SPECIAL_CARD_FAMILIES; returns null if the family has no special card. */

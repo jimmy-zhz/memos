@@ -1,6 +1,6 @@
-import type { Blockquote, Paragraph, Root, Text } from "mdast";
-import { visit } from "unist-util-visit";
-import { resolveAlertFamily } from "@/components/MemoContent/markdown/alertFamilies";
+import type { Blockquote, Paragraph, PhrasingContent, Root, RootContent, Text } from "mdast";
+import { SKIP, visit } from "unist-util-visit";
+import { CHAT_FAMILIES, resolveAlertFamily } from "@/components/MemoContent/markdown/alertFamilies";
 
 // Families whose custom title behavior must not change: whatever follows the
 // `[!TYPE]` marker on the same line stays in the body, as before.
@@ -15,7 +15,107 @@ const KEEP_BODY_ONLY_FAMILIES = new Set(["todo", "tip", "quote"]);
 // blockquote, e.g. `> [!WARNING]`, `> [!IMPORTANT(✍🏻)] inline body text`, or
 // `> [!NOTE]` on its own line followed by more lines. Only the marker itself is
 // consumed; whatever follows on the same line (if any) becomes the alert body.
-const ALERT_MARKER_RE = /^\[!([A-Za-z][\w-]*)(?:\(([^)]+)\))?\][ \t]*/;
+const ALERT_MARKER_RE = /^\[!([A-Za-z][\w:-]*)(?:\(([^)]+)\))?\][ \t]*/;
+
+// Inside a chat blockquote every *line* may open a new bubble, so a whole
+// conversation can live in one `>` block without blank lines between turns:
+// `[!CHAT:S]` / `[!CHAT:R]`, or the shorthand `[S]` / `[R]`, each with an
+// optional `(timestamp)`. Lines that don't start with a marker are continuation
+// lines of the bubble above them.
+const CHAT_LINE_RE = /^\[!?(?:chat:)?([sr])\](?:\(([^)]+)\))?[ \t]*/i;
+
+/** One logical line of a blockquote: paragraph breaks, hard breaks and "\n" inside a text node all end a line. */
+type ChatLine = PhrasingContent[];
+
+interface ChatBubble {
+  side: "s" | "r";
+  time?: string;
+  lines: ChatLine[];
+}
+
+/**
+ * Flattens a blockquote's children into logical lines. Soft line breaks live as
+ * "\n" *inside* a single text node (not as separate mdast nodes), so they have
+ * to be cut out by hand; `break` nodes and paragraph boundaries end a line too.
+ */
+function splitChatLines(node: Blockquote): ChatLine[] {
+  const lines: ChatLine[] = [];
+  let current: ChatLine = [];
+  const endLine = () => {
+    lines.push(current);
+    current = [];
+  };
+
+  for (const child of node.children) {
+    if (child.type !== "paragraph") {
+      // A nested block (list, code, ...) can't be split into lines — keep it whole.
+      endLine();
+      lines.push([child as unknown as PhrasingContent]);
+      continue;
+    }
+    for (const inline of (child as Paragraph).children) {
+      if (inline.type === "break") {
+        endLine();
+        continue;
+      }
+      if (inline.type === "text" && inline.value.includes("\n")) {
+        inline.value.split("\n").forEach((part, index) => {
+          if (index > 0) endLine();
+          if (part) current.push({ ...inline, value: part });
+        });
+        continue;
+      }
+      current.push(inline);
+    }
+    endLine();
+  }
+  endLine();
+  return lines.filter((line) => line.length > 0);
+}
+
+/** Groups lines into bubbles, opening a new one on every `[!CHAT:X]` / `[X]` marker. */
+function collectChatBubbles(lines: ChatLine[], firstSide: "s" | "r", firstTime?: string): ChatBubble[] {
+  const bubbles: ChatBubble[] = [];
+
+  for (const line of lines) {
+    const head = line[0];
+    const match = head.type === "text" ? CHAT_LINE_RE.exec(head.value) : null;
+    if (match) {
+      const remainder = (head as Text).value.slice(match[0].length);
+      const body = remainder ? [{ ...head, value: remainder } as PhrasingContent, ...line.slice(1)] : line.slice(1);
+      bubbles.push({ side: match[1].toLowerCase() as "s" | "r", time: match[2], lines: body.length > 0 ? [body] : [] });
+    } else if (bubbles.length > 0) {
+      bubbles[bubbles.length - 1].lines.push(line);
+    } else {
+      bubbles.push({ side: firstSide, time: firstTime, lines: [line] });
+    }
+  }
+
+  return bubbles.filter((bubble) => bubble.lines.length > 0);
+}
+
+/** One blockquote per bubble, tagged `data-alert="chat:s" | "chat:r"` for ChatBubble (SpecialCallouts.tsx). */
+function toChatNodes(bubbles: ChatBubble[]): RootContent[] {
+  return bubbles.map((bubble) => {
+    const children: PhrasingContent[] = [];
+    bubble.lines.forEach((line, index) => {
+      if (index > 0) {
+        children.push({ type: "break" });
+      }
+      children.push(...line);
+    });
+    return {
+      type: "blockquote",
+      children: [{ type: "paragraph", children }],
+      data: {
+        hProperties: {
+          "data-alert": `chat:${bubble.side}`,
+          ...(bubble.time ? { "data-alert-icon": bubble.time } : {}),
+        },
+      },
+    } satisfies Blockquote;
+  });
+}
 
 /**
  * Detects Obsidian/GitHub-style alert blockquotes (`> [!NOTE]`, `> [!WARNING(⚠️)]`,
@@ -27,7 +127,7 @@ const ALERT_MARKER_RE = /^\[!([A-Za-z][\w-]*)(?:\(([^)]+)\))?\][ \t]*/;
  */
 export const remarkAlert = () => {
   return (tree: Root) => {
-    visit(tree, "blockquote", (node: Blockquote) => {
+    visit(tree, "blockquote", (node: Blockquote, index, parent) => {
       const firstChild = node.children[0];
       if (!firstChild || firstChild.type !== "paragraph") {
         return;
@@ -48,6 +148,24 @@ export const remarkAlert = () => {
       const [, type, icon] = match;
       const remainder = textNode.value.slice(match[0].length);
       const family = resolveAlertFamily(type);
+
+      // Chat callouts are the one family that expands into *several* nodes: the
+      // blockquote is a transcript, and each marked line becomes its own bubble.
+      if (CHAT_FAMILIES.has(family) && parent && typeof index === "number") {
+        if (remainder) {
+          textNode.value = remainder;
+        } else {
+          paragraph.children.shift();
+        }
+        const bubbles = collectChatBubbles(splitChatLines(node), family === "chat-send" ? "s" : "r", icon);
+        if (bubbles.length === 0) {
+          return;
+        }
+        const nodes = toChatNodes(bubbles);
+        parent.children.splice(index, 1, ...nodes);
+        return [SKIP, index + nodes.length];
+      }
+
       const keepInBody = KEEP_BODY_ONLY_FAMILIES.has(family);
 
       let title: string | undefined;
