@@ -360,7 +360,19 @@ function parseViewBlock(raw: unknown): ViewBlock[] {
 export function parseGalleryViewConfig(content: string): GalleryViewConfig | undefined {
   if (!content.trim()) return undefined;
   // The config JSON lives in the body, after any leading YAML frontmatter block.
-  const { frontmatter, body } = splitFrontmatter(content);
+  let { frontmatter, body } = splitFrontmatter(content);
+  // Salvage documents saved before serialization stripped author-typed `---`
+  // fences: their doubled fences make splitFrontmatter stop at the wrong one and
+  // leave the config JSON stranded in the frontmatter, which used to render the
+  // whole view blank. The JSON always starts at the beginning of a line, so
+  // re-split there and treat everything before it as frontmatter.
+  if (!body.trimStart().startsWith("{")) {
+    const jsonStart = content.indexOf("\n{");
+    if (jsonStart >= 0) {
+      body = content.slice(jsonStart + 1);
+      frontmatter = stripFrontmatterFences(content.slice(0, jsonStart));
+    }
+  }
   if (!body.trim()) return undefined;
   try {
     const raw = JSON.parse(body);
@@ -373,8 +385,22 @@ export function parseGalleryViewConfig(content: string): GalleryViewConfig | und
   }
 }
 
+/**
+ * Strips `---` fences the author typed around their own frontmatter. The editor
+ * asks for the inner YAML only and adds the delimiters itself, but typing them
+ * is the natural thing to do — and without this the document would serialize
+ * with two nested fences, whereupon splitFrontmatter stops at the inner one and
+ * the config JSON lands inside the frontmatter, making the whole view unparseable.
+ */
+function stripFrontmatterFences(frontmatter: string): string {
+  const lines = frontmatter.split("\n");
+  while (lines.length > 0 && lines[0].trim() === "---") lines.shift();
+  while (lines.length > 0 && lines[lines.length - 1].trim() === "---") lines.pop();
+  return lines.join("\n").trim();
+}
+
 export function serializeGalleryViewConfig(config: GalleryViewConfig): string {
   const json = JSON.stringify({ viewType: config.viewType, blocks: config.blocks }, null, 2);
-  const fm = config.frontmatter?.trim();
+  const fm = stripFrontmatterFences(config.frontmatter ?? "");
   return fm ? `---\n${fm}\n---\n${json}` : json;
 }
