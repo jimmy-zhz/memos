@@ -43,12 +43,16 @@ export interface SheetsStyleOverlay {
   sheets: Record<string, SheetStyle>;
   viewHeight?: number;
   activeSheet?: string;
+  // Scroll/resize lock toggled from the toolbar's freeze button. Omitted when
+  // off, so an untouched grid still writes no overlay.
+  frozen?: boolean;
 }
 
 // Block-level view state persisted alongside the cell styles.
 export interface SheetsViewState {
   viewHeight?: number;
   activeSheet?: string;
+  frozen?: boolean;
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -63,7 +67,7 @@ export function extractSheetsStyle(
   view: SheetsViewState = {},
   comments: SheetsComments = {},
 ): SheetsStyleOverlay | undefined {
-  const { viewHeight, activeSheet } = view;
+  const { viewHeight, activeSheet, frozen } = view;
   const sheets: Record<string, SheetStyle> = {};
 
   xsheets.forEach((xsheet, index) => {
@@ -99,10 +103,11 @@ export function extractSheetsStyle(
     if (Object.keys(style).length > 0) sheets[name] = style;
   });
 
-  if (Object.keys(sheets).length === 0 && viewHeight == null && activeSheet == null) return undefined;
+  if (Object.keys(sheets).length === 0 && viewHeight == null && activeSheet == null && !frozen) return undefined;
   const overlay: SheetsStyleOverlay = { v: 1, sheets };
   if (viewHeight != null) overlay.viewHeight = viewHeight;
   if (activeSheet != null) overlay.activeSheet = activeSheet;
+  if (frozen) overlay.frozen = true;
   return overlay;
 }
 
@@ -158,6 +163,7 @@ export function parseStyleOverlay(json: string | undefined): SheetsStyleOverlay 
       const overlay: SheetsStyleOverlay = { v: 1, sheets: parsed.sheets as Record<string, SheetStyle> };
       if (typeof parsed.viewHeight === "number" && parsed.viewHeight > 0) overlay.viewHeight = parsed.viewHeight;
       if (typeof parsed.activeSheet === "string" && parsed.activeSheet !== "") overlay.activeSheet = parsed.activeSheet;
+      if (parsed.frozen === true) overlay.frozen = true;
       return overlay;
     }
   } catch {

@@ -86,3 +86,45 @@
 .x-spreadsheet-host .x-spreadsheet-editor-area textarea {
   background-color: #ffffff;
 }
+
+/* Freeze mode (toolbar lock button): the grid keeps rendering and cells stay
+   selectable/editable, but the view is pinned — scrollbars and the row/column
+   resize handles stop taking pointer input. Wheel scrolling is cancelled in JS
+   (see SheetsBlock); these rules cover the drag paths CSS can reach. */
+.x-spreadsheet-host.sheets-frozen .x-spreadsheet-scrollbar,
+.x-spreadsheet-host.sheets-frozen .x-spreadsheet-resizer {
+  pointer-events: none;
+}
+
+/* The injected freeze button. x-spreadsheet sizes its toolbar to
+   `width - 60px`, so this parks in the free strip at the toolbar's right end —
+   the `-toolbar-btns` group can't hold it (it is emptied on every resize). */
+.x-spreadsheet-host .x-spreadsheet-toolbar {
+  position: relative;
+}
+
+.x-spreadsheet-host .sheets-freeze-btn {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin: 2px;
+  border-radius: 2px;
+  cursor: pointer;
+  font-size: 15px;
+  line-height: 1;
+  user-select: none;
+}
+
+.x-spreadsheet-host .sheets-freeze-btn:hover {
+  background: #f1f2f4;
+}
+
+.x-spreadsheet-host .sheets-freeze-btn.active {
+  background: #e0e2e6;
+}

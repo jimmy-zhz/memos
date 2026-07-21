@@ -9,6 +9,7 @@ import { cellRef } from "./sheets/cellRef";
 import { createCommentLayer, type CommentLayer } from "./sheets/commentLayer";
 import { restructureContextMenu } from "./sheets/contextMenu";
 import { unsupportedFunction } from "./sheets/formula";
+import { mountFreezeButton, type FreezeButton } from "./sheets/freezeButton";
 import { ensureFormulaFallbacks } from "./sheets/formulaPatch";
 import { formulaService } from "./sheets/formulaService";
 import { parseSheetsBlock } from "./sheets/parseSheetsBlock";
@@ -170,6 +171,13 @@ const SheetsBlockInner = ({ children, blockId }: SheetsBlockProps) => {
   // The most recently selected cell, tracked from x-spreadsheet's events so the
   // AI menu knows which cell to write into.
   const selectionRef = useRef<Selection>({ ri: 0, ci: 0 });
+  // Freeze mode: the view is pinned (no scrolling, no row/column resizing) while
+  // cell selection and editing keep working. Persisted in the overlay, and held
+  // in a ref so the imperative wheel/commit handlers read the live value.
+  // Seeded from the overlay by the adopt effect below (which also covers the
+  // memo loading after the first render).
+  const frozenRef = useRef(false);
+  const freezeButtonRef = useRef<FreezeButton | null>(null);
   // True while the bottom resize handle is being dragged, so an incoming overlay
   // echo doesn't yank the height out from under the pointer.
   const draggingRef = useRef(false);
@@ -235,6 +243,15 @@ const SheetsBlockInner = ({ children, blockId }: SheetsBlockProps) => {
     forceHeightRender((n) => n + 1);
   }, [overlayJson]);
 
+  // Adopt the persisted freeze state whenever the overlay arrives or changes.
+  useEffect(() => {
+    const persisted = parseStyleOverlay(overlayJson)?.frozen === true;
+    if (persisted === frozenRef.current) return;
+    frozenRef.current = persisted;
+    freezeButtonRef.current?.sync(persisted);
+    containerRef.current?.classList.toggle("sheets-frozen", persisted);
+  }, [overlayJson]);
+
   const startResize = (event: React.PointerEvent) => {
     event.preventDefault();
     const startY = event.clientY;
@@ -273,6 +290,11 @@ const SheetsBlockInner = ({ children, blockId }: SheetsBlockProps) => {
     }
     setError(null);
   };
+  const freezeLabelsRef = useRef({ freeze: "", unfreeze: "" });
+  freezeLabelsRef.current = {
+    freeze: t("markdown.sheets-block.freeze"),
+    unfreeze: t("markdown.sheets-block.unfreeze"),
+  };
   const menuLabelsRef = useRef({ ai: "", comment: "", more: "" });
   menuLabelsRef.current = {
     ai: t("markdown.sheets-block.ai-formula"),
@@ -297,6 +319,7 @@ const SheetsBlockInner = ({ children, blockId }: SheetsBlockProps) => {
       {
         viewHeight: heightRef.current === DEFAULT_HEIGHT ? undefined : heightRef.current,
         activeSheet: activeSheetName(instance, raw),
+        frozen: frozenRef.current,
       },
       commentsRef.current,
     );
@@ -416,6 +439,11 @@ const SheetsBlockInner = ({ children, blockId }: SheetsBlockProps) => {
       // alone — cancelling here would freeze a menu taller than its viewport.
       if (e.target instanceof Element && e.target.closest(SCROLLABLE_POPUPS)) return;
       e.preventDefault();
+      // Frozen: swallow the gesture entirely so the grid never scrolls.
+      if (frozenRef.current) {
+        e.stopPropagation();
+        return;
+      }
       if (Math.abs(e.deltaX) > Math.abs(e.deltaY)) {
         horizontalTicks += 1;
         if (horizontalTicks % 2 === 1) e.stopPropagation();
@@ -438,6 +466,19 @@ const SheetsBlockInner = ({ children, blockId }: SheetsBlockProps) => {
         if (!loadingRef.current) commitRef.current();
       };
     }
+
+    // Freeze toggle in the toolbar (edit mode only — read-only blocks have no
+    // toolbar, and their grid isn't editable to begin with).
+    const applyFrozenClass = (frozen: boolean) => {
+      host.classList.toggle("sheets-frozen", frozen);
+    };
+    applyFrozenClass(frozenRef.current);
+    freezeButtonRef.current = mountFreezeButton(host, frozenRef.current, freezeLabelsRef.current, (frozen) => {
+      frozenRef.current = frozen;
+      applyFrozenClass(frozen);
+      freezeButtonRef.current?.sync(frozen);
+      commitRef.current();
+    });
 
     const commentLayer = createCommentLayer(instance);
     commentLayerRef.current = commentLayer;
@@ -505,6 +546,8 @@ const SheetsBlockInner = ({ children, blockId }: SheetsBlockProps) => {
       host.removeEventListener("wheel", onWheel, { capture: true });
       host.removeEventListener("contextmenu", onContextMenu, { capture: true });
       resizeObserver.disconnect();
+      freezeButtonRef.current?.destroy();
+      freezeButtonRef.current = null;
       commentLayer.destroy();
       commentLayerRef.current = null;
       instanceRef.current = null;

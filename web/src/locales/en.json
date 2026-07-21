@@ -338,6 +338,8 @@
       "ai-generating": "Generating…",
       "ai-unsupported": "The generated formula uses {{fn}}, which isn't supported. Try rephrasing (only SUM, AVERAGE, MAX, MIN, PRODUCT, IF and basic arithmetic work).",
       "resize": "Drag to resize",
+      "freeze": "Freeze view (lock scrolling and resizing)",
+      "unfreeze": "Unfreeze view",
       "render-error": "This sheet couldn't be rendered (likely an invalid formula). Edit the block to fix it; the raw content is shown below."
     },
     "task-status": {
