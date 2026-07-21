@@ -200,11 +200,12 @@ func (d *DB) RenameWorkspaceFolder(ctx context.Context, workspaceID int32, oldPa
 	replacement := newPath + "/"
 	likePrefix := strings.NewReplacer("\\", "\\\\", "%", "\\%", "_", "\\_").Replace(prefix) + "%"
 
-	if _, err := tx.ExecContext(ctx, "UPDATE `memo` SET `folder_path` = ? WHERE `workspace_id` = ? AND `folder_path` = ?", newPath, workspaceID, oldPath); err != nil {
+	// updated_ts is bumped so incremental sync clients (memogit) see the move.
+	if _, err := tx.ExecContext(ctx, "UPDATE `memo` SET `folder_path` = ?, `updated_ts` = UNIX_TIMESTAMP() WHERE `workspace_id` = ? AND `folder_path` = ?", newPath, workspaceID, oldPath); err != nil {
 		return err
 	}
 	if _, err := tx.ExecContext(ctx,
-		"UPDATE `memo` SET `folder_path` = CONCAT(?, SUBSTRING(`folder_path`, ?)) WHERE `workspace_id` = ? AND `folder_path` LIKE ?",
+		"UPDATE `memo` SET `folder_path` = CONCAT(?, SUBSTRING(`folder_path`, ?)), `updated_ts` = UNIX_TIMESTAMP() WHERE `workspace_id` = ? AND `folder_path` LIKE ?",
 		replacement, len(prefix)+1, workspaceID, likePrefix,
 	); err != nil {
 		return err

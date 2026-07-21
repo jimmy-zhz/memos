@@ -617,6 +617,16 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 		}
 	}
 
+	// Structural changes (move / rename / doc type) must bump updated_ts even
+	// when the caller didn't ask for "update_time": incremental sync clients
+	// (memogit pull) discover changes by updated_ts, and would otherwise never
+	// see a document that was moved between folders or renamed.
+	if update.UpdatedTs == nil &&
+		(update.FolderPath != nil || update.Title != nil || update.WorkspaceID != nil || update.DocType != nil) {
+		now := time.Now().Unix()
+		update.UpdatedTs = &now
+	}
+
 	if err = s.Store.UpdateMemo(ctx, update); err != nil {
 		if isDuplicateKeyError(err) {
 			return nil, duplicateMemoPathError(err)

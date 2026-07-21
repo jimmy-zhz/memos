@@ -163,8 +163,9 @@ func (d *DB) RenameWorkspaceFolder(ctx context.Context, workspaceID int32, oldPa
 	prefix := oldPath + "/"
 	replacement := newPath + "/"
 	stmts := []string{
-		"UPDATE memo SET folder_path = ? WHERE workspace_id = ? AND folder_path = ?",
-		"UPDATE memo SET folder_path = ? || substr(folder_path, ?) WHERE workspace_id = ? AND folder_path LIKE ? ESCAPE '\\'",
+		// updated_ts is bumped so incremental sync clients (memogit) see the move.
+		"UPDATE memo SET folder_path = ?, updated_ts = strftime('%s', 'now') WHERE workspace_id = ? AND folder_path = ?",
+		"UPDATE memo SET folder_path = ? || substr(folder_path, ?), updated_ts = strftime('%s', 'now') WHERE workspace_id = ? AND folder_path LIKE ? ESCAPE '\\'",
 		"UPDATE workspace_folder SET path = ? WHERE workspace_id = ? AND path = ?",
 		"UPDATE workspace_folder SET path = ? || substr(path, ?) WHERE workspace_id = ? AND path LIKE ? ESCAPE '\\'",
 	}
