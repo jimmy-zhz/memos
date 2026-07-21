@@ -46,8 +46,35 @@ function locateCalendarFence(content: string): CalendarFenceLocation | undefined
 // 与条目行（以 `-` 开头）不会混淆。
 const CONFIG_LINE_RE = /^@?[A-Za-z][A-Za-z0-9_]*:\s*.*$/;
 
+// 分组内条目的排序权重：重要 → 未开始 → 已完成 → 其他状态（进行中 / 排期 /
+// 延后 / 疑问，含无 checkbox 的纯文本）→ 作废。
+const STATUS_RANK: Record<string, number> = { "!": 0, " ": 1, x: 2, "-": 4 };
+const OTHER_RANK = 3;
+
+function itemRank(line: string): number {
+  const match = ITEM_LINE_RE.exec(line.trim());
+  const raw = match?.[1];
+  if (raw === undefined || !isTaskStatusMarker(raw)) {
+    return OTHER_RANK;
+  }
+  return STATUS_RANK[resolveTaskStatus(raw).marker] ?? OTHER_RANK;
+}
+
+/** event 打点行始终排在任务之前。 */
+function sortGroupLines(lines: string[]): string[] {
+  const events = lines.filter((line) => EVENT_ITEM_RE.test(line.trim()));
+  const items = lines.filter((line) => !EVENT_ITEM_RE.test(line.trim()));
+
+  // 稳定排序：同权重条目保持原有先后。
+  const ranked = items.map((line, index) => ({ line, index, rank: itemRank(line) }));
+  ranked.sort((a, b) => (a.rank === b.rank ? a.index - b.index : a.rank - b.rank));
+
+  return [...events, ...ranked.map(({ line }) => line)];
+}
+
 /**
- * 规范化 calendar 块：所有配置项提到最顶部，日期分组按日期倒序排列。
+ * 规范化 calendar 块：所有配置项提到最顶部，日期分组按日期倒序排列，
+ * 分组内条目按状态排序。
  * 未分组条目（第一个日期行之前的条目）保持在配置之后、日期分组之前。
  */
 export function normalizeCalendarBlock(blockLines: string[]): string[] {
@@ -90,7 +117,7 @@ export function normalizeCalendarBlock(blockLines: string[]): string[] {
   }
   for (const { group } of sorted) {
     if (out.length > 0) out.push("");
-    out.push(`- ${group.date}`, ...group.lines);
+    out.push(`- ${group.date}`, ...sortGroupLines(group.lines));
   }
   return out;
 }

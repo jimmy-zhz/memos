@@ -42,3 +42,32 @@ describe("calendar block normalization", () => {
     );
   });
 });
+
+describe("calendar item ordering", () => {
+  it("sorts a day's items by status on every write", () => {
+    const content = [
+      "```calendar",
+      "- 2026-07-16",
+      "- [-] scrapped",
+      "- [x] done",
+      "- [/] doing",
+      "- @1",
+      "- [ ] open",
+      "- [!] urgent",
+      "```",
+    ].join("\n");
+
+    expect(upsertCalendarItem(content, "2026-07-16", "- [ ] added").split("\n")).toEqual([
+      "```calendar",
+      "- 2026-07-16",
+      "- @1",
+      "- [!] urgent",
+      "- [ ] added",
+      "- [ ] open",
+      "- [x] done",
+      "- [/] doing",
+      "- [-] scrapped",
+      "```",
+    ]);
+  });
+});
