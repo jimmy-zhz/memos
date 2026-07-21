@@ -4,9 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
+import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
+import { resolveTaskStatus } from "@/utils/task-status";
+import { TaskStatusCheckbox } from "../TaskStatusCheckbox";
 import { getEventColorByName } from "./eventColors";
 import type { CalendarGroup } from "./parseCalendarBlock";
+
+const taskTextClass = (marker: string) => {
+  const status = resolveTaskStatus(marker);
+  return cn(status.strikethrough && "line-through", status.muted && "text-muted-foreground");
+};
 
 interface CalendarDayDetailProps {
   group?: CalendarGroup;
@@ -14,7 +22,7 @@ interface CalendarDayDetailProps {
   readonly?: boolean;
   events: string[]; // 预定义 event 列表
   onAddItems?: (date: string, rawInput: string) => void;
-  onToggleItem?: (date: string, itemIndex: number, checked: boolean) => void;
+  onSetItemStatus?: (date: string, itemIndex: number, marker: string) => void;
   onToggleEvent?: (date: string, name: string, occurred: boolean) => void;
 }
 
@@ -24,7 +32,7 @@ export const CalendarDayDetail = ({
   readonly,
   events,
   onAddItems,
-  onToggleItem,
+  onSetItemStatus,
   onToggleEvent,
 }: CalendarDayDetailProps) => {
   const t = useTranslate();
@@ -178,15 +186,14 @@ export const CalendarDayDetail = ({
         <ul className="flex flex-col gap-1">
           {taskItems.map(({ item, index }) => (
             <li key={index} className="flex items-center gap-2 text-sm">
-              {item.checked !== undefined ? (
+              {item.marker !== undefined ? (
                 <>
-                  <Checkbox
-                    checked={item.checked}
-                    disabled={readonly || !onToggleItem}
-                    onCheckedChange={(checked) => onToggleItem?.(selectedDate, index, checked === true)}
-                    className="shrink-0"
+                  <TaskStatusCheckbox
+                    marker={item.marker}
+                    readonly={readonly || !onSetItemStatus}
+                    onSelect={(marker) => onSetItemStatus?.(selectedDate, index, marker)}
                   />
-                  <span>{item.text}</span>
+                  <span className={cn(taskTextClass(item.marker))}>{item.text}</span>
                 </>
               ) : (
                 <span className="pl-6">{item.text}</span>

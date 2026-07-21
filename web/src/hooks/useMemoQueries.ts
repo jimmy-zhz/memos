@@ -2,6 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { FieldMaskSchema } from "@bufbuild/protobuf/wkt";
 import type { InfiniteData } from "@tanstack/react-query";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { cacheService } from "@/components/MemoEditor/services";
 import { memoServiceClient } from "@/connect";
 import { DEFAULT_LIST_MEMOS_PAGE_SIZE } from "@/helpers/consts";
 import { userKeys } from "@/hooks/useUserQueries";
@@ -205,9 +206,15 @@ export function useUpdateMemo() {
       });
       return memo;
     },
-    onMutate: async ({ update }) => {
+    onMutate: async ({ update, updateMask }) => {
       if (!update.name) {
         return { previousMemo: undefined };
+      }
+
+      // Content changed outside the editor (checkbox toggle, calendar event, ...):
+      // drop any editor draft so it cannot resurrect the pre-change content.
+      if (updateMask.includes("content")) {
+        cacheService.clearForMemo(update.name);
       }
 
       // Cancel outgoing refetches to prevent race conditions

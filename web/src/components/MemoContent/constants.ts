@@ -68,6 +68,9 @@ export const SANITIZE_SCHEMA = {
     ...defaultSchema.attributes,
     img: [...(defaultSchema.attributes?.img || []), "height", "width"],
     input: INPUT_ATTRIBUTES,
+    // `data-task-status` carries the extended checkbox marker (`- [/]`, `- [?]`, …)
+    // from remark-task-status through to the list item renderer.
+    li: [...(defaultSchema.attributes?.li || []), "dataTaskStatus"],
     // `data-sheet-id` carries a sheets block's style-overlay anchor from the fence
     // info string (```sheets id=xxx) through to CodeBlock; see remark-sheets-id.
     code: [

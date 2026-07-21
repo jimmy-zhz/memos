@@ -257,6 +257,16 @@
         "created": "创建于",
         "updated": "更新于"
       }
+    },
+    "task-status": {
+      "cancelled": "作废 / 取消",
+      "done": "已完成",
+      "forwarded": "延后",
+      "important": "重要 / 优先",
+      "in-progress": "进行中",
+      "question": "疑问 / 待定",
+      "scheduled": "已排期",
+      "todo": "未开始"
     }
   },
   "memo": {

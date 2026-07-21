@@ -1,6 +1,9 @@
+import { isTaskStatusMarker, resolveTaskStatus } from "@/utils/task-status";
+
 export interface CalendarItem {
   text: string;
   checked?: boolean; // undefined = 无 checkbox 的纯文本条目
+  marker?: string; // 扩展状态标记（" " | "x" | "/" | ...），undefined = 纯文本条目
   isEvent?: boolean; // true = 该条目是一次 event 打点（text 为 event 名称）
 }
 
@@ -19,7 +22,8 @@ const EVENTS_LINE_RE = /^@?events:\s*(.*)$/i;
 const ALLOW_MAX_UPDATE_DAYS_RE = /^@?allowMaxUpdateDays:\s*(\d+)\s*$/i;
 const DATE_LINE_RE = /^-\s+(\d{4}-\d{2}-\d{2})\s*$/;
 const EVENT_ITEM_RE = /^-\s+@(.+)$/;
-const ITEM_LINE_RE = /^-\s+(?:\[([ xX])\]\s+)?(.+)$/;
+// 方括号内接受任意扩展状态字符；未知字符按纯文本处理。
+const ITEM_LINE_RE = /^-\s+(?:\[(.)\]\s+)?(.+)$/;
 
 function parseEventsLine(raw: string): string[] {
   return raw
@@ -93,9 +97,14 @@ export function parseCalendarBlock(raw: string): ParsedCalendar {
 
     const itemMatch = ITEM_LINE_RE.exec(line);
     if (itemMatch) {
+      const rawMarker = itemMatch[1];
+      const isTask = rawMarker !== undefined && isTaskStatusMarker(rawMarker);
+      const marker = isTask ? resolveTaskStatus(rawMarker).marker : undefined;
       const item: CalendarItem = {
-        text: itemMatch[2],
-        checked: itemMatch[1] === undefined ? undefined : itemMatch[1].toLowerCase() === "x",
+        // 未识别的标记（如 `- [z] foo`）保留原始文本，不当作任务。
+        text: rawMarker !== undefined && !isTask ? `[${rawMarker}] ${itemMatch[2]}` : itemMatch[2],
+        checked: marker === undefined ? undefined : marker === "x",
+        marker,
       };
       if (current) {
         current.items.push(item);

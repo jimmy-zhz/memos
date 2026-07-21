@@ -6,10 +6,26 @@ import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { gfm } from "micromark-extension-gfm";
 import { visit } from "unist-util-visit";
+import { isTaskStatusMarker, resolveTaskStatus } from "./task-status";
 
 interface TaskInfo {
   lineNumber: number;
   checked: boolean;
+  /** Canonical status marker, e.g. " ", "x", "/". See utils/task-status. */
+  marker: string;
+}
+
+// Extended statuses (`- [/]`, `- [?]`, …) are invisible to GFM, which only
+// parses `[ ]` / `[x]`. Detect them from the raw line so task indices stay in
+// step with what the renderer shows.
+const EXTENDED_TASK_LINE_RE = /^\s*[-*+]\s+\[(.)\](?:\s|$)/;
+
+function markerAtLine(line: string | undefined, checked: boolean | undefined): string | undefined {
+  const match = line === undefined ? null : EXTENDED_TASK_LINE_RE.exec(line);
+  if (match && isTaskStatusMarker(match[1])) {
+    return resolveTaskStatus(match[1]).marker;
+  }
+  return checked === undefined ? undefined : checked ? "x" : " ";
 }
 
 // Extract all task list items from markdown using AST parsing
@@ -21,53 +37,58 @@ function extractTasksFromAst(markdown: string): TaskInfo[] {
   });
 
   const tasks: TaskInfo[] = [];
+  const lines = markdown.split("\n");
 
   visit(tree, "listItem", (node: ListItem) => {
-    // Only process actual task list items (those with a checkbox)
-    if (typeof node.checked === "boolean" && node.position?.start.line) {
-      tasks.push({
-        lineNumber: node.position.start.line - 1, // Convert to 0-based
-        checked: node.checked,
-      });
-    }
+    if (!node.position?.start.line) return;
+    const lineNumber = node.position.start.line - 1; // Convert to 0-based
+    const marker = markerAtLine(lines[lineNumber], node.checked ?? undefined);
+    if (marker === undefined) return; // not a task list item
+
+    tasks.push({ lineNumber, checked: marker === "x", marker });
   });
 
   return tasks;
 }
 
-export function toggleTaskAtLine(markdown: string, lineNumber: number, checked: boolean): string {
+/** Rewrites the status marker of the task on `lineNumber`. Any recognized marker is accepted. */
+export function setTaskStatusAtLine(markdown: string, lineNumber: number, marker: string): string {
   const lines = markdown.split("\n");
 
-  if (lineNumber < 0 || lineNumber >= lines.length) {
+  if (lineNumber < 0 || lineNumber >= lines.length || !isTaskStatusMarker(marker)) {
     return markdown;
   }
 
-  const line = lines[lineNumber];
+  // Match task list patterns: - [ ], - [x], and extended ones like - [/], - [?].
+  const taskPattern = /^(\s*[-*+]\s+)\[(.)\](\s+.*)$/;
+  const match = lines[lineNumber].match(taskPattern);
 
-  // Match task list patterns: - [ ], - [x], - [X], etc.
-  const taskPattern = /^(\s*[-*+]\s+)\[([ xX])\](\s+.*)$/;
-  const match = line.match(taskPattern);
-
-  if (!match) {
+  if (!match || !isTaskStatusMarker(match[2])) {
     return markdown;
   }
 
   const [, prefix, , suffix] = match;
-  const newCheckmark = checked ? "x" : " ";
-  lines[lineNumber] = `${prefix}[${newCheckmark}]${suffix}`;
+  lines[lineNumber] = `${prefix}[${resolveTaskStatus(marker).marker}]${suffix}`;
 
   return lines.join("\n");
 }
 
-export function toggleTaskAtIndex(markdown: string, taskIndex: number, checked: boolean): string {
+export function toggleTaskAtLine(markdown: string, lineNumber: number, checked: boolean): string {
+  return setTaskStatusAtLine(markdown, lineNumber, checked ? "x" : " ");
+}
+
+export function setTaskStatusAtIndex(markdown: string, taskIndex: number, marker: string): string {
   const tasks = extractTasksFromAst(markdown);
 
   if (taskIndex < 0 || taskIndex >= tasks.length) {
     return markdown;
   }
 
-  const task = tasks[taskIndex];
-  return toggleTaskAtLine(markdown, task.lineNumber, checked);
+  return setTaskStatusAtLine(markdown, tasks[taskIndex].lineNumber, marker);
+}
+
+export function toggleTaskAtIndex(markdown: string, taskIndex: number, checked: boolean): string {
+  return setTaskStatusAtIndex(markdown, taskIndex, checked ? "x" : " ");
 }
 
 export function countTasks(markdown: string): {
@@ -103,6 +124,8 @@ export interface TaskItem {
   checked: boolean;
   content: string;
   indentation: number;
+  /** Canonical status marker, e.g. " ", "x", "/". See utils/task-status. */
+  marker: string;
 }
 
 export interface HeadingItem {
@@ -177,26 +200,29 @@ export function extractTasks(markdown: string): TaskItem[] {
   let taskIndex = 0;
 
   visit(tree, "listItem", (node: ListItem) => {
-    if (typeof node.checked === "boolean" && node.position?.start.line) {
-      const lineNumber = node.position.start.line - 1;
-      const line = lines[lineNumber];
+    if (!node.position?.start.line) return;
 
-      // Extract indentation
-      const indentMatch = line.match(/^(\s*)/);
-      const indentation = indentMatch ? indentMatch[1].length : 0;
+    const lineNumber = node.position.start.line - 1;
+    const line = lines[lineNumber];
+    const marker = markerAtLine(line, node.checked ?? undefined);
+    if (marker === undefined) return;
 
-      // Extract content (text after the checkbox)
-      const contentMatch = line.match(/^\s*[-*+]\s+\[[ xX]\]\s+(.*)/);
-      const content = contentMatch ? contentMatch[1] : "";
+    // Extract indentation
+    const indentMatch = line.match(/^(\s*)/);
+    const indentation = indentMatch ? indentMatch[1].length : 0;
 
-      tasks.push({
-        lineNumber,
-        taskIndex: taskIndex++,
-        checked: node.checked,
-        content,
-        indentation,
-      });
-    }
+    // Extract content (text after the checkbox)
+    const contentMatch = line.match(/^\s*[-*+]\s+\[.\]\s+(.*)/);
+    const content = contentMatch ? contentMatch[1] : "";
+
+    tasks.push({
+      lineNumber,
+      taskIndex: taskIndex++,
+      checked: marker === "x",
+      content,
+      indentation,
+      marker,
+    });
   });
 
   return tasks;

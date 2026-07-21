@@ -1,8 +1,10 @@
 import { Children, cloneElement, isValidElement, type ReactElement, type ReactNode } from "react";
 import { markdownStyles } from "@/lib/markdownStyles";
 import { cn } from "@/lib/utils";
+import { resolveTaskStatus } from "@/utils/task-status";
 import { TASK_LIST_CLASS, TASK_LIST_ITEM_CLASS } from "../constants";
 import { NestedMarkdownRenderContext } from "../MarkdownRenderContext";
+import { TaskStatusContext } from "../TaskStatusContext";
 import type { ReactMarkdownProps } from "./types";
 
 interface TaskListChildProps {
@@ -97,12 +99,23 @@ export const ListItem = ({ children, className, node: _node, ...domProps }: List
 
   if (isTaskListItem) {
     const { checkbox, content } = splitTaskListItemChildren(children);
+    const rawMarker = (domProps as Record<string, unknown>)["data-task-status"];
+    const marker = typeof rawMarker === "string" ? rawMarker : undefined;
+    const status = resolveTaskStatus(marker);
 
     return (
       <li className={cn(markdownStyles.taskListItem, className)} {...domProps}>
         <NestedMarkdownRenderContext>
-          {checkbox}
-          <div className={markdownStyles.taskItemContent}>{content}</div>
+          <TaskStatusContext.Provider value={status.marker}>{checkbox}</TaskStatusContext.Provider>
+          <div
+            className={cn(
+              markdownStyles.taskItemContent,
+              status.strikethrough && "line-through",
+              status.muted && "text-muted-foreground",
+            )}
+          >
+            {content}
+          </div>
         </NestedMarkdownRenderContext>
       </li>
     );

@@ -46,7 +46,7 @@ export const CalendarMonthGrid = ({
   const weekDays = useWeekdayLabels();
 
   const monthString = toMonthString(month);
-  const monthLabel = useMemo(() => dayjs(monthString).format("YYYY年 MM月"), [monthString]);
+  const monthLabel = useMemo(() => dayjs(monthString).format("MMM YYYY"), [monthString]);
   const isViewingCurrentMonth = monthString === formatMonth(new Date());
 
   const { weeks, weekDays: rotatedWeekDays } = useCalendarMatrix({

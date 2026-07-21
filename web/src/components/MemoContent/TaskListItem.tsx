@@ -1,10 +1,12 @@
 import { useRef } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useUpdateMemo } from "@/hooks/useMemoQueries";
-import { toggleTaskAtIndex } from "@/utils/markdown-manipulation";
+import { setTaskStatusAtIndex } from "@/utils/markdown-manipulation";
+import { resolveTaskStatus } from "@/utils/task-status";
 import { useMemoViewContextOptional } from "../MemoView/MemoViewContext";
 import { TASK_LIST_ITEM_CLASS } from "./constants";
 import type { ReactMarkdownProps } from "./markdown/types";
+import { TaskStatusCheckbox } from "./TaskStatusCheckbox";
+import { useTaskStatusMarker } from "./TaskStatusContext";
 
 interface TaskListItemProps extends React.InputHTMLAttributes<HTMLInputElement>, ReactMarkdownProps {
   checked?: boolean;
@@ -17,17 +19,20 @@ export const TaskListItem: React.FC<TaskListItemProps> = ({ checked, node: _node
   const memoViewContext = useMemoViewContextOptional();
   const memo = memoViewContext?.memo;
   const readonly = memoViewContext?.readonly ?? true;
-  const checkboxRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const { mutate: updateMemo } = useUpdateMemo();
 
-  const handleChange = async (newChecked: boolean) => {
-    // Don't update if readonly or no memo
+  // The extended marker travels on the <li>; `checked` only distinguishes the
+  // two statuses GFM itself understands.
+  const status = resolveTaskStatus(useTaskStatusMarker() ?? (checked ? "x" : " "));
+
+  const applyStatus = (marker: string) => {
     if (readonly || !memo) {
       return;
     }
 
     // Find the task index by walking up the DOM
-    const listItem = checkboxRef.current?.closest("li.task-list-item");
+    const listItem = triggerRef.current?.closest("li.task-list-item");
     if (!listItem) {
       return;
     }
@@ -58,8 +63,11 @@ export const TaskListItem: React.FC<TaskListItemProps> = ({ checked, node: _node
       }
     }
 
-    // Update memo content using the string manipulation utility
-    const newContent = toggleTaskAtIndex(memo.content, taskIndex, newChecked);
+    const newContent = setTaskStatusAtIndex(memo.content, taskIndex, marker);
+    if (newContent === memo.content) {
+      return;
+    }
+
     updateMemo({
       update: {
         name: memo.name,
@@ -69,6 +77,13 @@ export const TaskListItem: React.FC<TaskListItemProps> = ({ checked, node: _node
     });
   };
 
-  // Override the disabled prop from remark-gfm (which defaults to true)
-  return <Checkbox ref={checkboxRef} checked={checked} disabled={readonly} onCheckedChange={handleChange} className={props.className} />;
+  return (
+    <TaskStatusCheckbox
+      marker={status.marker}
+      readonly={readonly || !memo}
+      onSelect={applyStatus}
+      triggerRef={triggerRef}
+      className={props.className}
+    />
+  );
 };

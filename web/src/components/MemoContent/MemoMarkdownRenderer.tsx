@@ -21,6 +21,7 @@ import { remarkPreserveType } from "@/utils/remark-plugins/remark-preserve-type"
 import { remarkSheetsId } from "@/utils/remark-plugins/remark-sheets-id";
 import { remarkSplitMixedTaskLists } from "@/utils/remark-plugins/remark-split-mixed-task-lists";
 import { remarkTag } from "@/utils/remark-plugins/remark-tag";
+import { remarkTaskStatus } from "@/utils/remark-plugins/remark-task-status";
 import { CodeBlock } from "./CodeBlock";
 import { SANITIZE_SCHEMA } from "./constants";
 import { MarkdownRenderContext, rootMarkdownRenderContext } from "./MarkdownRenderContext";
@@ -194,6 +195,7 @@ export const MemoMarkdownRenderer = ({
           remarkDisableSetext,
           remarkMath,
           remarkGfm,
+          remarkTaskStatus,
           remarkSplitMixedTaskLists,
           remarkBreaks,
           remarkMention,

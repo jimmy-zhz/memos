@@ -47,7 +47,7 @@ export const markdownStyles = {
   listItem: "mt-0.5 leading-6",
   // Shared by the read-only task item (MemoContent/markdown/List.tsx) and the
   // editor so the checkbox + text grid stays identical in both.
-  taskListItem: "mt-0.5 min-w-0 leading-6 list-none grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2 [&>[data-slot=checkbox]]:mt-1",
+  taskListItem: "mt-0.5 min-w-0 leading-6 list-none grid grid-cols-[auto_minmax(0,1fr)] items-start gap-x-2 [&>[data-slot=checkbox]]:mt-[3px]",
   taskItemContent: "min-w-0 [overflow-wrap:anywhere] [&>*:last-child]:mb-0",
   inlineCode: "font-mono text-sm bg-muted px-1 py-0.5 rounded-md",
   link: "text-primary underline decoration-primary/50 underline-offset-2 transition-colors hover:decoration-primary",

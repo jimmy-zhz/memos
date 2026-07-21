@@ -9,7 +9,7 @@ import { CalendarMonthGrid } from "./calendar/CalendarMonthGrid";
 import { CalendarUngroupedSection } from "./calendar/CalendarUngroupedSection";
 import { defaultVisibleMonth, type VisibleMonth } from "./calendar/defaultVisibleMonth";
 import { type CalendarItem, parseCalendarBlock } from "./calendar/parseCalendarBlock";
-import { toggleCalendarEvent, toggleCalendarItem, upsertCalendarItem } from "./calendar/upsertCalendarItem";
+import { setCalendarItemStatus, toggleCalendarEvent, upsertCalendarItem } from "./calendar/upsertCalendarItem";
 import { extractCodeContent } from "./utils";
 
 interface CalendarBlockProps {
@@ -56,9 +56,9 @@ export const CalendarBlock = ({ children }: CalendarBlockProps) => {
     });
   };
 
-  const handleToggleItem = (date: string, itemIndex: number, checked: boolean) => {
+  const handleSetItemStatus = (date: string, itemIndex: number, marker: string) => {
     if (!memo || !isDateEditable(date)) return;
-    const newContent = toggleCalendarItem(memo.content, date, itemIndex, checked);
+    const newContent = setCalendarItemStatus(memo.content, date, itemIndex, marker);
     if (newContent === memo.content) return;
     updateMemo({
       update: {
@@ -160,7 +160,7 @@ export const CalendarBlock = ({ children }: CalendarBlockProps) => {
             readonly={readonly || !isDateEditable(effectiveDate)}
             events={events}
             onAddItems={memo ? handleAddItems : undefined}
-            onToggleItem={memo ? handleToggleItem : undefined}
+            onSetItemStatus={memo ? handleSetItemStatus : undefined}
             onToggleEvent={memo ? handleToggleEvent : undefined}
           />
         </div>

@@ -1,5 +1,5 @@
-import { Checkbox } from "@/components/ui/checkbox";
 import { useTranslate } from "@/utils/i18n";
+import { TaskStatusBox } from "../TaskStatusCheckbox";
 import type { CalendarItem } from "./parseCalendarBlock";
 
 interface CalendarUngroupedSectionProps {
@@ -15,9 +15,9 @@ export const CalendarUngroupedSection = ({ items }: CalendarUngroupedSectionProp
       <ul className="flex flex-col gap-1">
         {items.map((item, index) => (
           <li key={index} className="flex items-center gap-2 text-sm">
-            {item.checked !== undefined ? (
+            {item.marker !== undefined ? (
               <>
-                <Checkbox checked={item.checked} disabled className="shrink-0" />
+                <TaskStatusBox marker={item.marker} />
                 <span>{item.text}</span>
               </>
             ) : (

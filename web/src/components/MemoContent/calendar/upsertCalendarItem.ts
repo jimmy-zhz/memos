@@ -2,15 +2,16 @@
 // markdown content. Operates on lines directly rather than an AST, since
 // fenced code block contents are opaque to markdown ASTs.
 
+import { isTaskStatusMarker, resolveTaskStatus } from "@/utils/task-status";
 import { eventRefFor, resolveEventRef } from "./parseCalendarBlock";
 
 const FENCE_START_RE = /^```calendar\s*$/;
 const FENCE_END_RE = /^```\s*$/;
 const DATE_LINE_RE = /^-\s+(\d{4}-\d{2}-\d{2})\s*$/;
 const EVENT_ITEM_RE = /^-\s+@(.+)$/;
-const ITEM_LINE_RE = /^-\s+(?:\[([ xX])\]\s+)?(.+)$/;
+const ITEM_LINE_RE = /^-\s+(?:\[(.)\]\s+)?(.+)$/;
 // Accepts "- [ ] text", "-[] text", "- [x] text", or plain "text" input lines.
-const INPUT_LINE_RE = /^-?\s*\[([ xX]?)\]\s*(.+)$/;
+const INPUT_LINE_RE = /^-?\s*\[(.?)\]\s*(.+)$/;
 
 interface CalendarFenceLocation {
   lines: string[];
@@ -105,10 +106,10 @@ function formatItemLine(rawLine: string): string | undefined {
 
   const match = INPUT_LINE_RE.exec(trimmed);
   if (match) {
-    const checked = match[1].toLowerCase() === "x";
+    const marker = isTaskStatusMarker(match[1]) ? resolveTaskStatus(match[1]).marker : " ";
     const text = match[2].trim();
     if (!text) return undefined;
-    return `- [${checked ? "x" : " "}] ${text}`;
+    return `- [${marker}] ${text}`;
   }
 
   return `- [ ] ${trimmed}`;
@@ -240,6 +241,15 @@ export function toggleCalendarEvent(content: string, date: string, name: string,
  * can't be found, or if the item has no checkbox to toggle.
  */
 export function toggleCalendarItem(content: string, date: string, itemIndex: number, checked: boolean): string {
+  return setCalendarItemStatus(content, date, itemIndex, checked ? "x" : " ");
+}
+
+/** As above, but writes any extended status marker (`[/]`, `[?]`, …). */
+export function setCalendarItemStatus(content: string, date: string, itemIndex: number, marker: string): string {
+  if (!isTaskStatusMarker(marker)) {
+    return content;
+  }
+  const nextMarker = resolveTaskStatus(marker).marker;
   const location = locateCalendarFence(content);
   if (!location) {
     return content;
@@ -273,9 +283,9 @@ export function toggleCalendarItem(content: string, date: string, itemIndex: num
     const match = ITEM_LINE_RE.exec(blockLines[i]);
     if (!match) continue;
     if (seen === itemIndex) {
-      if (match[1] === undefined) return content; // no checkbox on this line, nothing to toggle
+      if (match[1] === undefined || !isTaskStatusMarker(match[1])) return content; // no checkbox on this line, nothing to set
       const newBlockLines = [...blockLines];
-      newBlockLines[i] = blockLines[i].replace(ITEM_LINE_RE, (_full, _check, text) => `- [${checked ? "x" : " "}] ${text}`);
+      newBlockLines[i] = blockLines[i].replace(ITEM_LINE_RE, (_full, _check, text) => `- [${nextMarker}] ${text}`);
       return rebuildContent(location, newBlockLines);
     }
     seen++;

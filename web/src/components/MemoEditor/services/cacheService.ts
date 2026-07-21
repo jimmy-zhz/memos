@@ -4,14 +4,22 @@ const pendingSaves = new Map<string, ReturnType<typeof window.setTimeout>>();
 const STRUCTURED_CACHE_ENTRY_KIND = "memos.editor-cache";
 const STRUCTURED_CACHE_ENTRY_VERSION = 1;
 
-function deserializeContent(raw: string): string {
+// Drafts expire an hour after they were last written, so a stale cache never
+// resurrects content the user has long since moved on from.
+export const CACHE_TTL_MS = 60 * 60 * 1000;
+
+// Returns undefined when the entry is expired (caller should drop it).
+function deserializeContent(raw: string): string | undefined {
   try {
-    const parsed = JSON.parse(raw) as { kind?: unknown; version?: unknown; content?: unknown };
+    const parsed = JSON.parse(raw) as { kind?: unknown; version?: unknown; content?: unknown; savedAt?: unknown };
     if (
       parsed.kind === STRUCTURED_CACHE_ENTRY_KIND &&
       parsed.version === STRUCTURED_CACHE_ENTRY_VERSION &&
       typeof parsed.content === "string"
     ) {
+      if (typeof parsed.savedAt === "number" && Date.now() - parsed.savedAt > CACHE_TTL_MS) {
+        return undefined;
+      }
       return parsed.content;
     }
   } catch {
@@ -23,7 +31,15 @@ function deserializeContent(raw: string): string {
 
 function writeEntry(key: string, content: string): void {
   if (content.trim()) {
-    localStorage.setItem(key, content);
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        kind: STRUCTURED_CACHE_ENTRY_KIND,
+        version: STRUCTURED_CACHE_ENTRY_VERSION,
+        content,
+        savedAt: Date.now(),
+      }),
+    );
   } else {
     localStorage.removeItem(key);
   }
@@ -61,7 +77,34 @@ export const cacheService = {
 
   load(key: string): string {
     const raw = localStorage.getItem(key);
-    return raw ? deserializeContent(raw) : "";
+    if (!raw) return "";
+
+    const content = deserializeContent(raw);
+    if (content === undefined) {
+      this.clear(key);
+      return "";
+    }
+    return content;
+  },
+
+  // Drops any draft scoped to a memo, regardless of which editor wrote it
+  // (inline, notebook, ...). Used when the memo content is mutated outside the
+  // editor — e.g. toggling a checkbox or editing a calendar event in preview —
+  // so the stale draft does not overwrite the change on the next edit.
+  clearForMemo(memoName: string): void {
+    if (!memoName) return;
+
+    const suffix = `-${memoName}`;
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.endsWith(suffix)) {
+        keys.push(key);
+      }
+    }
+    for (const key of keys) {
+      this.clear(key);
+    }
   },
 
   clear(key: string): void {
