@@ -41,9 +41,62 @@ function locateCalendarFence(content: string): CalendarFenceLocation | undefined
   return { lines, fenceStart, fenceEnd, blockLines: lines.slice(fenceStart + 1, fenceEnd) };
 }
 
+// 配置行形如 `events: a, b` / `allowMaxUpdateDays: 7`（可带 @ 前缀），
+// 与条目行（以 `-` 开头）不会混淆。
+const CONFIG_LINE_RE = /^@?[A-Za-z][A-Za-z0-9_]*:\s*.*$/;
+
+/**
+ * 规范化 calendar 块：所有配置项提到最顶部，日期分组按日期倒序排列。
+ * 未分组条目（第一个日期行之前的条目）保持在配置之后、日期分组之前。
+ */
+export function normalizeCalendarBlock(blockLines: string[]): string[] {
+  const configLines: string[] = [];
+  const ungrouped: string[] = [];
+  const groups: { date: string; lines: string[] }[] = [];
+  let current: { date: string; lines: string[] } | undefined;
+
+  for (const line of blockLines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue; // 空行由输出统一重建
+
+    if (CONFIG_LINE_RE.test(trimmed)) {
+      configLines.push(trimmed);
+      continue;
+    }
+
+    const dateMatch = DATE_LINE_RE.exec(line);
+    if (dateMatch) {
+      current = { date: dateMatch[1], lines: [] };
+      groups.push(current);
+      continue;
+    }
+
+    if (current) {
+      current.lines.push(line);
+    } else {
+      ungrouped.push(line);
+    }
+  }
+
+  // 稳定排序：同日期分组保持原相对顺序。
+  const sorted = groups.map((group, index) => ({ group, index }));
+  sorted.sort((a, b) => (a.group.date === b.group.date ? a.index - b.index : a.group.date < b.group.date ? 1 : -1));
+
+  const out: string[] = [...configLines];
+  if (ungrouped.length > 0) {
+    if (out.length > 0) out.push("");
+    out.push(...ungrouped);
+  }
+  for (const { group } of sorted) {
+    if (out.length > 0) out.push("");
+    out.push(`- ${group.date}`, ...group.lines);
+  }
+  return out;
+}
+
 function rebuildContent(location: CalendarFenceLocation, newBlockLines: string[]): string {
   const { lines, fenceStart, fenceEnd } = location;
-  return [...lines.slice(0, fenceStart + 1), ...newBlockLines, ...lines.slice(fenceEnd)].join("\n");
+  return [...lines.slice(0, fenceStart + 1), ...normalizeCalendarBlock(newBlockLines), ...lines.slice(fenceEnd)].join("\n");
 }
 
 function formatItemLine(rawLine: string): string | undefined {
@@ -98,7 +151,8 @@ export function upsertCalendarItem(content: string, date: string, rawInput: stri
   if (dateLineIndex !== -1) {
     newBlockLines = [...blockLines.slice(0, dateLineIndex + 1), ...newItemLines, ...blockLines.slice(dateLineIndex + 1)];
   } else {
-    newBlockLines = [`- ${date}`, ...newItemLines, "", ...blockLines];
+    // 追加到末尾，避免落在未分组条目之前把它们吞进新分组；normalize 会重新排序。
+    newBlockLines = [...blockLines, "", `- ${date}`, ...newItemLines];
   }
 
   return rebuildContent(location, newBlockLines);
@@ -166,7 +220,7 @@ export function toggleCalendarEvent(content: string, date: string, name: string,
     if (dateLineIndex !== -1) {
       newBlockLines = [...blockLines.slice(0, dateLineIndex + 1), eventLine, ...blockLines.slice(dateLineIndex + 1)];
     } else {
-      newBlockLines = [`- ${date}`, eventLine, "", ...blockLines];
+      newBlockLines = [...blockLines, "", `- ${date}`, eventLine];
     }
     return rebuildContent(location, newBlockLines);
   }
