@@ -258,7 +258,7 @@ func (s *Store) GetInstanceAISetting(ctx context.Context) (*storepb.InstanceAISe
 
 const (
 	defaultInstanceStorageType       = storepb.InstanceStorageSetting_LOCAL
-	defaultInstanceUploadSizeLimitMb = 30
+	defaultInstanceUploadSizeLimitMb = 100
 	defaultInstanceFilepathTemplate  = "assets/{timestamp}_{uuid}_{filename}"
 )
 
