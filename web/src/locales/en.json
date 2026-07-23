@@ -279,7 +279,7 @@
       "unsupported": "Audio recording unsupported",
       "unsupported-description": "This browser cannot record audio from the memo composer."
     },
-    "media-too-large": "Media files must be 10MB or smaller.",
+    "media-too-large": "Media files must be 100MB or smaller.",
     "media-upload-error": "Failed to upload media file.",
     "media-uploading": "Uploading…",
     "media-upload-in-progress": "Please wait for the current upload to finish."

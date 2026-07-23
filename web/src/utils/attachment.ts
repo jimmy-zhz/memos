@@ -64,7 +64,7 @@ export const isMediaMimeType = (t: string) => t.startsWith("image/") || t.starts
 // MAX_MEDIA_ATTACHMENT_SIZE_BYTES mirrors the backend's maxMediaAttachmentSizeBytes
 // (server/router/api/v1/attachment_service.go) so oversized media files are rejected
 // before upload instead of after a round trip.
-export const MAX_MEDIA_ATTACHMENT_SIZE_BYTES = 10 * 1024 * 1024;
+export const MAX_MEDIA_ATTACHMENT_SIZE_BYTES = 100 * 1024 * 1024;
 
 const VIDEO_URL_EXTENSIONS = new Set(["mp4", "webm", "ogv"]);
 const AUDIO_URL_EXTENSIONS = new Set(["mp3", "wav", "ogg", "m4a", "aac", "flac", "weba"]);

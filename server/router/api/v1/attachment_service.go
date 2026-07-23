@@ -34,10 +34,10 @@ import (
 )
 
 const (
-	// The upload memory buffer is 32 MiB.
+	// The upload memory buffer is 100 MiB.
 	// It should be kept low, so RAM usage doesn't get out of control.
 	// This is unrelated to maximum upload size limit, which is now set through system setting.
-	MaxUploadBufferSizeBytes = 32 << 20
+	MaxUploadBufferSizeBytes = 100 << 20
 	MebiByte                 = 1024 * 1024
 	// ThumbnailCacheFolder is the folder name where the thumbnail images are stored.
 	ThumbnailCacheFolder = ".thumbnail_cache"
@@ -48,9 +48,9 @@ const (
 	maxBatchDeleteAttachments = 100
 	maxImagePixels            = 50_000_000
 
-	// maxMediaAttachmentSizeBytes caps image/video/audio uploads at 10 MiB,
+	// maxMediaAttachmentSizeBytes caps image/video/audio uploads at 100 MiB,
 	// independent of (and tighter than) the instance-wide UploadSizeLimitMb.
-	maxMediaAttachmentSizeBytes = 10 * MebiByte
+	maxMediaAttachmentSizeBytes = 100 * MebiByte
 )
 
 // isMediaMimeType reports whether t is an image/video/audio MIME type.
@@ -152,7 +152,7 @@ func (s *APIV1Service) CreateAttachment(ctx context.Context, request *v1pb.Creat
 		return nil, status.Errorf(codes.InvalidArgument, "file size exceeds the limit")
 	}
 	if isMediaMimeType(request.Attachment.Type) && size > maxMediaAttachmentSizeBytes {
-		return nil, status.Errorf(codes.InvalidArgument, "media file size exceeds the 10MB limit")
+		return nil, status.Errorf(codes.InvalidArgument, "media file size exceeds the 100MB limit")
 	}
 	create.Size = int64(size)
 	create.Blob = request.Attachment.Content
