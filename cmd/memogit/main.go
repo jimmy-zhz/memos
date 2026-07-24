@@ -4,10 +4,14 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/usememos/memos/internal/memogit"
 )
@@ -57,23 +61,38 @@ func loginCmd() *cobra.Command {
 }
 
 func cloneCmd() *cobra.Command {
-	var filter string
+	var filter, sparse, dir string
 	cmd := &cobra.Command{
 		Use:   "clone [workspace-title]",
-		Short: "First full export of a workspace (knowledge base) + git init + baseline commit",
+		Short: "First export of a workspace (or one folder via --sparse-checkout) + git init + baseline commit",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cwd, err := os.Getwd()
 			if err != nil {
 				return err
 			}
-			// Cloning a second knowledge base joins the existing checkout root,
-			// wherever inside it the command was run from.
-			root := cwd
-			if found, err := memogit.FindRoot(cwd); err == nil {
-				root = found
+
+			// --dir makes a standalone checkout root at that path (used by sparse
+			// checkouts): the metadata and content live inside it, and it never
+			// joins an existing root. Without --dir, cloning a second knowledge
+			// base joins the existing checkout root found from the current dir.
+			var root string
+			if dir != "" {
+				root, err = filepath.Abs(dir)
+				if err != nil {
+					return err
+				}
+				if err := os.MkdirAll(root, 0o755); err != nil {
+					return fmt.Errorf("create %s: %w", root, err)
+				}
+			} else {
+				root = cwd
+				if found, err := memogit.FindRoot(cwd); err == nil {
+					root = found
+				}
 			}
-			cfg, err := memogit.LoadConfig(root)
+
+			cfg, err := ensureConfig(cmd, root)
 			if err != nil {
 				return err
 			}
@@ -84,11 +103,75 @@ func cloneCmd() *cobra.Command {
 			if len(args) == 1 {
 				workspaceTitle = args[0]
 			}
-			return memogit.Clone(cmd.Context(), root, cfg, workspaceTitle, filter, cmd.OutOrStdout())
+			return memogit.Clone(cmd.Context(), root, cfg, workspaceTitle, filter, sparse, cmd.OutOrStdout())
 		},
 	}
 	cmd.Flags().StringVar(&filter, "filter", "", "optional CEL filter, e.g. '\"work\" in tags'")
+	cmd.Flags().StringVar(&sparse, "sparse-checkout", "", "check out only this server folder (its prefix is stripped locally)")
+	cmd.Flags().StringVar(&dir, "dir", "", "check out into this directory as a standalone root (metadata lives inside it)")
 	return cmd
+}
+
+// ensureConfig loads the checkout root's config, falling back to an interactive
+// console login (server URL + token) when nothing is configured yet, so a fresh
+// `memogit clone --dir ...` can prompt in place instead of failing.
+func ensureConfig(cmd *cobra.Command, root string) (*memogit.Config, error) {
+	cfg, err := memogit.LoadConfig(root)
+	if err == nil {
+		return cfg, nil
+	}
+	// Only the "not configured" case is recoverable by prompting; surface any
+	// other error (unreadable/corrupt config) as-is.
+	if _, statErr := os.Stat(filepath.Join(root, memogit.MetaDir, memogit.ConfigFile)); statErr == nil {
+		return nil, err
+	}
+	server, token, promptErr := promptLogin(cmd)
+	if promptErr != nil {
+		return nil, promptErr
+	}
+	cfg = &memogit.Config{Server: server, Token: token}
+	if err := cfg.Save(root); err != nil {
+		return nil, err
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "Saved config to %s\n", filepath.Join(root, memogit.MetaDir, memogit.ConfigFile))
+	return cfg, nil
+}
+
+// promptLogin reads the server URL and Personal Access Token from the console.
+// The token is read without echo when stdin is a terminal.
+func promptLogin(cmd *cobra.Command) (server, token string, err error) {
+	out := cmd.OutOrStdout()
+	reader := bufio.NewReader(cmd.InOrStdin())
+
+	fmt.Fprint(out, "memos server URL (e.g. https://memos.example.com): ")
+	line, err := reader.ReadString('\n')
+	if err != nil && line == "" {
+		return "", "", fmt.Errorf("read server URL: %w", err)
+	}
+	server = strings.TrimSpace(line)
+	if server == "" {
+		return "", "", fmt.Errorf("server URL is required")
+	}
+
+	fmt.Fprint(out, "Personal Access Token (memos_pat_...): ")
+	if f, ok := cmd.InOrStdin().(*os.File); ok && term.IsTerminal(int(f.Fd())) {
+		b, readErr := term.ReadPassword(int(f.Fd()))
+		fmt.Fprintln(out)
+		if readErr != nil {
+			return "", "", fmt.Errorf("read token: %w", readErr)
+		}
+		token = strings.TrimSpace(string(b))
+	} else {
+		line, readErr := reader.ReadString('\n')
+		if readErr != nil && line == "" {
+			return "", "", fmt.Errorf("read token: %w", readErr)
+		}
+		token = strings.TrimSpace(line)
+	}
+	if token == "" {
+		return "", "", fmt.Errorf("token is required")
+	}
+	return server, token, nil
 }
 
 func workspacesCmd() *cobra.Command {

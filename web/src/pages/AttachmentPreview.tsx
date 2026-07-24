@@ -35,6 +35,9 @@ const AttachmentPreview = () => {
   const [headerHidden, setHeaderHidden] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  // The element the EPUB reader scrolls internally (epub.js owns it), captured from onScroll so
+  // the back-to-top button can scroll the right container. Null for PDF/HTML/markdown.
+  const epubScrollerRef = useRef<HTMLElement | null>(null);
   const lastScrollTopRef = useRef(0);
   const hideAnchorRef = useRef(0);
   const saveScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -92,12 +95,11 @@ const AttachmentPreview = () => {
     };
   }, [attachment, isHtml]);
 
-  const handleScroll = useCallback(() => {
-    const el = scrollContainerRef.current;
-    if (!el) return;
-    const scrollTop = el.scrollTop;
+  // Show/hide the header and the back-to-top button from a scroll offset. Shared by the outer
+  // container's scroll (PDF/markdown) and the EPUB reader's own internal scroll (bridged via
+  // EpubDocumentView.onScroll), since epub.js scrolls a container this page can't observe.
+  const applyScrollDirection = useCallback((scrollTop: number) => {
     setShowBackToTop(scrollTop > BACK_TO_TOP_THRESHOLD);
-
     if (scrollTop <= lastScrollTopRef.current) {
       // Scrolling up (or at the top): reveal the header immediately.
       setHeaderHidden(false);
@@ -106,12 +108,19 @@ const AttachmentPreview = () => {
       setHeaderHidden(true);
     }
     lastScrollTopRef.current = scrollTop;
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const scrollTop = el.scrollTop;
+    applyScrollDirection(scrollTop);
 
     if (isPdf && attachment) {
       clearTimeout(saveScrollTimeoutRef.current);
       saveScrollTimeoutRef.current = setTimeout(() => saveDocScrollPosition(attachment.name, { scrollTop }), 300);
     }
-  }, [isPdf, attachment]);
+  }, [isPdf, attachment, applyScrollDirection]);
 
   // Restore the last scroll position (continuous-scroll PDF mode) once the page's
   // reserved layout has settled. Paginated mode is restored separately via
@@ -125,7 +134,8 @@ const AttachmentPreview = () => {
   }, [isPdf, attachment?.name]);
 
   const scrollToTop = useCallback(() => {
-    scrollContainerRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+    const target = epubScrollerRef.current ?? scrollContainerRef.current;
+    target?.scrollTo({ top: 0, behavior: "smooth" });
   }, []);
 
   if (isLoading) {
@@ -141,12 +151,14 @@ const AttachmentPreview = () => {
   }
 
   return (
-    <div className="relative h-screen w-screen overflow-hidden">
+    <div className="relative flex h-screen w-screen flex-col overflow-hidden">
       {!isHtml && (
+        // The header sits in normal flow (not absolute) and collapses its height as it hides, so
+        // the scroll area below grows to fill the reclaimed space instead of leaving a blank strip.
         <div
           className={cn(
-            "absolute inset-x-0 top-0 z-10 flex h-11 items-center justify-between gap-3 border-b border-border bg-background px-4 py-2 transition-transform duration-300",
-            headerHidden && "-translate-y-full",
+            "flex shrink-0 items-center justify-between gap-3 overflow-hidden border-b border-border bg-background px-4 transition-all duration-300",
+            headerHidden ? "h-0 border-b-0" : "h-11 py-2",
           )}
         >
           <span className="truncate text-sm font-medium text-foreground" title={attachment.filename}>
@@ -155,7 +167,7 @@ const AttachmentPreview = () => {
           <div ref={toolbarSlotRef} className="flex shrink-0 items-center gap-1" />
         </div>
       )}
-      <div ref={scrollContainerRef} onScroll={handleScroll} className={cn("h-full overflow-y-auto", !isHtml && "pt-11")}>
+      <div ref={scrollContainerRef} onScroll={handleScroll} className="min-h-0 flex-1 overflow-y-auto">
         {isPdf && toolbarSlot && (
           <PdfDocumentView
             url={getAttachmentUrl(attachment)}
@@ -170,13 +182,19 @@ const AttachmentPreview = () => {
         )}
         {isEpub && toolbarSlot && (
           <EpubDocumentView
+            key={attachment.name}
             url={getAttachmentUrl(attachment)}
             toolbarSlot={toolbarSlot}
             className="px-6 py-4"
             parentMemoName={attachment.memo}
             attachmentName={attachment.name}
+            initialReaderSettings={attachment.readerSettings}
             initialCfi={cachedPosition?.cfi}
             onLocationChange={(cfi) => saveDocScrollPosition(attachment.name, { cfi })}
+            onScroll={(scrollTop, scroller) => {
+              epubScrollerRef.current = scroller;
+              applyScrollDirection(scrollTop);
+            }}
           />
         )}
         {isHtml &&

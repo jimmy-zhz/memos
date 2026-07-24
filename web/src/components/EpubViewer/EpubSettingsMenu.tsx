@@ -11,8 +11,11 @@ import {
   LINE_HEIGHT_STEP,
   MAX_LETTER_SPACING,
   MAX_LINE_HEIGHT,
+  MAX_PARAGRAPH_SPACING,
   MIN_LETTER_SPACING,
   MIN_LINE_HEIGHT,
+  MIN_PARAGRAPH_SPACING,
+  PARAGRAPH_SPACING_STEP,
 } from "./epubSettings";
 
 interface Props {
@@ -116,6 +119,22 @@ export const EpubSettingsMenu = ({ settings, onChange }: Props) => {
             step={LINE_HEIGHT_STEP}
             value={settings.lineHeight}
             onChange={(e) => onChange({ lineHeight: Number(e.target.value) })}
+            className="w-full accent-primary"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">{t("epub.paragraph-spacing")}</span>
+            <span className="text-xs tabular-nums text-muted-foreground">{settings.paragraphSpacing.toFixed(1)}em</span>
+          </div>
+          <input
+            type="range"
+            min={MIN_PARAGRAPH_SPACING}
+            max={MAX_PARAGRAPH_SPACING}
+            step={PARAGRAPH_SPACING_STEP}
+            value={settings.paragraphSpacing}
+            onChange={(e) => onChange({ paragraphSpacing: Number(e.target.value) })}
             className="w-full accent-primary"
           />
         </div>

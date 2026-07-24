@@ -31,7 +31,7 @@ type PushResult struct {
 // dryRun prints the plan without calling the API, mutating sync-state, or
 // committing. Attachments are one-way (download only) and never pushed.
 func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dryRun bool, out io.Writer) (*PushResult, error) {
-	state, err := LoadState(root, ws.Dir)
+	state, err := LoadState(root, ws.stateName())
 	if err != nil {
 		return nil, err
 	}
@@ -70,6 +70,9 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 		if !tracked {
 			// New document → CreateMemo.
 			folderPath, title, docType := deriveMemoFromPath(relPath)
+			// Sparse checkout: local paths have the mapped folder stripped, so
+			// re-add the prefix to target the right server folder_path.
+			folderPath = ws.ServerFolderPath(folderPath)
 			fmt.Fprintf(out, "  + %s (new)\n", relPath)
 			if dryRun {
 				res.Created++
@@ -79,7 +82,7 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 			if err != nil {
 				return nil, err
 			}
-			ms := memoState(created)
+			ms := memoState(ws, created)
 			ms.Path = relPath // keep the local mapping even if the server normalized title
 			state.Memos[uidFromName(created.GetName())] = ms
 			res.Created++
@@ -130,7 +133,7 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 			if err != nil {
 				return nil, err
 			}
-			ms := memoState(updated)
+			ms := memoState(ws, updated)
 			ms.Path = prev.Path
 			ms.Attachments = prev.Attachments
 			state.Memos[uid] = ms // ConflictServerHash cleared (fresh memoState)
@@ -174,7 +177,7 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 		if err != nil {
 			return nil, err
 		}
-		ms := memoState(updated)
+		ms := memoState(ws, updated)
 		ms.Path = prev.Path
 		ms.Attachments = prev.Attachments
 		state.Memos[uid] = ms
@@ -210,7 +213,7 @@ func Push(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, dr
 	}
 
 	state.LastSync = time.Now().UTC()
-	if err := state.Save(root, ws.Dir); err != nil {
+	if err := state.Save(root, ws.stateName()); err != nil {
 		return nil, err
 	}
 	if err := GitCommitAll(root, fmt.Sprintf("memogit push %s: %d created, %d updated, %d archived", ws.Title, res.Created, res.Updated, res.Archived)); err != nil {

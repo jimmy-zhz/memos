@@ -49,9 +49,9 @@ func writeFile(root, relPath, content string) error {
 // memoState builds the sync-state baseline for a memo (path + metadata + hash).
 // The hash is over the server content (m.GetContent()), which is what push/pull
 // compare against — not over the possibly-stubbed local file bytes.
-func memoState(m *v1pb.Memo) MemoState {
+func memoState(ws *WorkspaceConfig, m *v1pb.Memo) MemoState {
 	docType := docTypeString(m)
-	relPath := RelPath(m.GetFolderPath(), m.GetTitle(), docType)
+	relPath := ws.LocalRelPath(m.GetFolderPath(), m.GetTitle(), docType)
 	return MemoState{
 		Path:        relPath,
 		DocType:     docType,
@@ -68,7 +68,7 @@ func memoState(m *v1pb.Memo) MemoState {
 // baseline MemoState plus the number of attachments freshly downloaded. prev is
 // the previous baseline for this memo (nil on first export), used to skip
 // re-downloading unchanged attachments.
-func exportMemo(ctx context.Context, client *Client, contentRoot string, m *v1pb.Memo, prev *MemoState) (MemoState, int, error) {
+func exportMemo(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot string, m *v1pb.Memo, prev *MemoState) (MemoState, int, error) {
 	var prevRefs []AttachmentRef
 	if prev != nil {
 		prevRefs = prev.Attachments
@@ -77,7 +77,7 @@ func exportMemo(ctx context.Context, client *Client, contentRoot string, m *v1pb
 	if err != nil {
 		return MemoState{}, 0, err
 	}
-	ms, err := writeMemoDoc(contentRoot, m, refs)
+	ms, err := writeMemoDoc(ws, contentRoot, m, refs)
 	if err != nil {
 		return MemoState{}, 0, err
 	}
@@ -88,8 +88,8 @@ func exportMemo(ctx context.Context, client *Client, contentRoot string, m *v1pb
 // the given downloaded attachment refs, and returns its baseline MemoState. The
 // attachment download is done by the caller; this is the pure file-writing step
 // (also the unit-test seam that needs no server).
-func writeMemoDoc(contentRoot string, m *v1pb.Memo, refs []AttachmentRef) (MemoState, error) {
-	ms := memoState(m)
+func writeMemoDoc(ws *WorkspaceConfig, contentRoot string, m *v1pb.Memo, refs []AttachmentRef) (MemoState, error) {
+	ms := memoState(ws, m)
 	ms.Attachments = refs
 	if err := writeFile(contentRoot, ms.Path, FileContent(m, refs)); err != nil {
 		return MemoState{}, err
@@ -100,7 +100,7 @@ func writeMemoDoc(contentRoot string, m *v1pb.Memo, refs []AttachmentRef) (MemoS
 // relocateMemo is like exportMemo but for an already-tracked memo whose file may
 // have moved (folder_path/title changed): it downloads attachments, writes the
 // new file, and removes the old one. Returns the new baseline + downloads.
-func relocateMemo(ctx context.Context, client *Client, contentRoot, oldRel string, m *v1pb.Memo, prev *MemoState) (MemoState, int, error) {
+func relocateMemo(ctx context.Context, client *Client, ws *WorkspaceConfig, contentRoot, oldRel string, m *v1pb.Memo, prev *MemoState) (MemoState, int, error) {
 	var prevRefs []AttachmentRef
 	if prev != nil {
 		prevRefs = prev.Attachments
@@ -109,7 +109,7 @@ func relocateMemo(ctx context.Context, client *Client, contentRoot, oldRel strin
 	if err != nil {
 		return MemoState{}, 0, err
 	}
-	ms := memoState(m)
+	ms := memoState(ws, m)
 	ms.Attachments = refs
 	if err := relocateAndWrite(contentRoot, oldRel, ms.Path, FileContent(m, refs)); err != nil {
 		return MemoState{}, 0, err
@@ -151,15 +151,32 @@ func pruneEmptyDirs(root, dir string) {
 	}
 }
 
+// inScopeMemos returns only the memos that belong to the workspace's checkout.
+// For a full checkout it returns the input unchanged; for a sparse checkout it
+// drops memos outside the mapped folder (the server has no folder_path filter,
+// so scoping happens client-side after ListAllMemos).
+func inScopeMemos(ws *WorkspaceConfig, memos []*v1pb.Memo) []*v1pb.Memo {
+	if ws.Sparse == "" {
+		return memos
+	}
+	out := memos[:0:0]
+	for _, m := range memos {
+		if ws.inScope(m.GetFolderPath()) {
+			out = append(out, m)
+		}
+	}
+	return out
+}
+
 // checkPathCollisions guards against two distinct server documents mapping to
 // the same local path after sanitization (e.g. titles differing only in
 // reserved characters). The server's (workspace, folder_path, title) uniqueness
 // prevents true duplicates, but filename sanitization can still collapse them,
 // which would silently overwrite one file. Fail loudly instead.
-func checkPathCollisions(memos []*v1pb.Memo, out io.Writer) error {
+func checkPathCollisions(ws *WorkspaceConfig, memos []*v1pb.Memo, out io.Writer) error {
 	seen := make(map[string]string, len(memos)) // path -> "folder_path::title"
 	for _, m := range memos {
-		p := RelPath(m.GetFolderPath(), m.GetTitle(), docTypeString(m))
+		p := ws.LocalRelPath(m.GetFolderPath(), m.GetTitle(), docTypeString(m))
 		key := m.GetFolderPath() + "::" + m.GetTitle()
 		if prev, ok := seen[p]; ok && prev != key {
 			return fmt.Errorf("path collision: %q and %q both map to %q; "+

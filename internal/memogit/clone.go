@@ -18,7 +18,7 @@ import (
 // check out; if empty, the user's default (first) workspace is used, but only
 // when they have exactly one — with several, the title must be given
 // explicitly so clone never guesses the wrong knowledge base.
-func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter string, out io.Writer) error {
+func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter, sparse string, out io.Writer) error {
 	client := NewClient(cfg)
 	username, err := client.CurrentUsername(ctx)
 	if err != nil {
@@ -35,34 +35,49 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 		Dir:       workspaceDir(remote.GetTitle()),
 		Filter:    filter,
 	}
+	// A sparse checkout maps one server folder to the checkout root itself: the
+	// content sits at the root (Dir "."), the folder prefix is stripped locally
+	// (Sparse), and a separate Name identifies the state file since "." can't.
+	if sparse = sanitizeFolderPath(sparse); sparse != "" {
+		wsCfg.Sparse = sparse
+		wsCfg.Dir = "."
+		wsCfg.Name = workspaceDir(remote.GetTitle())
+	}
 	// Refuse to clobber a workspace already checked out into this root.
 	if err := cfg.Add(wsCfg); err != nil {
 		return err
 	}
-	if _, err := os.Stat(statePath(root, wsCfg.Dir)); err == nil {
+	if _, err := os.Stat(statePath(root, wsCfg.stateName())); err == nil {
 		return fmt.Errorf("already cloned (%s exists); use `memogit pull` to update",
-			filepath.Join(MetaDir, StateDir, wsCfg.Dir+".json"))
+			filepath.Join(MetaDir, StateDir, wsCfg.stateName()+".json"))
 	}
 	if err := cfg.Save(root); err != nil {
 		return err
 	}
 
-	fmt.Fprintf(out, "Authenticated as %q, fetching memos from workspace %q (%s) on %s ...\n",
-		username, wsCfg.Title, wsCfg.Workspace, cfg.Server)
+	if wsCfg.Sparse != "" {
+		fmt.Fprintf(out, "Authenticated as %q, fetching memos under folder %q of workspace %q (%s) on %s ...\n",
+			username, wsCfg.Sparse, wsCfg.Title, wsCfg.Workspace, cfg.Server)
+	} else {
+		fmt.Fprintf(out, "Authenticated as %q, fetching memos from workspace %q (%s) on %s ...\n",
+			username, wsCfg.Title, wsCfg.Workspace, cfg.Server)
+	}
 
 	memos, err := client.ListAllMemos(ctx, wsCfg.Workspace, scopedFilter(username, wsCfg.Filter))
 	if err != nil {
 		return err
 	}
 
+	memos = inScopeMemos(wsCfg, memos)
+
 	state := NewState(cfg.Server)
-	if err := checkPathCollisions(memos, out); err != nil {
+	if err := checkPathCollisions(wsCfg, memos, out); err != nil {
 		return err
 	}
 	contentRoot := ContentRoot(root, wsCfg)
 	attachmentCount := 0
 	for _, m := range memos {
-		ms, nDown, err := exportMemo(ctx, client, contentRoot, m, nil)
+		ms, nDown, err := exportMemo(ctx, client, wsCfg, contentRoot, m, nil)
 		if err != nil {
 			return err
 		}
@@ -72,7 +87,7 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 	}
 	state.LastSync = time.Now().UTC()
 
-	if err := state.Save(root, wsCfg.Dir); err != nil {
+	if err := state.Save(root, wsCfg.stateName()); err != nil {
 		return err
 	}
 	if err := writeGitignore(root); err != nil {
@@ -85,7 +100,11 @@ func Clone(ctx context.Context, root string, cfg *Config, workspaceTitle, filter
 		return err
 	}
 
-	fmt.Fprintf(out, "Cloned %d memos (%d attachments) into %s/ and committed baseline.\n", len(memos), attachmentCount, wsCfg.Dir)
+	dest := wsCfg.Dir + "/"
+	if wsCfg.Sparse != "" {
+		dest = root // sparse checkout: content sits at the root itself
+	}
+	fmt.Fprintf(out, "Cloned %d memos (%d attachments) into %s and committed baseline.\n", len(memos), attachmentCount, dest)
 	return nil
 }
 

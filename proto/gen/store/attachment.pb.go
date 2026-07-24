@@ -310,11 +310,15 @@ type AttachmentPayload struct {
 	// Types that are valid to be assigned to Payload:
 	//
 	//	*AttachmentPayload_S3Object_
-	Payload       isAttachmentPayload_Payload `protobuf_oneof:"payload"`
-	MotionMedia   *MotionMedia                `protobuf:"bytes,10,opt,name=motion_media,json=motionMedia,proto3" json:"motion_media,omitempty"`
-	Origin        AttachmentOrigin            `protobuf:"varint,11,opt,name=origin,proto3,enum=memos.store.AttachmentOrigin" json:"origin,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Payload     isAttachmentPayload_Payload `protobuf_oneof:"payload"`
+	MotionMedia *MotionMedia                `protobuf:"bytes,10,opt,name=motion_media,json=motionMedia,proto3" json:"motion_media,omitempty"`
+	Origin      AttachmentOrigin            `protobuf:"varint,11,opt,name=origin,proto3,enum=memos.store.AttachmentOrigin" json:"origin,omitempty"`
+	// Opaque, client-owned JSON blob of per-attachment reader preferences (e.g. the
+	// EPUB reader's theme/font/spacing settings). Stored as a string so the reader's
+	// settings schema can evolve without proto changes; the server never interprets it.
+	ReaderSettings string `protobuf:"bytes,12,opt,name=reader_settings,json=readerSettings,proto3" json:"reader_settings,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *AttachmentPayload) Reset() {
@@ -375,6 +379,13 @@ func (x *AttachmentPayload) GetOrigin() AttachmentOrigin {
 		return x.Origin
 	}
 	return AttachmentOrigin_ATTACHMENT_ORIGIN_UNSPECIFIED
+}
+
+func (x *AttachmentPayload) GetReaderSettings() string {
+	if x != nil {
+		return x.ReaderSettings
+	}
+	return ""
 }
 
 type isAttachmentPayload_Payload interface {
@@ -460,12 +471,13 @@ const file_store_attachment_proto_rawDesc = "" +
 	"\x04role\x18\x02 \x01(\x0e2\x1c.memos.store.MotionMediaRoleR\x04role\x12\x19\n" +
 	"\bgroup_id\x18\x03 \x01(\tR\agroupId\x12:\n" +
 	"\x19presentation_timestamp_us\x18\x04 \x01(\x03R\x17presentationTimestampUs\x12,\n" +
-	"\x12has_embedded_video\x18\x05 \x01(\bR\x10hasEmbeddedVideo\"\x80\x03\n" +
+	"\x12has_embedded_video\x18\x05 \x01(\bR\x10hasEmbeddedVideo\"\xa9\x03\n" +
 	"\x11AttachmentPayload\x12F\n" +
 	"\ts3_object\x18\x01 \x01(\v2'.memos.store.AttachmentPayload.S3ObjectH\x00R\bs3Object\x12;\n" +
 	"\fmotion_media\x18\n" +
 	" \x01(\v2\x18.memos.store.MotionMediaR\vmotionMedia\x125\n" +
-	"\x06origin\x18\v \x01(\x0e2\x1d.memos.store.AttachmentOriginR\x06origin\x1a\xa3\x01\n" +
+	"\x06origin\x18\v \x01(\x0e2\x1d.memos.store.AttachmentOriginR\x06origin\x12'\n" +
+	"\x0freader_settings\x18\f \x01(\tR\x0ereaderSettings\x1a\xa3\x01\n" +
 	"\bS3Object\x129\n" +
 	"\ts3_config\x18\x01 \x01(\v2\x1c.memos.store.StorageS3ConfigR\bs3Config\x12\x10\n" +
 	"\x03key\x18\x02 \x01(\tR\x03key\x12J\n" +

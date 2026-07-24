@@ -13,10 +13,14 @@ export interface EpubSettings {
   background: string;
   /** Font-family preset key (see FONT_PRESETS). "default" keeps the book's own fonts. */
   fontFamily: string;
-  /** Letter spacing in em. */
+  /** Letter spacing in em. Can be negative to tighten books that ship with loose tracking. */
   letterSpacing: number;
   /** Line height as a unitless multiplier (inherits to paragraphs). */
   lineHeight: number;
+  /** Vertical spacing between paragraphs, in em (applied as top/bottom margin on <p>). */
+  paragraphSpacing: number;
+  /** Font size multiplier (1 = the book's own size). Bounds live in useEpubRendition. */
+  fontScale: number;
 }
 
 export interface BackgroundPreset {
@@ -70,13 +74,19 @@ export const FONT_PRESETS: FontPreset[] = [
   { key: "kai", labelKey: "epub.font-kai", family: '"Kaiti SC", "KaiTi", "STKaiti", serif' },
 ];
 
-export const MIN_LETTER_SPACING = 0;
+// Negative tracking is allowed: some books ship with loose letter spacing baked in, and the
+// only way to tighten them from the reader is a negative override.
+export const MIN_LETTER_SPACING = -0.1;
 export const MAX_LETTER_SPACING = 0.3;
-export const LETTER_SPACING_STEP = 0.02;
+export const LETTER_SPACING_STEP = 0.01;
 
 export const MIN_LINE_HEIGHT = 1.2;
 export const MAX_LINE_HEIGHT = 2.4;
 export const LINE_HEIGHT_STEP = 0.1;
+
+export const MIN_PARAGRAPH_SPACING = 0;
+export const MAX_PARAGRAPH_SPACING = 2;
+export const PARAGRAPH_SPACING_STEP = 0.1;
 
 export const DEFAULT_SETTINGS: EpubSettings = {
   flow: "scrolled-doc",
@@ -84,26 +94,24 @@ export const DEFAULT_SETTINGS: EpubSettings = {
   fontFamily: "default",
   letterSpacing: 0,
   lineHeight: 1.5,
+  paragraphSpacing: 0,
+  fontScale: 1,
 };
 
-const STORAGE_KEY = "epub-reader-settings";
-
-export function loadEpubSettings(): EpubSettings {
+// Reader settings are persisted per-attachment on the server (Attachment.reader_settings),
+// so a book carries its own theme/font/spacing across devices. These helpers just parse and
+// serialize the opaque JSON blob the backend stores verbatim.
+export function parseEpubSettings(raw: string | undefined): EpubSettings {
+  if (!raw) return DEFAULT_SETTINGS;
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return DEFAULT_SETTINGS;
     return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<EpubSettings>) };
   } catch {
     return DEFAULT_SETTINGS;
   }
 }
 
-export function saveEpubSettings(settings: EpubSettings) {
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  } catch {
-    // Storage disabled/full — settings just won't persist.
-  }
+export function serializeEpubSettings(settings: EpubSettings): string {
+  return JSON.stringify(settings);
 }
 
 export const getBackgroundPreset = (key: string) => BACKGROUND_PRESETS.find((p) => p.key === key) ?? BACKGROUND_PRESETS[0];

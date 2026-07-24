@@ -93,6 +93,32 @@ extracted from the document. Click a heading to scroll to it. The header's
 **outline toggle** (next to Save) collapses/expands the panel. HTML, PDF, and
 View documents have no outline and no toggle.
 
+### Document properties (frontmatter)
+
+A Markdown document may open with a YAML **frontmatter** block — a `---` fenced
+section at the very top — whose keys render as a read-only properties panel above
+the body (`web/src/components/MemoContent/PropertiesPanel.tsx`). Most keys are
+free-form and shown as-is, but a few are **built-in** and change how the document
+behaves (`web/src/utils/frontmatter.ts`, `BUILTIN_DOC_PROPERTIES`):
+
+| Property        | Type      | Effect |
+| --------------- | --------- | ------ |
+| `hidden`        | boolean   | When `true`, suppresses the properties panel for the document (the frontmatter is still stored and editable in the raw Markdown). |
+| `displayFilter` | boolean   | When `false`, collapses the left secondary sidebar (the folder tree) **by default** while this document is open — a clean, full-width reading view suited to a landing / homepage document. Switching to another document restores the tree, and the sidebar toggle in the navigation rail still overrides it. |
+
+```markdown
+---
+displayFilter: false
+---
+
+# Welcome
+
+This document opens without the folder tree beside it.
+```
+
+Booleans accept a real YAML boolean (`displayFilter: false`) or the string forms
+`"true"` / `"false"`. An absent key means "unset" — the default behavior applies.
+
 ---
 
 ## 1.2 Folder-path model (how hierarchy is stored)

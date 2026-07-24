@@ -1205,6 +1205,7 @@
     "font-kai": "Kaiti",
     "letter-spacing": "Letter spacing",
     "line-height": "Line spacing",
+    "paragraph-spacing": "Paragraph spacing",
     "add-annotation": "Add a note",
     "annotations": "Notes",
     "no-annotations": "No notes yet. Toggle \"Add a note\" and select some text to write one about it.",

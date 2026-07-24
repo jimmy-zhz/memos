@@ -5,9 +5,10 @@ import { createPortal } from "react-dom";
 import MemoEditor from "@/components/MemoEditor";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { memoServiceClient } from "@/connect";
+import { attachmentServiceClient, memoServiceClient } from "@/connect";
 import useMediaQuery from "@/hooks/useMediaQuery";
 import { cn } from "@/lib/utils";
+import { AttachmentSchema } from "@/types/proto/api/v1/attachment_service_pb";
 import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
 import { EpubAnnotationSchema, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
 import { useTranslate } from "@/utils/i18n";
@@ -15,7 +16,7 @@ import { EpubAnnotationSidebar } from "./EpubAnnotationSidebar";
 import { EpubMarkToolbar } from "./EpubMarkToolbar";
 import { EpubToolbar } from "./EpubToolbar";
 import { DEFAULT_MARK_COLOR, getMarkColor } from "./epubMarks";
-import { type EpubSettings, getBackgroundPreset, loadEpubSettings, saveEpubSettings } from "./epubSettings";
+import { type EpubSettings, getBackgroundPreset, parseEpubSettings, serializeEpubSettings } from "./epubSettings";
 import { useEpubAnnotations } from "./useEpubAnnotations";
 import { useEpubBook } from "./useEpubBook";
 import { MAX_FONT_SCALE, MIN_FONT_SCALE, useEpubRendition } from "./useEpubRendition";
@@ -29,27 +30,69 @@ interface Props {
   parentMemoName?: string;
   /** The attachment's resource name (attachments/{uid}), used to anchor annotations to this file. */
   attachmentName?: string;
+  /** The attachment's saved reader settings JSON (Attachment.reader_settings), applied on mount. */
+  initialReaderSettings?: string;
   /** CFI to open on (e.g. restored from a scroll-position cache). Only applied on mount/url change. */
   initialCfi?: string;
   /** Fired whenever the reading location changes, with the current CFI. */
   onLocationChange?: (cfi: string) => void;
+  /**
+   * Fired with the reader's vertical scroll offset (px) as the book scrolls. Unlike PDF, epub.js
+   * scrolls its own container (in scrolled-doc flow) inside this component rather than the outer
+   * preview container, so the page can't observe it directly — this bridges it out (e.g. to
+   * hide the title bar on scroll-down). Paginated flow flips pages and never fires this.
+   */
+  onScroll?: (scrollTop: number, scroller: HTMLElement) => void;
 }
 
 // Renders an EPUB with a toolbar (portaled into a caller-provided slot, e.g. a document
 // title bar) and the book area inline — mirroring PdfDocumentView so the two document
 // readers plug into the same surfaces (AttachmentPreview, Notebook DocumentView).
-export const EpubDocumentView = ({ url, toolbarSlot, className, parentMemoName, attachmentName, initialCfi, onLocationChange }: Props) => {
+export const EpubDocumentView = ({
+  url,
+  toolbarSlot,
+  className,
+  parentMemoName,
+  attachmentName,
+  initialReaderSettings,
+  initialCfi,
+  onLocationChange,
+  onScroll,
+}: Props) => {
   const t = useTranslate();
   const isDesktop = useMediaQuery("lg");
   const { bookRef, toc, loading, error } = useEpubBook(url);
-  const [settings, setSettings] = useState<EpubSettings>(loadEpubSettings);
-  const updateSettings = useCallback((patch: Partial<EpubSettings>) => {
-    setSettings((prev) => {
-      const nextSettings = { ...prev, ...patch };
-      saveEpubSettings(nextSettings);
-      return nextSettings;
-    });
-  }, []);
+  // Reader settings live per-attachment on the server (Attachment.reader_settings), seeded from
+  // the value passed in on mount. Changes are debounced and saved back so a book keeps its own
+  // appearance across devices. useState initializer runs once; a url/attachment switch remounts
+  // this view (keyed by the attachment in the preview page), so re-seeding isn't needed here.
+  const [settings, setSettings] = useState<EpubSettings>(() => parseEpubSettings(initialReaderSettings));
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const updateSettings = useCallback(
+    (patch: Partial<EpubSettings>) => {
+      setSettings((prev) => {
+        const nextSettings = { ...prev, ...patch };
+        if (attachmentName) {
+          // Debounce: slider drags fire rapidly, and each save is a network round-trip.
+          clearTimeout(saveTimeoutRef.current);
+          const json = serializeEpubSettings(nextSettings);
+          saveTimeoutRef.current = setTimeout(() => {
+            attachmentServiceClient
+              .updateAttachment({
+                attachment: create(AttachmentSchema, { name: attachmentName, readerSettings: json }),
+                updateMask: create(FieldMaskSchema, { paths: ["reader_settings"] }),
+              })
+              .catch(() => {
+                // A failed save just means this device's tweak won't sync; the local state still applies.
+              });
+          }, 500);
+        }
+        return nextSettings;
+      });
+    },
+    [attachmentName],
+  );
+  useEffect(() => () => clearTimeout(saveTimeoutRef.current), []);
 
   const canAnnotate = !!parentMemoName && !!attachmentName;
   const [annotateMode, setAnnotateMode] = useState(true);
@@ -162,6 +205,7 @@ export const EpubDocumentView = ({ url, toolbarSlot, className, parentMemoName, 
     onLocationChange,
     highlights: canAnnotate ? highlights : undefined,
     annotateMode: canAnnotate && annotateMode,
+    onFontScaleChange: (scale) => updateSettings({ fontScale: scale }),
     onSelected: handleSelected,
     onSelectionCleared: closeToolbars,
     onHighlightClick: (memoName, anchor) => {
@@ -174,6 +218,23 @@ export const EpubDocumentView = ({ url, toolbarSlot, className, parentMemoName, 
     },
   });
   const { containerRef, next, prev, goToCfi, clearSelection } = rendition;
+
+  // Bridge the reader's internal scroll out to the caller (title-bar hide). In scrolled-doc
+  // flow epub.js scrolls a container it creates inside `containerRef`; scroll events don't
+  // bubble, so listen in the capture phase on the stable parent to catch descendant scrolls.
+  const onScrollRef = useRef(onScroll);
+  onScrollRef.current = onScroll;
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const handler = (e: Event) => {
+      const target = e.target as HTMLElement | null;
+      if (target && typeof target.scrollTop === "number") onScrollRef.current?.(target.scrollTop, target);
+    };
+    el.addEventListener("scroll", handler, true);
+    return () => el.removeEventListener("scroll", handler, true);
+  }, [containerRef]);
+
   const nextRef = useRef(next);
   const prevRef = useRef(prev);
   nextRef.current = next;
@@ -243,15 +304,18 @@ export const EpubDocumentView = ({ url, toolbarSlot, className, parentMemoName, 
         />,
         toolbarSlot,
       )}
-      <div className="w-full flex items-start">
+      {/* Fill the parent's height (the preview page's scroll area) so the reading box grows to
+          reclaim space when the title bar hides, rather than staying a fixed height and leaving
+          a gap. Requires the ancestor chain to have a definite height. */}
+      <div className="w-full flex items-stretch h-full">
         {/* The chosen background also tints the page gutters/margins around the book iframe,
             so the reading surface reads as one color rather than paper-on-app-background. */}
         <div className={cn("relative min-w-0 flex-1", className)} style={containerBg ? { background: containerBg } : undefined}>
           {loading && (
             <div className="absolute inset-0 z-10 flex items-center justify-center text-sm text-muted-foreground">{t("epub.loading")}</div>
           )}
-          {/* epub.js needs a fixed-height box to lay out paginated columns into. */}
-          <div ref={containerRef} className="h-[calc(100vh-6rem)] w-full" />
+          {/* epub.js needs a definite-height box to lay out into (paginated columns / scroll viewport). */}
+          <div ref={containerRef} className="h-full w-full" />
           {pendingSelection && (
             <EpubMarkToolbar
               x={pendingSelection.x}
@@ -302,9 +366,7 @@ export const EpubDocumentView = ({ url, toolbarSlot, className, parentMemoName, 
           )}
         </div>
         {canAnnotate && sidebarOpen && isDesktop && (
-          <div className="relative sticky top-0 h-[calc(100vh-6rem)] max-h-[calc(100vh-6rem)] w-[30%] min-w-[240px] shrink-0">
-            {sidebar(true)}
-          </div>
+          <div className="relative sticky top-0 h-full max-h-full w-[30%] min-w-[240px] shrink-0">{sidebar(true)}</div>
         )}
       </div>
       {canAnnotate && sidebarOpen && !isDesktop && (

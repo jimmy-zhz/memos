@@ -276,9 +276,14 @@ type Attachment struct {
 	// Optional. Motion media metadata.
 	MotionMedia *MotionMedia `protobuf:"bytes,9,opt,name=motion_media,json=motionMedia,proto3" json:"motion_media,omitempty"`
 	// Optional. How the attachment was created: mounted vs. inlined into memo content.
-	Origin        AttachmentOrigin `protobuf:"varint,10,opt,name=origin,proto3,enum=memos.api.v1.AttachmentOrigin" json:"origin,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Origin AttachmentOrigin `protobuf:"varint,10,opt,name=origin,proto3,enum=memos.api.v1.AttachmentOrigin" json:"origin,omitempty"`
+	// Optional. Opaque, client-owned JSON blob of per-attachment reader preferences
+	// (e.g. the EPUB reader's theme/font/spacing settings). The server stores it
+	// verbatim and never interprets it. Updated via UpdateAttachment with the
+	// "reader_settings" field mask.
+	ReaderSettings string `protobuf:"bytes,11,opt,name=reader_settings,json=readerSettings,proto3" json:"reader_settings,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Attachment) Reset() {
@@ -379,6 +384,13 @@ func (x *Attachment) GetOrigin() AttachmentOrigin {
 		return x.Origin
 	}
 	return AttachmentOrigin_ATTACHMENT_ORIGIN_UNSPECIFIED
+}
+
+func (x *Attachment) GetReaderSettings() string {
+	if x != nil {
+		return x.ReaderSettings
+	}
+	return ""
 }
 
 type CreateAttachmentRequest struct {
@@ -817,7 +829,7 @@ const file_api_v1_attachment_service_proto_rawDesc = "" +
 	"\x04role\x18\x02 \x01(\x0e2\x1d.memos.api.v1.MotionMediaRoleR\x04role\x12\x19\n" +
 	"\bgroup_id\x18\x03 \x01(\tR\agroupId\x12:\n" +
 	"\x19presentation_timestamp_us\x18\x04 \x01(\x03R\x17presentationTimestampUs\x12,\n" +
-	"\x12has_embedded_video\x18\x05 \x01(\bR\x10hasEmbeddedVideo\"\xfb\x03\n" +
+	"\x12has_embedded_video\x18\x05 \x01(\bR\x10hasEmbeddedVideo\"\xa9\x04\n" +
 	"\n" +
 	"Attachment\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12@\n" +
@@ -831,7 +843,8 @@ const file_api_v1_attachment_service_proto_rawDesc = "" +
 	"\x04memo\x18\b \x01(\tB\x03\xe0A\x01H\x00R\x04memo\x88\x01\x01\x12A\n" +
 	"\fmotion_media\x18\t \x01(\v2\x19.memos.api.v1.MotionMediaB\x03\xe0A\x01R\vmotionMedia\x12;\n" +
 	"\x06origin\x18\n" +
-	" \x01(\x0e2\x1e.memos.api.v1.AttachmentOriginB\x03\xe0A\x01R\x06origin:O\xeaAL\n" +
+	" \x01(\x0e2\x1e.memos.api.v1.AttachmentOriginB\x03\xe0A\x01R\x06origin\x12,\n" +
+	"\x0freader_settings\x18\v \x01(\tB\x03\xe0A\x01R\x0ereaderSettings:O\xeaAL\n" +
 	"\x17memos.api.v1/Attachment\x12\x18attachments/{attachment}*\vattachments2\n" +
 	"attachmentB\a\n" +
 	"\x05_memo\"\x82\x01\n" +

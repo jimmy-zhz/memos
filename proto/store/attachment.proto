@@ -54,6 +54,11 @@ message AttachmentPayload {
   MotionMedia motion_media = 10;
   AttachmentOrigin origin = 11;
 
+  // Opaque, client-owned JSON blob of per-attachment reader preferences (e.g. the
+  // EPUB reader's theme/font/spacing settings). Stored as a string so the reader's
+  // settings schema can evolve without proto changes; the server never interprets it.
+  string reader_settings = 12;
+
   message S3Object {
     StorageS3Config s3_config = 1;
     // key is the S3 object key.

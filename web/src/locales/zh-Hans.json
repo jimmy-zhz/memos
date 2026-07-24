@@ -1135,6 +1135,7 @@
     "font-kai": "楷体",
     "letter-spacing": "字间距",
     "line-height": "行间距",
+    "paragraph-spacing": "段落间距",
     "add-annotation": "添加评论",
     "annotations": "评论",
     "no-annotations": "还没有评论。开启「添加评论」并选中文字即可为其写评论。",

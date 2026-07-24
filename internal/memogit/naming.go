@@ -76,6 +76,49 @@ func sanitizeFolderPath(folderPath string) string {
 	return joined
 }
 
+// inScope reports whether a memo at the given server folder_path belongs to this
+// checkout. A full checkout (Sparse == "") includes everything; a sparse checkout
+// includes only the mapped folder itself and anything beneath it.
+func (w *WorkspaceConfig) inScope(serverFolder string) bool {
+	if w.Sparse == "" {
+		return true
+	}
+	serverFolder = strings.Trim(serverFolder, "/")
+	return serverFolder == w.Sparse || strings.HasPrefix(serverFolder, w.Sparse+"/")
+}
+
+// LocalRelPath is the repo-relative file path for a memo, with the sparse folder
+// prefix (if any) stripped so a sparse checkout's files sit at its root.
+func (w *WorkspaceConfig) LocalRelPath(serverFolder, title, docType string) string {
+	return RelPath(w.stripSparse(serverFolder), title, docType)
+}
+
+// ServerFolderPath is the inverse of the strip done by LocalRelPath: it prepends
+// the sparse prefix to a locally-derived folder so push targets the right server
+// folder_path. Used when creating memos found under a sparse checkout.
+func (w *WorkspaceConfig) ServerFolderPath(localFolder string) string {
+	localFolder = strings.Trim(filepath.ToSlash(localFolder), "/")
+	if w.Sparse == "" {
+		return localFolder
+	}
+	if localFolder == "" {
+		return w.Sparse
+	}
+	return w.Sparse + "/" + localFolder
+}
+
+// stripSparse removes the sparse folder prefix from a server folder_path.
+func (w *WorkspaceConfig) stripSparse(serverFolder string) string {
+	if w.Sparse == "" {
+		return serverFolder
+	}
+	serverFolder = strings.Trim(serverFolder, "/")
+	if serverFolder == w.Sparse {
+		return ""
+	}
+	return strings.TrimPrefix(serverFolder, w.Sparse+"/")
+}
+
 // RelPath computes the repo-relative file path for a document from its server
 // folder_path, title, and doc type: "<folder_path>/<title><ext>". The server
 // enforces uniqueness on (workspace, folder_path, title), so this path is

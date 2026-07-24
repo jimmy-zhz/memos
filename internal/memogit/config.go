@@ -60,11 +60,31 @@ type WorkspaceConfig struct {
 	// the command line and for display.
 	Title string `yaml:"workspace_title"`
 	// Dir is the checkout subfolder under the root, recorded at clone time so a
-	// later server-side title change never orphans the local files.
+	// later server-side title change never orphans the local files. For a sparse
+	// checkout (see Sparse) the content lives at the root itself, so Dir is ".".
 	Dir string `yaml:"dir"`
+	// Name is the identity key for this workspace: it names the sync-state file
+	// (.memogit/state/<name>.json) and selects the entry on the command line.
+	// Empty means "same as Dir", which is the case for every normal checkout; it
+	// is set explicitly only for a sparse checkout, where Dir is "." and cannot
+	// serve as a unique name.
+	Name string `yaml:"name,omitempty"`
+	// Sparse, when non-empty, is the server folder_path prefix this checkout maps
+	// to its root: only memos under that folder are checked out, and the prefix is
+	// stripped from every local path (and re-added on push). Empty = full checkout.
+	Sparse string `yaml:"sparse,omitempty"`
 	// Filter is an optional CEL clause applied on clone/pull for this workspace
 	// (in addition to the implicit "own memos only" scoping), e.g. `"work" in tags`.
 	Filter string `yaml:"filter,omitempty"`
+}
+
+// stateName returns the identity/state-file key for this workspace: the explicit
+// Name when set (sparse checkouts), otherwise the content Dir.
+func (w *WorkspaceConfig) stateName() string {
+	if w.Name != "" {
+		return w.Name
+	}
+	return w.Dir
 }
 
 // Find returns the configured workspace whose title matches (case-insensitively),
@@ -72,7 +92,7 @@ type WorkspaceConfig struct {
 // a mistyped name never syncs the wrong knowledge base.
 func (c *Config) Find(title string) (*WorkspaceConfig, error) {
 	for _, ws := range c.Workspaces {
-		if strings.EqualFold(ws.Title, title) || strings.EqualFold(ws.Dir, title) {
+		if strings.EqualFold(ws.Title, title) || strings.EqualFold(ws.stateName(), title) {
 			return ws, nil
 		}
 	}
@@ -154,8 +174,8 @@ func (c *Config) Add(ws *WorkspaceConfig) error {
 		if existing.Workspace == ws.Workspace {
 			return fmt.Errorf("workspace %q already cloned into %s/; use `memogit pull` to update", existing.Title, existing.Dir)
 		}
-		if strings.EqualFold(existing.Dir, ws.Dir) {
-			return fmt.Errorf("directory %s/ is already used by workspace %q", existing.Dir, existing.Title)
+		if strings.EqualFold(existing.stateName(), ws.stateName()) {
+			return fmt.Errorf("name %q is already used by workspace %q", ws.stateName(), existing.Title)
 		}
 	}
 	c.Workspaces = append(c.Workspaces, ws)

@@ -20,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
@@ -328,6 +329,15 @@ func (s *APIV1Service) UpdateAttachment(ctx context.Context, request *v1pb.Updat
 				return nil, status.Errorf(codes.InvalidArgument, "filename contains invalid characters or format")
 			}
 			update.Filename = &request.Attachment.Filename
+		} else if field == "reader_settings" {
+			// Reader settings ride on the attachment payload; clone the existing payload so
+			// updating settings doesn't drop the S3/motion/origin fields already stored.
+			payload := proto.Clone(attachment.Payload).(*storepb.AttachmentPayload)
+			if payload == nil {
+				payload = &storepb.AttachmentPayload{}
+			}
+			payload.ReaderSettings = request.Attachment.ReaderSettings
+			update.Payload = payload
 		}
 	}
 
@@ -461,13 +471,14 @@ func (s *APIV1Service) BatchDeleteAttachments(ctx context.Context, request *v1pb
 
 func convertAttachmentFromStore(attachment *store.Attachment) *v1pb.Attachment {
 	attachmentMessage := &v1pb.Attachment{
-		Name:        fmt.Sprintf("%s%s", AttachmentNamePrefix, attachment.UID),
-		CreateTime:  timestamppb.New(time.Unix(attachment.CreatedTs, 0)),
-		Filename:    attachment.Filename,
-		Type:        attachment.Type,
-		Size:        attachment.Size,
-		MotionMedia: convertMotionMediaFromStore(getAttachmentMotionMedia(attachment)),
-		Origin:      convertAttachmentOriginFromStore(attachment.Payload.GetOrigin()),
+		Name:           fmt.Sprintf("%s%s", AttachmentNamePrefix, attachment.UID),
+		CreateTime:     timestamppb.New(time.Unix(attachment.CreatedTs, 0)),
+		Filename:       attachment.Filename,
+		Type:           attachment.Type,
+		Size:           attachment.Size,
+		MotionMedia:    convertMotionMediaFromStore(getAttachmentMotionMedia(attachment)),
+		Origin:         convertAttachmentOriginFromStore(attachment.Payload.GetOrigin()),
+		ReaderSettings: attachment.Payload.GetReaderSettings(),
 	}
 	if attachment.MemoUID != nil && *attachment.MemoUID != "" {
 		memoName := fmt.Sprintf("%s%s", MemoNamePrefix, *attachment.MemoUID)

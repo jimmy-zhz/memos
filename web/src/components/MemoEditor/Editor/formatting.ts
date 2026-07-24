@@ -401,19 +401,26 @@ export function createFormattingController(view: EditorView, listeners: Set<() =
       const tree = syntaxTree(view.state);
       const active: ActiveFormatState = { ...EMPTY_ACTIVE_FORMATS };
       // Inline marks come from the syntax tree around the cursor.
+      let inCode = false;
       for (const n of ancestors(tree, pos, -1)) {
         const mark = WRAPPER_TO_MARK[n.name];
         if (mark) active[mark] = true;
         else if (n.name === "Link") active.link = true;
+        else if (n.name === "CodeBlock") inCode = true;
         // The isEmptyMarkPair guard: a fresh empty strikethrough pair
         // (`~~|~~`) parses as a bare tilde code fence — don't light the
         // code-block button while the cursor sits in one.
-        else if (n.name === "FencedCode" && !isEmptyMarkPair(view.state, n.from, n.to)) active.codeBlock = true;
+        else if (n.name === "FencedCode" && !isEmptyMarkPair(view.state, n.from, n.to)) {
+          active.codeBlock = true;
+          inCode = true;
+        }
       }
       // Line modes (lists, headings) come from the same line inspection the
-      // toggles use, keeping highlight and toggle behavior in lockstep.
+      // toggles use, keeping highlight and toggle behavior in lockstep. A
+      // `#`-prefixed line inside a code block is source text, not a heading —
+      // matching headingDecorations, which leaves it unstyled.
       const line = view.state.doc.lineAt(pos).text;
-      const heading = HEADING_LINE.exec(line);
+      const heading = inCode ? null : HEADING_LINE.exec(line);
       if (heading) active.headingLevel = toToolbarHeadingLevel(heading[1].length);
       const { mode } = lineListInfo(line);
       if (mode) active[mode] = true;

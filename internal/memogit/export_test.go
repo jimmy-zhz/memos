@@ -28,7 +28,7 @@ func TestExportMemoSidecarModel(t *testing.T) {
 	content := "---\nstatus: done\n---\n# Hello\n\nbody"
 	m := mkMemo("abc", "garden/notes", "My Note", content, v1pb.Memo_MARKDOWN)
 
-	ms, err := writeMemoDoc(root, m, nil)
+	ms, err := writeMemoDoc(&WorkspaceConfig{}, root, m, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +59,7 @@ func TestExportPdfWritesStub(t *testing.T) {
 	m.Attachments = []*v1pb.Attachment{
 		{Name: "attachments/a1", Filename: "paper.pdf", Type: "application/pdf"},
 	}
-	ms, err := writeMemoDoc(root, m, nil)
+	ms, err := writeMemoDoc(&WorkspaceConfig{}, root, m, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,7 +81,7 @@ func TestCheckPathCollisions(t *testing.T) {
 		mkMemo("u1", "f", "a:b", "x", v1pb.Memo_MARKDOWN),
 		mkMemo("u2", "f", "a?b", "y", v1pb.Memo_MARKDOWN),
 	}
-	if err := checkPathCollisions(memos, os.Stderr); err == nil {
+	if err := checkPathCollisions(&WorkspaceConfig{}, memos, os.Stderr); err == nil {
 		t.Fatal("expected collision error, got nil")
 	}
 	// Distinct paths are fine.
@@ -89,7 +89,7 @@ func TestCheckPathCollisions(t *testing.T) {
 		mkMemo("u1", "f", "a", "x", v1pb.Memo_MARKDOWN),
 		mkMemo("u2", "f", "b", "y", v1pb.Memo_MARKDOWN),
 	}
-	if err := checkPathCollisions(ok, os.Stderr); err != nil {
+	if err := checkPathCollisions(&WorkspaceConfig{}, ok, os.Stderr); err != nil {
 		t.Fatalf("unexpected collision: %v", err)
 	}
 }

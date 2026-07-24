@@ -3012,6 +3012,13 @@ components:
                     type: string
                     description: 'Optional. How the attachment was created: mounted vs. inlined into memo content.'
                     format: enum
+                readerSettings:
+                    type: string
+                    description: |-
+                        Optional. Opaque, client-owned JSON blob of per-attachment reader preferences
+                         (e.g. the EPUB reader's theme/font/spacing settings). The server stores it
+                         verbatim and never interprets it. Updated via UpdateAttachment with the
+                         "reader_settings" field mask.
         BackupNowRequest:
             type: object
             properties: {}

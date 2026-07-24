@@ -74,6 +74,53 @@ func TestRelPath(t *testing.T) {
 	}
 }
 
+func TestSparseCheckoutPathMapping(t *testing.T) {
+	full := &WorkspaceConfig{} // no sparse prefix
+	sparse := &WorkspaceConfig{Sparse: "Home"}
+
+	// inScope: full includes everything; sparse only the folder and below.
+	scopeCases := []struct {
+		ws     *WorkspaceConfig
+		folder string
+		want   bool
+	}{
+		{full, "anything", true},
+		{full, "", true},
+		{sparse, "Home", true},
+		{sparse, "Home/Journal", true},
+		{sparse, "Home/Journal/2024", true},
+		{sparse, "", false},
+		{sparse, "HomeWork", false}, // prefix-but-not-a-folder-boundary
+		{sparse, "Other", false},
+	}
+	for _, c := range scopeCases {
+		if got := c.ws.inScope(c.folder); got != c.want {
+			t.Errorf("inScope(%q) with Sparse=%q = %v, want %v", c.folder, c.ws.Sparse, got, c.want)
+		}
+	}
+
+	// LocalRelPath strips the prefix so files sit at the sparse root.
+	if got := sparse.LocalRelPath("Home", "Index", "MARKDOWN"); got != "Index.md" {
+		t.Errorf("LocalRelPath at folder root = %q, want %q", got, "Index.md")
+	}
+	if got := sparse.LocalRelPath("Home/Journal", "2024", "MARKDOWN"); got != filepath.Join("Journal", "2024.md") {
+		t.Errorf("LocalRelPath nested = %q, want %q", got, filepath.Join("Journal", "2024.md"))
+	}
+
+	// Round-trip: stripping then re-adding the prefix recovers the server folder.
+	roundTrip := []string{"Home", "Home/Journal", "Home/a/b/c"}
+	for _, server := range roundTrip {
+		local := sparse.stripSparse(server)
+		if got := sparse.ServerFolderPath(local); got != server {
+			t.Errorf("round-trip %q -> local %q -> %q, want %q", server, local, got, server)
+		}
+	}
+	// Full checkout leaves folders untouched in both directions.
+	if got := full.ServerFolderPath("a/b"); got != "a/b" {
+		t.Errorf("full ServerFolderPath = %q, want %q", got, "a/b")
+	}
+}
+
 func TestSanitizeFolderPathNoTraversal(t *testing.T) {
 	// A malicious folder path must never escape the repo root.
 	got := sanitizeFolderPath("../../secret/../x")

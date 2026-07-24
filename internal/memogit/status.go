@@ -32,7 +32,7 @@ type StatusResult struct {
 // local git working tree. It is read-only — it hits the server to compare but
 // never writes files, sync-state, or memos.
 func Status(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, out io.Writer) (*StatusResult, error) {
-	state, err := LoadState(root, ws.Dir)
+	state, err := LoadState(root, ws.stateName())
 	if err != nil {
 		return nil, err
 	}
@@ -55,6 +55,7 @@ func Status(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, 
 	if err != nil {
 		return nil, err
 	}
+	current = inScopeMemos(ws, current)
 	serverByUID := make(map[string]string, len(current)) // uid -> canonical server hash
 	alive := make(map[string]bool, len(current))
 	for _, m := range current {
@@ -103,7 +104,7 @@ func Status(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, 
 		prev, tracked := state.Memos[uid]
 		if !tracked {
 			// New on the server; name it by where it will land locally.
-			res.RemoteNew = append(res.RemoteNew, serverPath(current, uid))
+			res.RemoteNew = append(res.RemoteNew, serverPath(ws, current, uid))
 			continue
 		}
 		if srvHash != prev.ContentHash && !contains(res.Conflicts, prev.Path) {
@@ -130,10 +131,10 @@ func Status(ctx context.Context, root string, cfg *Config, ws *WorkspaceConfig, 
 
 // serverPath returns the local relative path a server memo (identified by uid)
 // would map to, for display of remote-new documents.
-func serverPath(memos []*v1pb.Memo, uid string) string {
+func serverPath(ws *WorkspaceConfig, memos []*v1pb.Memo, uid string) string {
 	for _, m := range memos {
 		if uidFromName(m.GetName()) == uid {
-			return RelPath(m.GetFolderPath(), m.GetTitle(), docTypeString(m))
+			return ws.LocalRelPath(m.GetFolderPath(), m.GetTitle(), docTypeString(m))
 		}
 	}
 	return uid

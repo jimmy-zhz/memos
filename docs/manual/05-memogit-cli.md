@@ -98,11 +98,8 @@ baseline is captured in git history.
 
 ```bash
 # From the repo root
-go build -o memogit ./cmd/memogit/
+go build -o memogit ./cmd/memogit/ && sudo cp memogit /usr/local/bin/
 
-# Put it on your PATH (either one)
-cp memogit ~/bin/            # if ~/bin is on PATH
-sudo cp memogit /usr/local/bin/
 ```
 
 Verify:
@@ -128,6 +125,10 @@ memogit login --server http://localhost:5230 --token memos_pat_xxxxxxxx
 
 This writes `.memogit/config.yaml` (mode 600). Environment variables
 `MEMOGIT_SERVER` / `MEMOGIT_TOKEN` override the file when set (useful for CI).
+
+You can also skip this step: when you run `clone` in a directory that isn't
+configured yet, it prompts for the server URL and token interactively and saves
+them for you (see §5.5a).
 
 > **The `--server` URL must point at the Memos backend**, not a frontend dev
 > server. See §5.12 if you're unsure which port that is.
@@ -186,6 +187,90 @@ memogit clone Life      # adds Life/ next to Default/
 
 `clone` refuses only if *that* workspace is already checked out here (or its
 target directory is taken) — use `pull` to update it.
+
+---
+
+## 5.5a Sparse checkout — one folder into its own directory
+
+Sometimes you don't want the whole knowledge base, just **one folder** of it,
+checked out into a **dedicated directory** whose config lives *inside* it (rather
+than alongside sibling workspaces under a shared root). That's a **sparse
+checkout**:
+
+```bash
+cd /Users/Jimmy/
+memogit clone Life --sparse-checkout Home --dir ./LifeHome
+```
+
+This checks out only the `Home` folder of the `Life` knowledge base into
+`./LifeHome`, and nothing else is downloaded. If the directory has no config yet,
+`clone` prompts on the console for the **server URL** and **token** (the token is
+read without echo), saves them into `./LifeHome/.memogit/config.yaml`, and
+continues — so you don't need a separate `login` step for a fresh directory.
+
+Two flags drive it:
+
+- **`--sparse-checkout <folder>`** — the server `folder_path` prefix to map. Only
+  documents at that folder or beneath it are checked out.
+- **`--dir <path>`** — the target directory. It becomes a **standalone checkout
+  root**: `.memogit/`, `.gitignore`, and `.git` all live **inside** it, not in a
+  parent. (You can use `--dir` on its own for a non-sparse checkout too, to place
+  a knowledge base's root at a specific path.)
+
+### The mapped folder becomes the directory (prefix stripped)
+
+The sparse folder prefix is **stripped** locally, so the target directory *is*
+that folder — you don't get a redundant `Home/` nesting:
+
+```
+server folder_path            local file
+──────────────────            ──────────────────────────
+Home                (root)  → LifeHome/Index.md
+Home/Journal/2024.md        → LifeHome/Journal/2024.md
+Home/Recipes/Soup.md        → LifeHome/Recipes/Soup.md
+Work/... (out of scope)       not checked out
+```
+
+`pull`, `push`, and `status` all honor the scope automatically — no extra flags:
+
+- `pull` only brings down documents under the mapped folder; a document that is
+  **moved out** of it on the server is reconciled as a local removal.
+- `push` **re-adds** the `Home/` prefix when creating new documents, so a new
+  `LifeHome/Recipes/Soup.md` becomes server `Home/Recipes/Soup.md`.
+
+A sparse checkout is a standalone, single-folder root; run `pull`/`push`/`status`
+from inside `./LifeHome` (they find `.memogit` by walking up).
+
+Layout of the example above:
+
+```
+LifeHome/                     ← the sparse checkout root (== the Home folder)
+├── .memogit/
+│   ├── config.yaml
+│   └── state/
+│       └── Life.json         ← state file named after the workspace
+├── .git/  .gitignore
+├── Index.md                  ← Home/Index.md, prefix stripped
+├── Journal/2024.md
+└── Recipes/Soup.md
+```
+
+In `config.yaml` a sparse workspace records the folder prefix and a content dir
+of `.`:
+
+```yaml
+workspaces:
+  - workspace: workspaces/8650daea...
+    workspace_title: Life
+    dir: "."                 # content sits at the root itself
+    name: Life               # identifies the state file (dir "." can't)
+    sparse: Home             # the mapped server folder, stripped locally
+```
+
+> **Note:** the server's folder scoping is applied **client-side** (its query
+> filter has no `folder_path` support), so `clone`/`pull` list the workspace and
+> then keep only in-scope documents. The *content* of out-of-scope documents is
+> never written to disk.
 
 ---
 
