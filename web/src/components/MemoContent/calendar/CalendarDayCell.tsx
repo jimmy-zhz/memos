@@ -44,20 +44,34 @@ export const CalendarDayCell = ({ day, items, dayEvents, events, onClick }: Cale
         />
       )}
       <span className="self-end shrink-0 text-xs font-medium text-foreground md:text-sm">{day.label}</span>
+      {/* 移动端：events 圆点横排一行，任务蓝点单独一行 */}
+      {(hasEvents || hasTasks) && (
+        <div className="mt-auto flex flex-col items-start gap-0.5 md:hidden">
+          {hasTasks && <span className="h-1 w-1 shrink-0 self-end rounded-full bg-primary/70" aria-hidden="true" />}
+          {hasEvents && (
+            <div className="flex flex-wrap items-center justify-start gap-0.5" aria-hidden="true">
+              {dayEvents.map((name) => (
+                <span
+                  key={name}
+                  className="h-1 w-1 shrink-0 rounded-full"
+                  style={{ backgroundColor: getEventColorByName(name, events) }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
       {hasTasks && (
-        <>
-          <span className="mt-auto h-1 w-1 shrink-0 self-end rounded-full bg-primary/70 md:hidden" aria-hidden="true" />
-          <div className="hidden md:flex md:flex-col md:gap-0.5 md:overflow-hidden md:text-left">
-            {previewItems.map((item, index) => (
-              <span key={index} className="truncate text-[10px] leading-tight text-muted-foreground">
-                {item.text}
-              </span>
-            ))}
-          </div>
-        </>
+        <div className="hidden md:flex md:flex-col md:gap-0.5 md:overflow-hidden md:text-left">
+          {previewItems.map((item, index) => (
+            <span key={index} className="truncate text-[10px] leading-tight text-muted-foreground">
+              {item.text}
+            </span>
+          ))}
+        </div>
       )}
       {hasEvents && (
-        <div className={cn("hidden flex-wrap items-center gap-0.5 md:flex", hasTasks ? "md:mt-1" : "md:mt-auto")} aria-hidden="true">
+        <div className="hidden flex-wrap items-center gap-0.5 md:mt-auto md:flex" aria-hidden="true">
           {dayEvents.map((name) => (
             <span
               key={name}

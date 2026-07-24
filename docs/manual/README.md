@@ -18,7 +18,8 @@ one.
 | 5 | [memogit CLI](./05-memogit-cli.md) | Checking a knowledge base out to local files with the `memogit` command-line tool: install, `login` / `clone` / `pull` / `push` / `status`, the workspace/folder-path/doc-type file layout, one-way attachment download, IDE-mergeable conflict resolution, config & state, and troubleshooting. |
 | 6 | [View Blocks](./06-view-blocks.md) | The four interactive fenced blocks — `calendar`, `kanban`, `grid`, `sheets`: their syntax, fields, formulas, interactive write-back gestures, and a [complete copy-paste demo](./demo-views.md). |
 | 7 | [HTTP API Reference](./07-api-reference.md) | The JSON/HTTP API for the knowledge-base features: `WorkspaceService`, `RagService` (hybrid search), `AIService` (writing assistants), and the workspace / folder / doc-type / share-link additions to `MemoService`. |
-| 8 | [Document Comments](./08-document-comments.md) | Commenting on a document while reading it in the Notebook: the shared comment panel (reused from PDF annotations), heading anchoring for Markdown docs, the outline/comments dock toggle, and the `DocAnchor` data model. |
+| 8 | [Text Marks & Comments](./08-document-comments.md) | Highlighting / underlining text and attaching comment threads across **Markdown / View documents, PDF, and EPUB**: the shared six-color palette and floating toolbar, bare marks vs. noted comments, text-quote anchoring and graceful degradation, heading anchoring, and the `DocAnchor` / `PdfAnnotation` / `EpubAnnotation` data model. |
+| 9 | [EPUB Reader](./09-epub-reader.md) | The in-app `.epub` reader: EPUB as a previewable **attachment** (not a doc type), page-flip vs. continuous-scroll flow, typography and background presets, per-book server-persisted appearance, the table of contents, and in-book marks/comments. |
 
 ## Core concepts at a glance
 

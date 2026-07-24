@@ -65,8 +65,11 @@ Features:
 - **Paged canvas rendering** (`PdfPages.tsx`) with a toolbar
   (`PdfToolbar.tsx`) for navigation and zoom.
 - **Annotations** (`usePdfAnnotations.ts`, `PdfAnnotationLayer.tsx`,
-  `PdfAnnotationSidebar.tsx`) — add notes/marks on top of pages, listed in a
-  side panel.
+  `PdfAnnotationSidebar.tsx`) — **highlight / underline** the page text in six
+  colors and attach comment threads, listed in a side panel. This is now part of
+  the app-wide marks system shared with documents and EPUB;
+  **[Manual 8 · Text Marks & Comments](./08-document-comments.md)** is the full
+  reference (the walkthrough below covers the PDF basics).
 - **Text extraction** (`extractPdfText.ts`) — pull selectable/searchable text
   out of the PDF.
 
@@ -76,14 +79,19 @@ The comment (annotation) tool is **on by default** — the speech-bubble
 "Add annotation" icon in the toolbar (`PdfToolbar.tsx`) starts selected, so you
 can select text right away without an extra click:
 
-1. **Select text** in the PDF page. A floating "Add comment" button appears
-   next to the selection.
-2. Click it (or the toolbar comment icon while a selection is active) to open
-   the comment editor, prefilled with a quote of the selected text. Comment
-   bodies support **Markdown**.
-3. Submit to save. The comment is anchored to that page/rectangle and appears
-   as a highlight on the page plus an entry in the **comments side panel**
-   (`PdfAnnotationSidebar.tsx`).
+1. **Select text** in the PDF page. A floating toolbar appears next to the
+   selection: six **highlight colors**, an **underline** toggle, and a **note**
+   button.
+2. Pick a color or underline to drop a **bare mark** (colored text, no note), or
+   click the **note** button to open the comment editor — prefilled with a quote
+   of the selected text and highlighting the passage in the default color.
+   Comment bodies support **Markdown**.
+3. Submit to save. The mark is anchored to the page's **text** (falling back to
+   a page/rectangle on scanned PDFs with no text layer) and appears on the page
+   plus, if it has a note, as an entry in the **comments side panel**
+   (`PdfAnnotationSidebar.tsx`). Click any existing mark to recolor, underline,
+   annotate, or erase it. See [Manual 8](./08-document-comments.md) for the full
+   model.
 
 If you need to select text without creating a comment (e.g. to copy it), click
 the toolbar comment icon once to turn annotate mode off — its background goes

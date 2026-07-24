@@ -1,180 +1,277 @@
-# 8. Document Comments
+# 8. Text Marks & Comments
 
-**Document comments** let you attach a discussion thread to a document while you
-read it in the Notebook, right next to the content — without leaving the page or
-opening the memo detail view. They reuse the exact same component and storage
-plumbing as the **PDF annotations** described in
-[Manual 2 · Rich Documents](./02-rich-documents.md), so a comment is just an
-ordinary *comment memo* (a child memo) of the document.
+**Marks and comments** let you highlight or underline text and attach a
+discussion thread to it while you read — in a Notebook **Markdown** or **View**
+document, in a **PDF**, or in an **EPUB** book. It is *one* feature with a shared
+palette, a shared floating toolbar, and a shared "comment is a child memo"
+storage model; the three surfaces differ only in **how a location is pinned to
+their content**.
 
-The feature is available on the **Notebook document preview** — i.e. the home
-page (`/`) when a document is open.
-
-- **Toggle & panel host:** `web/src/components/Notebook/DocumentView.tsx`.
-- **Comment panel:** `web/src/components/DocComments/DocCommentSidebar.tsx`.
-- **Comment card (shared with PDF):** `web/src/components/DocComments/CommentCard.tsx`.
-- **Heading anchoring helpers:** `web/src/components/DocComments/docAnchor.ts`.
-- **PDF annotation panel (same card):** `web/src/components/PdfViewer/PdfAnnotationSidebar.tsx`.
-
----
-
-## 8.1 Which documents support comments
-
-| Doc type | Comment support | Anchoring |
-|----------|-----------------|-----------|
-| **Markdown** | ✅ Yes | Anchored to the nearest heading above the scroll position. |
-| **View** (gallery) | ✅ Yes | Anchored to the nearest heading in a block's intro/footer Markdown snippet (falls back to top when there is none above). |
-| **PDF** | ✅ Yes — via the existing **annotations** panel | Anchored to a rect on a page (see Manual 2). |
-| **HTML** | ❌ No | — |
-
-The panel is only offered for Markdown and View documents. PDF documents keep
-their own annotation panel (which is spatially anchored to a page/rect). HTML
-documents are intentionally skipped.
-
-> The rule in code: `const supportsComments = !isPdf && !isHtml;` in
-> `DocumentView.tsx`. The only doc types are Markdown / HTML / PDF / View, so
-> "not PDF and not HTML" resolves to Markdown + View.
+- **Shared palette:** `web/src/utils/markColors.ts`.
+- **Shared floating toolbar:** `web/src/components/MarkToolbar.tsx`.
+- **Shared overlay + text anchoring (Markdown/View/PDF):**
+  `web/src/components/DocComments/DocMarkLayer.tsx`,
+  `web/src/components/DocComments/textAnchor.ts`.
+- **Markdown/View host:** `web/src/components/Notebook/DocumentView.tsx`,
+  panels in `web/src/components/DocComments/`.
+- **PDF host:** `web/src/components/PdfViewer/` (`PdfDocumentView.tsx`,
+  `PdfPageCanvas.tsx`, `usePdfAnnotations.ts`).
+- **EPUB host:** `web/src/components/EpubViewer/` — the reading experience has
+  its own manual, [Manual 9 · EPUB Reader](./09-epub-reader.md); this manual
+  covers only its marks/comments.
 
 ---
 
-## 8.2 Opening the panel
+## 8.1 The shared model (read this first)
 
-Open a document from the Notebook. In the document title bar:
+Everything below is true on **all three surfaces**.
 
-- A **speech-bubble icon** (💬) appears for Markdown / View documents. Click it
-  to open the comment panel.
-- The panel **shares the right-hand dock with the document outline** — opening
-  comments collapses the outline, and opening the outline closes comments. They
-  are never shown at the same time.
+### A mark is a comment memo
 
-On desktop the panel docks as a column on the right. On narrow screens it opens
-as a slide-in sheet from the right edge.
+Every mark and every comment is an ordinary **child comment memo** of the
+document (or, for PDF/EPUB, of the memo the file is attached to). They are
+created with the same `createMemoComment` call and listed with the same
+`listMemoComments` call the comment section already uses — so they also appear
+wherever comments appear (e.g. the memo detail page). What makes a comment a
+*mark* is an **anchor** stored on its payload (`doc_anchor` / `pdf_annotation` /
+`epub_annotation`); see §8.5.
 
-The panel header shows the comment count. Switching to a different document
-closes the panel.
+### Two independent things a comment can carry
+
+1. **Styling** — a background **highlight** in one of six colors, and/or an
+   **underline**. The two are independent and can stack (a colored underline is
+   a highlight *plus* an underline on the same span).
+2. **A written note** — Markdown body text.
+
+This gives two kinds of comment:
+
+| | Styling | Note | Shown in the notes panel? |
+|---|---------|------|---------------------------|
+| **Bare mark** | ✅ | empty | ❌ — it lives only as the colored text |
+| **Noted comment** | ✅ (a note always highlights its text too) | ✅ | ✅ |
+
+A **bare mark** is pure styling on the text (like a highlighter swipe). It has
+no card in the notes panel — an empty card would be noise — so the *only* way to
+recolor or remove it is to **click the mark itself** and use the floating
+toolbar (§8.1, toolbar). Writing a note onto a bare mark later is a plain
+comment edit; the anchor and color ride along untouched.
+
+Conversely, **writing a note always also highlights its text** (in the default
+color) when the selection has anchorable text: commenting on a passage and
+highlighting it are one act, not two.
+
+### The palette
+
+Six presets, shared everywhere so a "yellow" made in a book and one made in a
+document mean and look the same:
+
+| key | | key | |
+|-----|--|-----|--|
+| `yellow` *(default)* | 🟡 | `pink` | 🌸 |
+| `green` | 🟢 | `red` | 🔴 |
+| `blue` | 🔵 | `purple` | 🟣 |
+
+The stored value is the **key**, not the concrete hex (`markColors.ts`), so the
+palette can be retuned later without rewriting stored marks. Highlights are
+drawn **semi-transparent over** the text (≈0.32 alpha, brighter when selected)
+rather than behind it, so the text stays readable and the mark stays clickable.
+
+### The floating mark toolbar
+
+The same toolbar (`MarkToolbar.tsx`) appears in two situations:
+
+- **Finishing a text selection** → create a mark: a **note** button (💬), the
+  **six color swatches**, and an **underline** toggle.
+- **Clicking an existing mark** → restyle it: the same controls plus an
+  **eraser** (clear this mark), with the active color ringed and the underline
+  button reflecting its on/off state.
+
+Picking a color always *applies* that color — clicking the active color again is
+a no-op, not a toggle-off. Removing styling is the **eraser**'s job. Erasing a
+**bare** mark deletes the comment outright; erasing a mark that carries a
+**note** keeps the note (the valuable part) and just drops the visual — removed
+entirely on Markdown/PDF, reset to the default highlight on EPUB so it stays
+locatable in the book.
+
+### Anchoring & graceful degradation
+
+A document's text is edited freely, so a mark can't be pinned by character
+offset. Instead every text mark stores a **quote selector** — the exact marked
+text plus a bounded window of the text on each side (`textAnchor.ts`,
+`CONTEXT_LENGTH = 32`) — and is re-located by **searching the freshly rendered
+text** for that quote (the surrounding context disambiguates a phrase that
+repeats). Text inserted or deleted *elsewhere* doesn't move the quote relative
+to its own neighbours, so the mark survives; only rewriting the marked passage
+itself loses it. When that happens the mark **degrades to a coarser fallback**
+rather than vanishing:
+
+| Surface | Precise anchor | Fallback when the text is gone |
+|---------|----------------|--------------------------------|
+| Markdown / View | quote selector | nearest **heading** above it |
+| PDF | quote selector (over the text layer) | the **page + rectangle** the selection covered |
+| EPUB | **CFI** range (the file never changes) | the stored text **snippet** |
 
 ---
 
-## 8.3 Writing a comment
+## 8.2 Markdown & View documents (Notebook)
 
-There are two ways to start a comment.
+Available on the **Notebook document preview** — the home page (`/`) with a
+Markdown or View document open, in **Preview** mode. (PDF documents use §8.3;
+HTML documents have no marks or comments: `const supportsComments = !isPdf &&
+!isHtml`.)
 
-**A. Select text (precise — anchors to that exact section).** With the comment
-panel **open**, select any text in the rendered document. A small floating
-**💬 Write a comment** button appears just above the selection; click it.
-(Selection-to-comment is only active while the panel is open — close it and
-selecting text does nothing special.) The comment panel opens with the editor already
-**anchored to the heading nearest above your selection** — regardless of where you
-have scrolled. This is the reliable way to comment on a specific section: the
-anchor is captured from the *selection's* position, not the scroll position. (The
-selection may visually clear as focus moves to the editor — that's expected; the
-anchor was already captured on mouse-down.)
+> **Marking is a comments-panel activity.** Marks are always *drawn*, but
+> selecting text to mark, and clicking a mark to restyle it, **only work while
+> the comment panel is open**. With the panel closed the document is just a
+> document. Open the panel first (the 💬 speech-bubble icon in the title bar),
+> then mark. The panel shares the right-hand dock with the outline — opening one
+> closes the other.
 
-**B. Panel `+` button (quick — anchors to the current scroll position).** Click the
-**+ (new comment)** icon in the panel header. The comment is anchored to the
-nearest heading *above the top of the preview viewport*. Use this when you don't
-need to pinpoint a section.
+### Making a mark or comment
 
-Either way, a full Markdown editor opens inside the panel; for a Markdown doc its
-header shows `# <heading>` — the section the comment will be **anchored** to (see
-§8.4). Write your comment (full Markdown, attachments, mentions, etc. — it is a
-real memo) and confirm.
+With the comment panel **open**, in Preview mode:
 
-The new comment appears in the list immediately. Only signed-in users can create
-comments.
+1. **Select text.** The floating toolbar appears above the selection.
+2. Pick a **color** (creates a bare highlight), toggle **underline** (creates a
+   bare underline), or click the **note** button to open the comment editor
+   anchored to that selection (which also highlights it in the default color).
 
-### Editing a comment
+You can also start a note without selecting: the panel's **+ (new comment)**
+button anchors to the nearest heading *above the top of the viewport* — use it
+when you don't need to pin a specific passage.
 
-Each comment card has an inline **Edit** (pencil) affordance that swaps the card
-for the Markdown editor in place. Editing a comment's body **preserves its
-anchor** — the anchor lives on the memo payload and is not recomputed from the
-content.
+### Restyling / erasing / annotating a mark
 
----
+Click any existing mark. Its comment is selected (the mark brightens, the panel
+scrolls to it) and the toolbar opens over it, where you can recolor it, toggle
+its underline, add/edit its note, or erase it.
 
-## 8.4 Heading anchoring
+### Heading anchoring & jumping
 
-Because Markdown documents have a clear heading structure, each comment records
-**which heading it was written under**, so you can jump back to that section
-later.
+Because Markdown documents have a clear heading structure, every mark also
+records **which heading it sits under** (`docAnchor.ts`), using the same DOM
+`id` slug the [document outline](./01-knowledge-base.md) uses. In the notes
+panel each card labels itself with its **marked text** (or its heading, for a
+heading-only comment) and shows a color dot. **Clicking a card jumps** the
+document to the marked passage, falling back to the heading if the text was
+edited away. A comment above the first heading anchors to "top of document".
 
-- The anchor is the **nearest heading above** the comment's origin: above the text
-  selection when started from the floating button
-  (`nearestHeadingAnchorForNode`), or above the scroll position when started from
-  the panel `+` (`nearestHeadingAnchor`) — both in `docAnchor.ts`. This uses
-  the rendered heading's DOM `id`, which is the same slug the
-  [document outline](./01-knowledge-base.md) uses — so the anchor always matches
-  a real outline entry.
-- Each comment card shows a small `# heading` chip. **Clicking the card scrolls
-  the document to that heading** (`scrollToHeading`), smoothly.
-- If you comment above the first heading, the anchor is empty and means **"top of
-  document"**; clicking such a comment scrolls back to the top.
+If a mark's text is later rewritten, its card stays in the panel — flagged
+**"Original text changed"** (struck-through label) — rather than disappearing
+along with the note it carries.
+
+> **Rule — keep punctuation out of headings so they make valid anchors.** A
+> heading's anchor id is a **slugified** copy of its text (`slugify` in
+> `web/src/utils/markdown-manipulation.ts`), and slugifying **strips every
+> punctuation mark**, keeping only letters, numbers, and spaces-turned-hyphens.
+> Two consequences follow, so **prefer punctuation-free heading text**:
+>
+> - Headings that differ *only* in punctuation collide to the same slug (e.g.
+>   `Setup (macOS)` and `Setup / macOS` both become `setup-macos`). The
+>   duplicate then gets a positional `-1`/`-2` suffix, so its anchor is fragile —
+>   reordering or editing sibling headings renumbers it and the comment jumps to
+>   the wrong section.
+> - A heading made **entirely** of punctuation (e.g. `?!` or `---`) slugifies to
+>   an empty string and is given **no `id` at all**, so it can never be an anchor
+>   target — a comment "under" it falls back to the top of the document.
 
 ### View documents
 
-A View (gallery) document has no headings of its own, but each block can carry an
-**intro** (`description`) and **footer** Markdown snippet, and headings inside
-those snippets are anchorable just like a Markdown document's. Because each snippet
-is rendered by its own Markdown pass, heading ids are made unique across the whole
-View by prefixing them per block (`vb<index>-desc-…` / `vb<index>-foot-…`); the
-`rehypeHeadingId` plugin also rewrites intra-snippet anchor links so in-snippet
-"jump to heading" links keep working. Gallery **card titles are not headings**, so
-they cannot be used as anchors.
-
-Anchoring is best-effort: if the heading text is later edited or removed, the
-comment keeps its stored label but the jump falls back gracefully (no-op if the
-heading id no longer exists).
+A View (gallery) document has no headings of its own, but each block can carry
+an **intro** (`description`) and **footer** Markdown snippet, and their headings
+are anchorable just like a Markdown document's (heading ids are made globally
+unique per block, e.g. `vb<index>-desc-…`). A View's **card walls are excluded
+from anchoring** (`data-mark-exclude`) — they are live query results whose text
+appears and vanishes as data changes, so a mark must never latch onto a card a
+later query drops. Gallery **card titles are not headings** and can't be
+anchors.
 
 ---
 
-## 8.5 How it maps to PDF annotations
+## 8.3 PDF documents
 
-Document comments and PDF annotations are the **same feature** with a different
-anchor shape:
+PDF documents (and PDF **attachments** previewed on the standalone reader page)
+use their own annotation sidebar, but marking works the same way and shares the
+same toolbar and palette.
 
-| | PDF annotation | Document comment |
-|---|----------------|------------------|
-| Panel | `PdfAnnotationSidebar` | `DocCommentSidebar` |
-| Card | `CommentCard` | `CommentCard` (shared) |
-| Anchor payload | `PdfAnnotation` (attachment + page + rect) | `DocAnchor` (heading slug + text) |
-| Grouping | By page | Flat thread |
-| Jump target | Page / rect on the PDF | Heading in the rendered Markdown |
+- **Annotate mode is on by default** (the 💬 toolbar icon starts selected), so
+  you can select text and mark immediately — no need to open a panel first
+  (this is the one behavioral difference from Markdown). Turn annotate mode off
+  when you just want to select text to copy it.
+- **Select text on a page** → the floating toolbar appears: pick a color,
+  toggle underline, or write a note (which also highlights the passage).
+- Marks are painted over the **words themselves**, anchored to the page's text
+  layer with the same quote selector as documents. A **scanned PDF has no text
+  layer**, so a selection there falls back to a **rectangle** over the region —
+  a box, not a colorable text mark.
+- **Click a mark** to recolor / underline / annotate / erase it in place.
+- The **comments panel** (toolbar panel-toggle) lists noted annotations grouped
+  by page; clicking one jumps to that page. It opens automatically on arrival
+  when the PDF already has notes.
 
-Both are created with the same `createMemoComment` call and listed with the same
-`listMemoComments` call — they are ordinary comment memos, so they also show up
-wherever comments are shown (e.g. the memo detail page).
+### PDF everywhere it needs to appear
+
+A PDF document is a link/reference, so it renders differently by context (see
+[Manual 2 · §2.3](./02-rich-documents.md)): full viewer in the Notebook and on
+the detail page; a jump-to-detail card in the Explore feed.
 
 ---
 
-## 8.6 Data model
+## 8.4 EPUB books
 
-A comment is a child memo. Its anchor is stored on the memo payload:
+EPUB files are **attachments** (there is no EPUB `doc_type`); opening one on the
+standalone reader page gives an e-reader with the same marks/comments. Because
+an EPUB file never changes under the reader, marks are pinned by **CFI** rather
+than a quote selector, and are drawn by epub.js as an SVG highlight (`fill`) or
+underline (`stroke`). Annotate mode is on by default; a separate sidebar lists
+noted annotations. See **[Manual 9 · EPUB Reader](./09-epub-reader.md)** for the
+full reading experience (flow, fonts, backgrounds, TOC) — its annotation UX is
+covered there.
 
-- **Store proto:** `MemoPayload.doc_anchor` (`DocAnchor { heading_slug,
-  heading_text }`) in `proto/store/memo.proto`. This sits alongside the existing
-  `pdf_annotation` field.
-- **API proto:** `Memo.doc_anchor` (field 24) and the `DocAnchor` message in
-  `proto/api/v1/memo_service.proto`.
-- **Create path:** `CreateMemo` / `CreateMemoComment` in
-  `server/router/api/v1/memo_service.go` copies `doc_anchor` into the payload via
-  `convertDocAnchorToStore`.
-- **Read path:** `convertDocAnchorFromStore` in
-  `server/router/api/v1/memo_service_converter.go`.
+---
+
+## 8.5 Data model
+
+A mark/comment is a child memo whose anchor lives on the memo payload
+(`proto/store/memo.proto` → mirrored in `proto/api/v1/memo_service.proto`).
+There are three anchor shapes, one per surface:
+
+| Payload field | Surface | Key fields |
+|---------------|---------|------------|
+| `doc_anchor` (`DocAnchor`) | Markdown / View | `heading_slug`, `heading_text`, `text_exact`/`text_prefix`/`text_suffix`, `color`, `underline` |
+| `pdf_annotation` (`PdfAnnotation`) | PDF | `attachment_name`, `page`, `x/y/width/height`, `text_snippet`, `text_exact`/`text_prefix`/`text_suffix`, `color`, `underline` |
+| `epub_annotation` (`EpubAnnotation`) | EPUB | `attachment_name`, `cfi_range`, `text_snippet`, `color`, `underline` |
+
+- **`color`** is a palette **key** (e.g. `"yellow"`), not a hex. Empty means "no
+  fill" (for `DocAnchor`, "the default").
+- **`underline`** draws an underline instead of / in addition to a fill.
+- The text-quote fields (`text_exact` + `text_prefix`/`text_suffix`) are the
+  precise anchor; the coarse fields (`heading_slug` / rect / `text_snippet`) are
+  the fallback.
+- Create path: `CreateMemoComment` copies the anchor into the payload. Restyling
+  a mark is an `UpdateMemo` with the relevant `update_mask` path
+  (`doc_anchor` / `pdf_annotation` / `epub_annotation`).
 
 Because the anchor lives on the payload (not derived from content),
-`RebuildMemoPayload` — which recomputes only tags and properties on every content
-edit — leaves it intact.
+`RebuildMemoPayload` — which recomputes only tags and properties on every
+content edit — leaves it intact.
 
 ---
 
-## 8.7 Notes & limitations
+## 8.6 Notes & limitations
 
-- **No spatial/inline text anchoring for Markdown.** Comments anchor to the
-  nearest *heading*, not to an arbitrary text selection. Anchoring to a selected
-  span (highlight-style) is a possible future enhancement.
-- **View documents** anchor to headings inside a block's intro/footer Markdown
-  snippet (heading ids are made globally unique per block); gallery card titles are
-  not anchorable.
-- **HTML documents** have no comment panel.
-- Comments respect the same visibility and permission model as any other memo
-  comment.
+- **HTML documents** have no marks or comments.
+- **Scanned PDFs** (no text layer) can only be annotated with a rectangle, not a
+  colored text mark.
+- **Markdown/View marking requires the comment panel to be open**; PDF/EPUB use
+  an always-available *annotate mode* toggle instead.
+- Erasing a mark that carries a note keeps the note; on Markdown/PDF the visual
+  is removed, on EPUB it resets to the default highlight (so the note stays
+  findable in the book).
+- Only signed-in users can create marks/comments. They respect the same
+  visibility and permission model as any other memo comment.
+- **`memogit`-checked-out files do not contain marks or comments** — they live
+  on separate child memos, not in the document's `.md`/attachment bytes. An
+  agent editing a checked-out file won't see them, and **rewriting a marked
+  passage detaches its highlight** (it degrades to the heading/rect/snippet
+  fallback). See [`pumpkin_book_for_llms.md`](./pumpkin_book_for_llms.md).
